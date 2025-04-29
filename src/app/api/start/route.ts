@@ -1,8 +1,19 @@
-import { NextResponse } from 'next/server';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextResponse } from 'next/server'
+import { exec } from 'child_process'
+import util from 'util'
 
-let streaming = false; // мок-переменная
+const execPromise = util.promisify(exec)
 
 export async function POST() {
-  streaming = true;
-  return NextResponse.json({ success: true });
+  try {
+    await execPromise('sudo systemctl start stream')
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Ошибка запуска трансляции:', error)
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    )
+  }
 }
