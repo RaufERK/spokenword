@@ -1,21 +1,17 @@
-// app/api/start/route.ts
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server'
 import { exec } from 'child_process'
 import util from 'util'
 
 const execPromise = util.promisify(exec)
 
-export async function POST() {
+export async function GET() {
   try {
-    await execPromise('sudo systemctl start stream')
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('Ошибка запуска трансляции:', error)
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    )
+    const { stdout } = await execPromise('systemctl is-active stream')
+    const isActive = stdout.trim() === 'active'
+    return NextResponse.json({ streaming: isActive })
+  } catch (error: unknown) {
+    // Даже если статус не "active", это не считается критической ошибкой
+    console.error(error)
+    return NextResponse.json({ streaming: false })
   }
 }
