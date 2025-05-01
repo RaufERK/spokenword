@@ -1,4 +1,3 @@
-// src/app/admin/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -7,9 +6,11 @@ export default function AdminPage() {
   const [streaming, setStreaming] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
 
-  // Получаем статус при загрузке страницы
   useEffect(() => {
     fetchStatus()
+
+    const interval = setInterval(fetchStatus, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   const fetchStatus = async () => {
@@ -22,25 +23,15 @@ export default function AdminPage() {
     }
   }
 
-  const startStream = async () => {
+  const toggleStream = async () => {
     setLoading(true)
     try {
-      await fetch('/api/start', { method: 'POST' })
-      setStreaming(true)
+      const endpoint = streaming ? '/api/stop' : '/api/start'
+      await fetch(endpoint, { method: 'POST' })
     } catch (error) {
-      console.error('Ошибка при запуске трансляции:', error)
+      console.error('Ошибка при переключении трансляции:', error)
     }
-    setLoading(false)
-  }
-
-  const stopStream = async () => {
-    setLoading(true)
-    try {
-      await fetch('/api/stop', { method: 'POST' })
-      setStreaming(false)
-    } catch (error) {
-      console.error('Ошибка при остановке трансляции:', error)
-    }
+    await fetchStatus()
     setLoading(false)
   }
 
@@ -60,23 +51,17 @@ export default function AdminPage() {
         )}
       </div>
 
-      <div className='flex gap-4'>
-        <button
-          onClick={startStream}
-          disabled={loading || streaming}
-          className='rounded bg-blue-500 px-6 py-3 text-white hover:bg-blue-600 disabled:opacity-50'
-        >
-          Начать трансляцию
-        </button>
-
-        <button
-          onClick={stopStream}
-          disabled={loading || !streaming}
-          className='rounded bg-gray-500 px-6 py-3 text-white hover:bg-gray-600 disabled:opacity-50'
-        >
-          Остановить трансляцию
-        </button>
-      </div>
+      <button
+        onClick={toggleStream}
+        disabled={loading}
+        className={`rounded px-6 py-3 text-white transition ${
+          streaming
+            ? 'bg-gray-500 hover:bg-gray-600'
+            : 'bg-blue-500 hover:bg-blue-600'
+        } disabled:opacity-50`}
+      >
+        {streaming ? 'Остановить трансляцию' : 'Начать трансляцию'}
+      </button>
     </div>
   )
 }
