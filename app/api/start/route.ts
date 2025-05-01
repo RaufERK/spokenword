@@ -1,6 +1,7 @@
 // app/api/start/route.ts
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import fs from 'fs'
 import { NextResponse } from 'next/server'
 import { exec } from 'child_process'
 import util from 'util'
@@ -9,6 +10,7 @@ const execPromise = util.promisify(exec)
 
 export async function POST() {
   try {
+    fs.appendFileSync('/tmp/debug-api-start.txt', `START button pressed at ${new Date().toISOString()}\n`)
     await execPromise('sudo systemctl start stream')
     return NextResponse.json({ success: true })
   } catch (error: any) {
