@@ -1,0 +1,3 @@
+sudo -u www-data -s
+whoami
+sudo -u www-data -s
