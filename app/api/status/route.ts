@@ -6,16 +6,12 @@ import { exec } from 'node:child_process'
 import util from 'node:util'
 
 const execPromise = util.promisify(exec)
-const SERVICE = 'stream'
 
 export async function GET() {
   try {
-    // ➊ запрашиваем статус
     const { stdout } = await execPromise(
-      `/usr/bin/sudo /usr/bin/systemctl is-active ${SERVICE}`
+      '/usr/bin/sudo /usr/bin/systemctl is-active stream'
     )
-
-    // ➋ «active» → true, всё остальное пусть считается false
     const streaming = stdout.trim() === 'active'
     return NextResponse.json({ streaming })
   } catch (error: any) {

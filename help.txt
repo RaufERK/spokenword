@@ -4,8 +4,23 @@
 whoami
 sudo -u spokenword -H bash 
 cd /var/www/spokenword
+rm -rf ./public/archive/* && rm -rf ./public/live/*
+git fetch && git pull && npm ci && npm run build && pm2 restart 0 && pm2 logs --lines 20
+
+
 git pull
 npm ci          # если lock‑файл менялся
 npm run build
 pm2 restart spokenword-frontend
 pm2 logs --lines 20
+
+
+
+3 — Перезапуск и тест
+sudo systemctl restart stream
+sudo systemctl status stream --no-pager -l
+
+
+Быстрый локальный тест (до перезагрузки браузера):
+curl -s http://localhost:3000/api/status        # на сервере
+curl -s https://spoken-word.ru/api/status       # cнаружи
