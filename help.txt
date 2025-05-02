@@ -1,3 +1,5 @@
-sudo -u www-data -s
+/Users/rauferk/Documents/WEB_PROJ/SPOKENWORD/help.txt
+Этот файл - шпаргалка/напоминалка с командами для сервера
+
 whoami
-sudo -u www-data -s
+sudo -u spokenword -H bash 

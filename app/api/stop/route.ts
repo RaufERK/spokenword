@@ -2,11 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server'
-import { exec } from 'child_process'
-import util from 'util'
+import { exec } from 'node:child_process'
+import util from 'node:util'
 
 const execPromise = util.promisify(exec)
 
+// POST /api/stop
 export async function POST() {
   try {
     await execPromise('sudo systemctl stop stream')

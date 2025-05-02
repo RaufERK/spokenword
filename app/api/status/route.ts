@@ -1,21 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// app/api/status/route.ts
+
 import { NextResponse } from 'next/server'
-import { exec } from 'child_process'
-import util from 'util'
+import { exec } from 'node:child_process'
+import util from 'node:util'
 
 const execPromise = util.promisify(exec)
-const SYSTEMCTL = '/usr/bin/systemctl' // <-- абсолютный путь
 
+// GET /api/status
 export async function GET() {
   try {
-    // -n = non-interactive; sudo сразу завершится, если всё-таки попросит пароль
-    const { stdout } = await execPromise(
-      `sudo -n ${SYSTEMCTL} is-active stream.service`
-    )
+    const { stdout } = await execPromise('systemctl is-active stream')
     const isActive = stdout.trim() === 'active'
     return NextResponse.json({ streaming: isActive })
-  } catch (error: any) {
-    console.error('systemctl error:', error.stderr ?? error)
+  } catch {
+    // Если служба не запущена, systemctl вернёт non‑zero → попадаем сюда
     return NextResponse.json({ streaming: false })
   }
 }

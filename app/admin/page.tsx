@@ -1,5 +1,7 @@
 'use client'
 
+// app/admin/page.tsx
+
 import { useEffect, useState } from 'react'
 
 export default function AdminPage() {
