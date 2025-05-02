@@ -10,7 +10,8 @@ const execPromise = util.promisify(exec)
 // POST /api/stop
 export async function POST() {
   try {
-    await execPromise('sudo systemctl stop stream')
+    // app/api/stop/route.ts
+    await execPromise('/usr/bin/sudo /usr/bin/systemctl stop stream')
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Ошибка остановки трансляции:', error)
