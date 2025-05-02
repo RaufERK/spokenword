@@ -3,3 +3,9 @@
 
 whoami
 sudo -u spokenword -H bash 
+cd /var/www/spokenword
+git pull
+npm ci          # если lock‑файл менялся
+npm run build
+pm2 restart spokenword-frontend
+pm2 logs --lines 20
