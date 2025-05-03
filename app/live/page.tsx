@@ -16,13 +16,13 @@ export default function LivePage() {
 
     if (Hls.isSupported()) {
       const hls = new Hls()
-      hls.loadSource('/live/stream.m3u8')
+      hls.loadSource('/live/master.m3u8')
       hls.attachMedia(video)
       hls.on(Hls.Events.ERROR, () => {
         setIsStreaming(false)
       })
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = '/live/stream.m3u8'
+      video.src = '/live/master.m3u8'
       video.addEventListener('error', () => setIsStreaming(false))
     } else {
       setIsStreaming(false)
