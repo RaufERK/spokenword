@@ -39,3 +39,7 @@ next-env.d.ts
 # spokenword specific
 public/live/
 public/archive/
+public/live/
+public/archive/
+public/live/
+public/archive/
