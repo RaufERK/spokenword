@@ -3,17 +3,19 @@
 // src/app/api/archive/[name]/route.ts (Next 15):
 //     app/api/archive/[name]/route.ts
 
-
+// app/api/archive/[name]/route.ts
 import { NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> } // ← Promise!
 ) {
+  const { name } = await params // распаковали
+
   const archiveDir = '/var/stream/archive'
-  const filePath = path.join(archiveDir, params.name)
+  const filePath = path.join(archiveDir, name)
 
   try {
     await fs.promises.unlink(filePath)

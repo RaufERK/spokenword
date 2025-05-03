@@ -3,17 +3,12 @@
 # rm -f public/archive/*     - Удаляет архив!!!
 
 
-# в deploy‑скрипт
-git pull && npm ci && npm run build
-pm2 restart 0
-sudo systemctl restart stream   # если хочешь перезапустить поток
-
 
 
 
 # в deploy‑скрипте
 sudo -u spokenword -H bash
-cd /var/www/spokenword
+
 rm -f public/live/*         # удаляем содержимое   
 
 sudo chown -R spokenword:spokenword public/{live,archive}
@@ -47,3 +42,13 @@ sudo systemctl restart stream
 конфигурация nginx
 /etc/nginx/sites-enabled/spoken-word.ru
 
+
+
+
+# в deploy‑скрипт
+sudo -u spokenword -H bash
+cd /var/www/spokenword
+git pull && npm ci && npm run build
+pm2 restart 0
+# при необходимости
+sudo systemctl restart stream
