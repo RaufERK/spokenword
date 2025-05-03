@@ -9,7 +9,6 @@ const execPromise = util.promisify(exec)
 // POST /api/start
 export async function POST() {
   try {
-    // app/api/start/route.ts
     await execPromise('/usr/bin/sudo /usr/bin/systemctl start stream')
     const { stdout } = await execPromise('systemctl is-active stream')
     return NextResponse.json({ success: stdout.trim() === 'active' })

@@ -1,8 +1,4 @@
-// 3 — удаление файлов из архива через админ‑панель
-// 3.1 API‑ручка DELETE
-// src/app/api/archive/[name]/route.ts (Next 15):
-//     app/api/archive/[name]/route.ts
-
+// удаление файлов из архива через админ‑панель
 // app/api/archive/[name]/route.ts
 import { NextResponse } from 'next/server'
 import fs from 'fs'
