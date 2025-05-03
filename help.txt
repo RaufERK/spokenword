@@ -1,9 +1,23 @@
 /Users/rauferk/Documents/WEB_PROJ/SPOKENWORD/help.txt
 Этот файл - шпаргалка/напоминалка с командами для сервера
+# rm -f public/archive/*     - Удаляет архив!!!
 
-whoami
-sudo -u spokenword -H bash && cd /var/www/spokenword
-rm -rf ./public/archive/* && rm -rf ./public/live/*
+
+# в deploy‑скрипт
+git pull && npm ci && npm run build
+pm2 restart 0
+sudo systemctl restart stream   # если хочешь перезапустить поток
+
+
+
+
+# в deploy‑скрипте
+sudo -u spokenword -H bash
+cd /var/www/spokenword
+rm -f public/live/*         # удаляем содержимое   
+
+sudo chown -R spokenword:spokenword public/{live,archive}
+
 git fetch && git pull && npm ci && npm run build && pm2 restart 0 && pm2 logs --lines 20
 
 
@@ -28,3 +42,8 @@ curl -s https://spoken-word.ru/api/status       # cнаружи
 Перезапусти службу:
 sudo systemctl restart stream
 sudo systemctl restart stream
+
+
+конфигурация nginx
+/etc/nginx/sites-enabled/spoken-word.ru
+

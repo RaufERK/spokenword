@@ -27,6 +27,14 @@ export default function ArchivePage() {
       })
   }, [])
 
+  const handleDelete = async (name: string) => {
+    if (!confirm(`Удалить ${name}?`)) return
+    await fetch(`/api/archive/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    })
+    setFiles((prev) => prev.filter((f) => f.name !== name))
+  }
+
   return (
     <div className='p-4'>
       <h1 className='text-2xl mb-4'>Архив трансляций</h1>
@@ -51,6 +59,12 @@ export default function ArchivePage() {
                 className='px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition'
               >
                 Смотреть
+              </button>
+              <button
+                onClick={() => handleDelete(file.name)}
+                className='ml-2 rounded bg-red-500 px-2 py-1 text-white hover:bg-red-600'
+              >
+                Удалить
               </button>
             </li>
           ))}
