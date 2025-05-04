@@ -1,4 +1,4 @@
-// ---------- app/page.tsx (главная, плеер «для всех» ) ----------
+// app/page.tsx
 import HlsPlayer from '@/components/HlsPlayer'
 import Link from 'next/link'
 

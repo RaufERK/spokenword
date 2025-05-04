@@ -22,11 +22,11 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".", // <—  root of the repo
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
-      ], // <—  maps '@/...' to project root
+      ]
     }
   },
   "include": [
