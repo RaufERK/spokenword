@@ -48,8 +48,26 @@ sudo systemctl restart stream
 # в deploy‑скрипт
 sudo -u spokenword -H bash
 cd /var/www/spokenword
-rm -f public/live/* public/archive/*      # оставляем каталоги, но чистим
 git pull && npm ci && npm run build
 pm2 restart 0
-# при необходимости
-sudo systemctl restart stream
+sudo systemctl restart stream            # только если меняли скрипт/кодеки
+exit
+sudo /usr/local/bin/make-master.sh       # перегенерировать мастер‑плейлист
+
+
+
+
+Если захочется:
+
+добавить HTTPS (Let’s Encrypt) для HLS;
+
+автоматическую перегенерацию master.m3u8;
+
+ещё один битрейт или запись субтитров;
+
+CI‑скрипт деплоя, чтобы всё обновлялось одной командой;
+
+
+
+У вас осталось 5 ответов из оставшихся o3.
+Если вы достигнете лимита, ответы переключатся на другую модель, пока он не будет сброшен 9 мая 2025 г..
