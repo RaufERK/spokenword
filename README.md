@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SpokenWord Deployment & Management Guide
 
-## Getting Started
+This is a quick-reference and deployment helper for maintaining the **SpokenWord** project on the production server.
 
-First, run the development server:
+---
 
+## 🧹 Cleanup & Reset
+
+### Manually remove archive recordings:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+rm -f public/archive/*
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Pre-deploy clean-up (inside deploy script):
+```bash
+sudo -u spokenword -H bash
+rm -f public/live/*
+sudo chown -R spokenword:spokenword public/{live,archive}
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Deployment
 
-## Learn More
+### Step-by-step:
+```bash
+git pull
+npm ci                # if lockfile has changed
+npm run build
+pm2 restart spokenword-frontend
+pm2 logs --lines 20
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Full deploy with service restart:
+```bash
+sudo -u spokenword -H bash
+cd /var/www/spokenword
+git pull && npm ci && npm run build
+pm2 restart 0
+sudo systemctl restart stream            # only if stream script or ffmpeg changed
+exit
+sudo /usr/local/bin/make-master.sh       # regenerate master.m3u8 playlist
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🔁 Stream Service Control
 
-## Deploy on Vercel
+```bash
+sudo systemctl restart stream
+sudo systemctl status stream --no-pager -l
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🧪 Stream Status Checks
+
+### Local:
+```bash
+curl -s http://localhost:3000/api/status
+```
+
+### From outside:
+```bash
+curl -s https://spoken-word.ru/api/status
+```
+
+---
+
+## ⚙️ Nginx Configuration
+
+Edit:
+```
+/etc/nginx/sites-enabled/spoken-word.ru
+```
+
+---
+
+## 🛣️ Future Improvements
+
+- Enable HTTPS (Let’s Encrypt) for HLS.
+- Auto-generate `master.m3u8` on stream start.
+- Add alternate bitrate or subtitle track.
+- CI deploy script to automate all updates.
