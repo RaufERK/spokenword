@@ -1,11 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/logout/page.tsx
-// app/logout/page.tsx
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function LogoutPage() {
-  const cookieStore = cookies() as any // временно обходим типизацию
-  cookieStore.delete('spoken_auth')
-  redirect('/')
+  const router = useRouter()
+
+  useEffect(() => {
+    fetch('/api/logout', { method: 'POST' }).then(() => {
+      router.push('/')
+    })
+  }, [router])
+
+  return <p className='text-center mt-20'>Выход…</p>
 }
