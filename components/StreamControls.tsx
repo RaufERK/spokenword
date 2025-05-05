@@ -19,7 +19,7 @@ export default function StreamControls() {
   }
 
   return (
-    <div className='flex items-center gap-6'>
+    <div className='flex items-center gap-6 bg-white p-6 rounded-xl shadow border border-gray-300'>
       <button
         onClick={toggle}
         disabled={loading}
@@ -27,8 +27,19 @@ export default function StreamControls() {
       >
         {active ? 'Остановить трансляцию' : 'Начать трансляцию'}
       </button>
-      <span className='text-lg'>
-        Состояние: {active === null ? '…' : active ? 'Идёт' : 'Не идёт'}
+      <span className='text-lg font-semibold text-green-800'>
+        Состояние:{' '}
+        <span
+          className={
+            active === null
+              ? 'text-gray-500'
+              : active
+              ? 'inline-block bg-green-200 text-green-800 px-3 py-1 rounded'
+              : 'inline-block bg-red-200 text-red-800 px-3 py-1 rounded'
+          }
+        >
+          {active === null ? '…' : active ? 'Идёт' : 'Не идёт'}
+        </span>
       </span>
     </div>
   )

@@ -13,9 +13,9 @@ export default async function AdminLayout({
   if (!session?.user) redirect('/login?next=/admin')
 
   return (
-    <div className='flex min-h-screen'>
+    <>
       <SideNav variant='admin' />
-      <div className='flex-1 p-6 bg-gray-50'>{children}</div>
-    </div>
+      <main className='p-6 bg-green-700 min-h-screen'>{children}</main>
+    </>
   )
 }

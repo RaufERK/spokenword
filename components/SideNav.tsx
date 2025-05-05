@@ -1,4 +1,5 @@
-// ---------- components/SideNav.tsx ----------
+// components/SideNav.tsx
+'use client'
 import Link from 'next/link'
 import clsx from 'clsx'
 
@@ -21,19 +22,29 @@ export default function SideNav({ variant }: Props) {
   return (
     <nav
       className={clsx(
-        'flex flex-col gap-2 p-4 w-60',
-        variant === 'admin' ? 'bg-indigo-100' : 'bg-blue-100'
+        'flex items-center justify-between p-4 border-b-4 border-red-600',
+        variant === 'admin' ? 'bg-indigo-700' : 'bg-blue-700'
       )}
     >
-      {links.map((l) => (
+      <div className='flex gap-6'>
+        {links.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            className='text-lg font-medium hover:underline'
+          >
+            {l.label}
+          </Link>
+        ))}
+      </div>
+      {variant === 'admin' && (
         <Link
-          key={l.href}
-          href={l.href}
-          className='rounded px-3 py-2 hover:bg-white/50'
+          href='/logout'
+          className='text-red-600 font-medium hover:underline'
         >
-          {l.label}
+          Выйти
         </Link>
-      ))}
+      )}
     </nav>
   )
 }
