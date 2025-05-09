@@ -10,7 +10,8 @@ export async function DELETE(
 ) {
   const { name } = await params // распаковали
 
-  const archiveDir = '/var/stream/archive'
+  const archiveDir = '/srv/streaming/archive'
+
   const filePath = path.join(archiveDir, name)
 
   try {

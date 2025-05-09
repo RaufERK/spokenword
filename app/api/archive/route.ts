@@ -4,7 +4,7 @@ import fs from 'fs'
 import path from 'path'
 
 export async function GET() {
-  const archiveDir = '/var/stream/archive' // ← новый путь
+  const archiveDir = '/srv/streaming/archive'
 
   try {
     const files = fs
@@ -22,7 +22,7 @@ export async function GET() {
       })
       .sort((a, b) => +b.modified - +a.modified)
 
-    return NextResponse.json({ files })
+    return NextResponse.json(files)
   } catch (e) {
     console.error('Ошибка чтения архива:', e)
     return NextResponse.json(

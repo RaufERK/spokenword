@@ -1,8 +1,15 @@
-systemctl status stream
 
 
 
 ls -lh /srv/streaming/archive
 ls -lh /srv/streaming/live
-
 journalctl -u stream -n 30 --no-pager
+systemctl status stream
+
+
+
+
+Перезапуск:
+
+sudo systemctl daemon-reload
+sudo systemctl restart stream
