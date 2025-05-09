@@ -1,8 +1,8 @@
-systemctl restart stream
+systemctl status stream
 
 
 
 ls -lh /srv/streaming/archive
 ls -lh /srv/streaming/live
-systemctl status stream
+
 journalctl -u stream -n 30 --no-pager

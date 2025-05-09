@@ -4,9 +4,13 @@ Description=SpokenWord FFmpeg Stream
 After=network.target
 
 [Service]
+Type=simple
 ExecStart=/usr/local/bin/start-stream.sh
-Restart=always
+# перезапускаем **только при сбоях** (код выхода ≠ 0, сигнал, core‑dump)
+Restart=on-failure
 RestartSec=3
+# на всякий случай убираем флаг, когда службу стопят
+ExecStopPost=/usr/bin/rm -f /tmp/streaming-enabled
 
 [Install]
 WantedBy=multi-user.target

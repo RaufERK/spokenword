@@ -9,9 +9,11 @@ const execPromise = util.promisify(exec)
 export async function GET() {
   try {
     const { stdout } = await execPromise(
-      '/usr/bin/sudo /usr/bin/systemctl is-active stream'
+      '/usr/bin/systemctl show -p ActiveState stream'
     )
-    const streaming = stdout.trim() === 'active'
+    const state = stdout.split('=')[1].trim() // active | activating | failed …
+    const streaming = state === 'active' || state === 'activating'
+
     return NextResponse.json({ streaming })
   } catch (error: any) {
     // ➌ Код выхода «3» означает, что служба не активна — это не ошибка API
