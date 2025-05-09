@@ -1,7 +1,6 @@
 // app/api/archive/route.ts
 import { NextResponse } from 'next/server'
 import fs from 'fs'
-import path from 'path'
 
 export async function GET() {
   const archiveDir = '/srv/streaming/archive'
@@ -10,21 +9,12 @@ export async function GET() {
     const files = fs
       .readdirSync(archiveDir)
       .filter((f) => f.endsWith('.mp4'))
-      .map((f) => {
-        const filePath = path.join(archiveDir, f)
-        const stats = fs.statSync(filePath)
-        return {
-          name: f,
-          size: stats.size,
-          modified: stats.mtime,
-          url: `/archive/${f}`, // nginx уже отдаёт новый alias
-        }
-      })
-      .sort((a, b) => +b.modified - +a.modified)
+      .sort() // по имени / времени – как нужно
+      .reverse() // новое сверху
 
-    return NextResponse.json(files)
+    return NextResponse.json(files) // ← массив строк, не объект!
   } catch (e) {
-    console.error('Ошибка чтения архива:', e)
+    console.error(e)
     return NextResponse.json(
       { error: 'Не удалось прочитать архив' },
       { status: 500 }
