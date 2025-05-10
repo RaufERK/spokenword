@@ -6,9 +6,9 @@ import path from 'path'
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> } // ← Promise!
 ) {
-  const { name } = params
+  const { name } = await params // распаковали
 
   const archiveDir = '/srv/streaming/archive'
 
