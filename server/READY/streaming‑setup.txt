@@ -1,0 +1,120 @@
+Победный чек‑лист (скопируй целиком в repo — docs/streaming‑setup.txt)
+1 . Программные версии
+компонент	команда проверки	рабочая версия
+FFmpeg (static)	`/usr/local/bin/ffmpeg -version 	 head -1`
+nginx + nginx‑rtmp‑module	/usr/local/nginx/sbin/nginx -v	1.25.4 + rtmp
+Node / Next	node -v, next -v	20.x / 15.x
+
+2 . FFmpeg 7 — установка
+bash
+Копировать
+Редактировать
+cd /usr/local/bin
+wget -O ffmpeg.tar.xz \
+  https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+FOLDER=$(tar tf ffmpeg.tar.xz | head -1 | cut -d/ -f1)
+tar xf ffmpeg.tar.xz --strip-components=1 \
+   "$FOLDER/ffmpeg" "$FOLDER/ffprobe"
+chmod +x ffmpeg ffprobe
+3 . Мини‑скрипт /usr/local/bin/start-hls.sh
+bash
+Копировать
+Редактировать
+#!/usr/bin/env bash
+APP="$1"; NAME="$2"
+LIVE_DIR=/srv/streaming/live
+mkdir -p "$LIVE_DIR"
+
+exec /usr/local/bin/ffmpeg -hide_banner -loglevel error \
+ -i "rtmp://127.0.0.1/${APP}/${NAME}" \
+ -c:v libx264 -preset veryfast -b:v 1500k -g 48 -keyint_min 48 -sc_threshold 0 \
+ -c:a aac -ar 44100 -ac 2 -b:a 128k \
+ -f hls -hls_time 4 -hls_list_size 0 \
+ -hls_segment_filename "$LIVE_DIR/seg%03d.ts" \
+ "$LIVE_DIR/playlist.m3u8"
+Права: chmod 755 /usr/local/bin/start-hls.sh
+
+4 . Фрагмент nginx.conf
+nginx
+Копировать
+Редактировать
+user  root;
+
+rtmp {
+  server {
+    listen 1935;
+    application live {
+      live on;
+      exec /usr/local/bin/start-hls.sh $app $name;
+    }
+  }
+}
+
+http {
+  server {
+    listen 80;
+    server_name spoken-word.ru;
+
+    location /live/ {
+      alias /srv/streaming/live/;
+      add_header Cache-Control no-cache;
+      add_header Access-Control-Allow-Origin *;
+      types { application/vnd.apple.mpegurl m3u8; video/mp2t ts; }
+    }
+  }
+}
+nginx -t && nginx -s reload
+
+5 . OBS настройки
+mathematica
+Копировать
+Редактировать
+URL    rtmp://80.78.243.81/live
+Key    ITMUG2025
+6 . Как понять, что всё живо
+bash
+Копировать
+Редактировать
+# два ESTABLISHED на 1935: OBS  и loopback FFmpeg
+lsof -nP -iTCP:1935 -sTCP:ESTABLISHED
+
+# плейлист растёт
+tail -f /srv/streaming/live/playlist.m3u8
+7 . Next.js: API‑Delete и цвета
+ts
+Копировать
+Редактировать
+// app/api/archive/[name]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import fs from 'fs/promises'; import path from 'path'
+
+export async function DELETE(
+  _req: NextRequest, { params }: { params: { name: string } }
+) {
+  try {
+    await fs.unlink(path.join('/srv/streaming/archive', params.name))
+    return NextResponse.json({ success: true })
+  } catch { return NextResponse.json({ success: false }, { status: 500 }) }
+}
+tsx
+Копировать
+Редактировать
+<li className="flex … bg-white p-3 rounded shadow text-gray-900">
+🔎 Что именно сломало, а что починило
+Проблема	Симптом	Фикс
+FFmpeg 4.4 bug (delete_segments+temp_file)	playlist.m3u8 = 0 Байт	переход на FFmpeg 7
+\ # комментарии ломали строки	FFmpeg запускался без нужных опций	убрали \ и inline‑комменты
+Старый пустой плейлист мешал новому	Nginx отдавал 0 Б	удалили старые файлы перед перезапуском
+OBS не виделся в логах	видео было только с тест‑паттерна	проверили ESTABLISHED 1935, открыли порт
+
+➡️ Дальше можно:
+Добавить запись архива:
+… -map 0 -c copy "/srv/streaming/archive/${NAME}_$(date +%F_%H-%M).mp4"
+
+Вернуть адаптивный HLS с -var_stream_map … и
+-hls_flags temp_file+delete_segments (на FFmpeg 7 работает нормально).
+
+Поставить cron‑cleaner (find /srv/streaming/live -name '*.ts' -mmin +60 -delete).
+
+Поздравляю — стрим работает, конфиг зафиксирован.
+Сохрани этот чек‑лист в репозиторий, и любой «чистый» сервер повторит настройку за 5 минут. Удачных эфиров!
