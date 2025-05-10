@@ -6,7 +6,7 @@ export default function HomePage() {
   return (
     <main className='flex flex-col items-center gap-6 p-4'>
       <HlsPlayer
-        src='/live/stream.m3u8'
+        src='/live/playlist.m3u8'
         className='w-full max-w-3xl aspect-video rounded-xl shadow'
       />
       <div className='text-center text-lg'>

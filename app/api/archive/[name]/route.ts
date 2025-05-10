@@ -6,7 +6,7 @@ import path from 'path'
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: Promise<{ name: string }> } // ← Promise!
+  { params }: { params: { name: string } }
 ) {
   const { name } = await params // распаковали
 

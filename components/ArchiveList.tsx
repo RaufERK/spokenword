@@ -33,7 +33,7 @@ export default function ArchiveList({ canDelete }: Props) {
       {files.map((name) => (
         <li
           key={name}
-          className='flex items-center justify-between bg-white p-3 rounded shadow'
+          className='flex items-center justify-between bg-white p-3 rounded shadow text-gray-800'
         >
           <span>{name}</span>
           <div className='space-x-2'>
