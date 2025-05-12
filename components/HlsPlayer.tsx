@@ -1,10 +1,13 @@
+// components/HlsPlayer.tsx
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import Hls from 'hls.js'
 
 export interface HlsPlayerProps {
+  /** HLS playlist URL */
   src: string
+  /** Optional CSS class names for the <video> element */
   className?: string
 }
 
@@ -16,40 +19,30 @@ export default function HlsPlayer({ src, className }: HlsPlayerProps) {
     const video = videoRef.current
     if (!video) return
 
-    // Проверка доступности плейлиста
+    // HEAD-request to verify playlist
     fetch(src, { method: 'HEAD' })
       .then((res) =>
         setAvailable(res.ok && Number(res.headers.get('content-length')) > 0)
       )
       .catch(() => setAvailable(false))
 
-    // Настройка HLS
     if (Hls.isSupported()) {
       const hls = new Hls()
       hls.loadSource(src)
       hls.attachMedia(video)
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.muted = false
-        video.volume = 1
-        video
-          .play()
-          .catch((err) => console.warn('Autoplay failed:', err.message))
-      })
-
-      return () => hls.destroy()
+      return () => { hls.destroy() }
     } else {
+      // native HLS on Safari
       video.src = src
-      video.muted = false
-      video.volume = 1
-      video
-        .play()
-        .catch((err) => console.warn('Autoplay failed (native):', err.message))
     }
   }, [src])
 
   if (!available) {
-    return <p className="text-center text-xl">Трансляция не ведётся</p>
+    return (
+      <p className='text-center text-xl'>
+        Трансляция не ведётся
+      </p>
+    )
   }
 
   return (
@@ -57,8 +50,9 @@ export default function HlsPlayer({ src, className }: HlsPlayerProps) {
       ref={videoRef}
       className={className}
       controls
+      autoPlay
+      muted
       playsInline
-      autoPlay // всё ещё нужно
     />
   )
 }
