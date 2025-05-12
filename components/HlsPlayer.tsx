@@ -30,7 +30,9 @@ export default function HlsPlayer({ src, className }: HlsPlayerProps) {
       const hls = new Hls()
       hls.loadSource(src)
       hls.attachMedia(video)
-      return () => { hls.destroy() }
+      return () => {
+        hls.destroy()
+      }
     } else {
       // native HLS on Safari
       video.src = src
@@ -38,21 +40,10 @@ export default function HlsPlayer({ src, className }: HlsPlayerProps) {
   }, [src])
 
   if (!available) {
-    return (
-      <p className='text-center text-xl'>
-        Трансляция не ведётся
-      </p>
-    )
+    return <p className='text-center text-xl'>Трансляция не ведётся</p>
   }
 
   return (
-    <video
-      ref={videoRef}
-      className={className}
-      controls
-      autoPlay
-      muted
-      playsInline
-    />
+    <video ref={videoRef} className={className} controls autoPlay playsInline />
   )
 }
