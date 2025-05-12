@@ -67,6 +67,7 @@ export default function HlsPlayer({ src, className }: HlsPlayerProps) {
         autoPlay
         muted={muted}
         playsInline
+        onError={(e) => e.currentTarget.load()}
       />
       {muted && (
         <button

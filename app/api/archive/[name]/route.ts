@@ -5,6 +5,7 @@ import fs from 'fs/promises'
 import path from 'path'
 
 export const runtime = 'nodejs'
+const ARCHIVE_DIR = '/srv/streaming/archive'
 
 export async function DELETE(req: NextRequest) {
   const name = req.nextUrl.pathname.split('/').pop()
@@ -14,9 +15,8 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    await fs.unlink(
-      path.join('/srv/streaming/archive', decodeURIComponent(name))
-    )
+    console.log(18, ARCHIVE_DIR, name)
+    await fs.unlink(path.join(ARCHIVE_DIR, name))
     return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error(e)

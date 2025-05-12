@@ -8,6 +8,7 @@ export default function HomePage() {
       <HlsPlayer
         src='/live/playlist.m3u8'
         className='w-full max-w-3xl aspect-video rounded-xl shadow'
+       
       />
       <div className='text-center text-lg'>
         <p>Если сейчас идёт трансляция, она начнётся автоматически.</p>

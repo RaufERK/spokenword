@@ -9,7 +9,20 @@ systemctl status stream
 
 
 
-Перезапуск:
 
-sudo systemctl daemon-reload
-sudo systemctl restart stream
+
+
+
+nginx -s reload
+
+
+curl http://spoken-word.ru/live/stream.m3u8 | head
+
+
+
+nginx -s reload
+# OBS → Start Streaming
+sleep 8
+curl -I http://spoken-word.ru/live/stream.m3u8   # 200 OK, Length > 0
+curl -I http://spoken-word.ru/live/720p/playlist.m3u8  # 200 OK
+ls -l /srv/streaming/archive | tail -1          # растущий mp4
