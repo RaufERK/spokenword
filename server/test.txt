@@ -26,3 +26,48 @@ sleep 8
 curl -I http://spoken-word.ru/live/stream.m3u8   # 200 OK, Length > 0
 curl -I http://spoken-word.ru/live/720p/playlist.m3u8  # 200 OK
 ls -l /srv/streaming/archive | tail -1          # растущий mp4
+
+
+chmod 755 /usr/local/bin/start-hls.sh
+chown -R root:root /srv/streaming/{live,archive}
+
+
+
+
+
+тест-генератор:
+
+
+ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=30 \
+       -f lavfi -i sine=frequency=1000 \
+       -c:v libx264 -preset veryfast -c:a aac -ar 44100 \
+       -f flv rtmp://127.0.0.1/live/ITMUG2025
+
+
+
+2 . Как убедиться, что поток пришёл
+
+ # (1) соединения на 1935
+lsof -nP -iTCP:1935 -sTCP:ESTABLISHED
+
+# (2) плейлист растёт
+tail -f /srv/streaming/live/playlist.m3u8
+
+
+
+
+
+chmod 755 /usr/local/bin/start-hls.sh
+nginx -s reload
+rm -f /srv/streaming/live/playlist.m3u8 /srv/streaming/live/seg*.ts
+
+
+
+tail -f /usr/local/nginx/logs/error.log | grep exec
+
+tail /srv/streaming/live/playlist.m3u8
+
+Откройте http://spoken-word.ru/ — плеер показывает новую картинку.
+
+
+nginx -t && nginx -s reload

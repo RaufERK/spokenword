@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "pm2 deploy ecosystem.config.js production"
   },
   "dependencies": {
     "auth-jwt": "^1.0.6",

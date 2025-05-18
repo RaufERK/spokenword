@@ -1,0 +1,7 @@
+🕓 Чек‑лист, когда будете у компьютера
+№	Команда	Что должно быть
+1	lsof -nP -iTCP:1935 -sTCP:ESTABLISHED	2 пары: OBS↔nginx и nginx↔ffmpeg
+2	tail -f /usr/local/nginx/logs/error.log | grep exec	при publish → exec: starting … start-hls.sh live ITMUG2025
+3	pgrep -fa start-hls.sh	строка /usr/local/bin/ffmpeg … playlist.m3u8
+4	ls -l /srv/streaming/live/playlist.m3u8	размер > 100 байт
+5	curl -I http://spoken-word.ru/live/playlist.m3u8	200 OK + Content-Length > 100

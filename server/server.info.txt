@@ -1,0 +1,12 @@
+Проверка:
+ps aux | grep nginx
+(Ты должен увидеть, что worker-процессы NGINX запущены от www-data.)
+
+Переключение между пользователями:
+su - appuser
+
+
+
+Перезапусти NGINX:
+nginx -s reload
+nginx -t && nginx -s reload
