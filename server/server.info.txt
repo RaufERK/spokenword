@@ -14,3 +14,8 @@ nginx -t && nginx -s reload
 
 
 cat /usr/local/bin/start-hls.sh
+
+
+
+ПРОВЕРКА:
+tail -f /var/log/nginx/error_rtmp.log | grep --line-buffered -E '(publish|play|createStream|client connected)'
