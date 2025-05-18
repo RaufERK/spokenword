@@ -10,3 +10,7 @@ su - appuser
 Перезапусти NGINX:
 nginx -s reload
 nginx -t && nginx -s reload
+
+
+
+cat /usr/local/bin/start-hls.sh
