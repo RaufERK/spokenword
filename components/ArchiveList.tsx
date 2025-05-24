@@ -1,4 +1,5 @@
 // ---------- components/ArchiveList.tsx ---------------------
+// components/ArchiveList.tsx
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
@@ -26,7 +27,7 @@ export default function ArchiveList({ canDelete }: Props) {
     fetchFiles()
   }
 
-  if (!files.length) return <p className='text-gray-500'>Архив пуст</p>
+  if (!files.length) return <p className='text-gray-500'>Архив пуст</p>[]
 
   return (
     <ul className='space-y-2'>

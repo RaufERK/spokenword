@@ -1,0 +1,76 @@
+worker_processes  auto;
+user              www-data;
+
+error_log  /var/log/nginx/error_rtmp.log  info;
+
+events {
+    worker_connections 1024;
+}
+
+##############################################################################
+#  HTTP – отдаём HLS и архив
+##############################################################################
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    sendfile          on;
+    keepalive_timeout 65;
+
+    server {
+        listen 80;
+        server_name spoken-word.ru www.spoken-word.ru;
+
+        # текущий эфир
+        location /live/ {
+            alias /srv/streaming/live/;
+            add_header Cache-Control "no-cache";
+            add_header Access-Control-Allow-Origin "*";
+            types {
+                application/vnd.apple.mpegurl m3u8;
+                video/mp2t                         ts;
+            }
+        }
+
+        # архивные файлы
+        location /archive/ {
+            alias /srv/streaming/archive/;
+            add_header Cache-Control "no-cache";
+            add_header Access-Control-Allow-Origin "*";
+        }
+
+        # прокси на фронт-энд (порт 3000)
+        location / {
+            proxy_pass         http://127.0.0.1:3000;
+            proxy_http_version 1.1;
+            proxy_set_header   Upgrade $http_upgrade;
+            proxy_set_header   Connection "upgrade";
+            proxy_set_header   Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+    }
+}
+
+##############################################################################
+#  RTMP – при публикации запускаем службы
+##############################################################################
+rtmp {
+    server {
+        listen      1935;
+        chunk_size  4096;
+
+        application live {
+            live on;
+
+            # ▸ ffmpeg-HLS + запись архива
+            exec_publish      /usr/bin/sudo /bin/systemctl start hls-worker@${name}.service   && \
+                               /usr/bin/sudo /bin/systemctl start stream-archive@${name}.service;
+
+            exec_publish_done /usr/bin/sudo /bin/systemctl stop  stream-archive@${name}.service && \
+                               /usr/bin/sudo /bin/systemctl stop  hls-worker@${name}.service;
+
+            # если стример бросил соединение – через 15 с считаем поток «мертвым»
+            drop_idle_publisher 15s;
+        }
+    }
+}

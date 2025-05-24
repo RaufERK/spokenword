@@ -5,3 +5,48 @@
 3	pgrep -fa start-hls.sh	строка /usr/local/bin/ffmpeg … playlist.m3u8
 4	ls -l /srv/streaming/live/playlist.m3u8	размер > 100 байт
 5	curl -I http://spoken-word.ru/live/playlist.m3u8	200 OK + Content-Length > 100
+
+
+
+chown -R www-data:www-data /srv/streaming
+
+
+
+# 1. есть ли попытка publish?
+tail -n 40 /var/log/nginx/error_rtmp.log | grep -E '(publish|createStream|exec)'
+
+# 2. вызвался ли скрипт?
+tail -n 40 /srv/streaming/start-hls.log
+
+# 3. появились ли HLS-файлы?
+ls -lh /srv/streaming/live | head
+
+
+сделать своим стратовый файлик
+install -m755 -o root -g www-data start-hls.sh /usr/local/bin/start-hls.sh
+
+
+
+для дебага:
+# текущий PID и лог FFmpeg
+systemctl status stream-archive@ITMUG2025
+
+# «живой» вывод
+journalctl -u stream-archive@ITMUG2025 -f
+
+systemctl status stream-archive@ITMUG2025 --no-pager -n 50
+systemctl status stream --no-pager -l
+
+
+ls -lh /srv/streaming/archive
+ls -lh /srv/streaming/live
+journalctl -u stream -n 30 --no-pager
+systemctl status stream
+
+
+
+ФАЙЛИКИ
+
+
+journalctl -u hls-worker@ITMUG2025 -f
+sudo journalctl -u hls-worker@ITMUG2025 -n 20

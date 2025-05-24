@@ -1,0 +1,12 @@
+[Unit]
+Description=Archive recorder for %%i
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/record-archive.sh live %i
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

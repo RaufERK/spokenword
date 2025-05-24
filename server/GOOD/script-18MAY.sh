@@ -10,7 +10,7 @@ LIVE_DIR="$BASE/live"
 ARCH_DIR="$BASE/archive"
 LOG="$BASE/start-hls.log"
 
-echo "$(date '+%F %T') Start script called with APP=$APP NAME=$NAME" >> "$LOG"
+echo "$(date '+%F %T') Start script called with APP=$APP NAME=$NAME" >> /srv/streaming/start-hls.log
 
 mkdir -p "$LIVE_DIR" "$ARCH_DIR"
 
@@ -43,6 +43,4 @@ printf '%(%F %T)T  STREAM %s/%s STOPPED (pid=%d)\n' -1 "$APP" "$NAME" $$ >>"$LOG
 TODAY=$(date +%F)
 DEST="${ARCH_DIR}/${TODAY}"
 mkdir -p "$DEST"
-echo "$(date '+%F %T') Archiving to $DEST" >> "$LOG"
 mv "${LIVE_DIR}/${NAME}"* "${DEST}/" 2>/dev/null || true
-# chmod +x /usr/local/bin/start-hls.sh
