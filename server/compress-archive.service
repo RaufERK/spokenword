@@ -1,0 +1,7 @@
+# /etc/systemd/system/compress-archive.service
+[Unit]
+Description=Re-encode all FLV files in /srv/streaming/archive to MP4
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/compress-archive.sh

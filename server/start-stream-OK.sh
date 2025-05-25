@@ -46,3 +46,4 @@ mkdir -p "$DEST"
 echo "$(date '+%F %T') Archiving to $DEST" >> "$LOG"
 mv "${LIVE_DIR}/${NAME}"* "${DEST}/" 2>/dev/null || true
 # chmod +x /usr/local/bin/start-hls.sh
+# journalctl -u hls-worker@ITMUG2025 -f & tail -f /srv/streaming/live/ITMUG2025-ffmpeg.log &

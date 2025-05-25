@@ -19,3 +19,19 @@ cat /usr/local/bin/start-hls.sh
 
 ПРОВЕРКА:
 tail -f /var/log/nginx/error_rtmp.log | grep --line-buffered -E '(publish|play|createStream|client connected)'
+
+
+
+ПРАВА НА ПАПКИ ЗАПИСИ:
+
+mkdir -p /srv/streaming/{live,archive}
+chown -R www-data:www-data /srv/streaming
+chmod -R 775 /srv/streaming
+
+ПРОВЕРКА ПРАВ КАТАЛОГА:
+ls -ld /srv/streaming /srv/streaming/live
+
+
+ПЕЕРЕЗАПУСК
+systemctl daemon-reload
+systemctl reset-failed

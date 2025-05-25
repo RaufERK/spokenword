@@ -7,9 +7,9 @@ journalctl -u stream -n 30 --no-pager
 systemctl status stream
 
 
-
-
-
+NGINX
+# nano /usr/local/nginx/conf/nginx.conf
+ nginx -t && systemctl reload nginx
 
 
 

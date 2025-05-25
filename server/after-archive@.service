@@ -1,0 +1,14 @@
+[Unit]
+Description=Archive recorder for %i
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/record-archive.sh live %i
+ExecStopPost=/usr/bin/systemctl kill -s SIGKILL stream-archive@%i.service
+Restart=on-failure
+RestartSec=2
+
+
+#/etc/systemd/system/stream-archive@.service
+#systemctl daemon-reload

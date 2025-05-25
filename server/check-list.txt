@@ -50,3 +50,59 @@ systemctl status stream
 
 journalctl -u hls-worker@ITMUG2025 -f
 sudo journalctl -u hls-worker@ITMUG2025 -n 20
+
+
+
+Настраиваем файлики архивации и ночной компрессии:
+
+
+chmod +x /usr/local/bin/record-archive.sh
+chmod +x /usr/local/bin/compress-archive.sh
+
+systemctl daemon-reload
+systemctl restart stream-archive@ITMUG2025   # если эфир уже идёт
+systemctl enable --now compress-archive.timer
+
+
+
+
+Проверяем
+
+# стрим ещё идёт?
+systemctl status stream-archive@ITMUG2025 hls-worker@ITMUG2025
+
+# останавливаем OBS → смотрим, что службы остановились
+# запускаем OBS снова → стартуют без ошибок
+tail -f /srv/streaming/start-hls.log
+ls -lh /srv/streaming/archive
+
+
+
+ # Вывести последние 100 строк и продолжать следить за добавлением новых
+tail -n 100 -f /var/log/nginx/error_rtmp.log
+
+# Краткий синтаксис: количество строк через дефис перед -f
+tail -100 -f /var/log/nginx/error_rtmp.log
+
+# Можно поменять порядок опций, вариант эквивалентен первому
+tail -f -n 50 /var/log/nginx/error_rtmp.log
+
+
+
+# nano /usr/local/nginx/conf/nginx.conf
+
+
+chmod +x /usr/local/bin/{start-hls.sh,record-archive.sh}
+systemctl daemon-reload
+
+
+. Быстрый тест
+
+
+journalctl -u hls-worker@ITMUG2025 -u stream-archive@ITMUG2025 -f
+
+
+
+ЛОГИ:
+journalctl -u hls-worker@ITMUG2025 -f
+tail -f /var/log/nginx/error_rtmp.log
