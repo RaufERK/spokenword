@@ -1,0 +1,43 @@
+NGINX
+cat /usr/local/nginx/conf/nginx.conf
+nginx /usr/local/nginx/conf/nginx.conf
+
+файлы со скриптами: /usr/local/bin/
+ls -lh /usr/local/bin/
+
+total 16K
+-rwxr-xr-x 1 root root      782 May 26 01:33 after-archive.sh
+-rwxr-xr-x 1 root root      300 May 24 23:36 compress-archive.sh
+lrwxrwxrwx 1 root root       27 May 16 00:11 nginx -> /usr/local/nginx/sbin/nginx
+-rwxr-xr-x 1 root root      385 May 26 01:12 record-archive.sh
+-rwxr-xr-x 1 root www-data 1.3K May 26 00:49 start-hls.sh
+
+ПРОСМОТР:
+cat /usr/local/bin/start-hls.sh
+cat /usr/local/bin/compress-archive.sh
+cat /usr/local/bin/record-archive.sh
+
+РЕДАКТИРОВАНИЕ:
+nano /usr/local/bin/start-hls.sh
+nano /usr/local/bin/compress-archive.sh
+nano /usr/local/bin/record-archive.sh
+nano /usr/local/bin/start-hls.sh
+
+
+Темплйт-UNITS
+ls -lh /etc/systemd/system/
+
+ПРОСМОТР:
+cat /etc/systemd/system/after-archive@.Service
+cat /etc/systemd/system/compress-archive.service
+cat /etc/systemd/system/compress-archive.timer
+cat /etc/systemd/system/hls-worker@.service
+cat /etc/systemd/system/stream-archive@.service
+
+РЕДАКТИРОВАНИЕ:
+nano /etc/systemd/system/after-archive@.Service
+nano /etc/systemd/system/compress-archive.service
+nano /etc/systemd/system/compress-archive.timer
+nano /etc/systemd/system/hls-worker@.service
+nano /etc/systemd/system/stream-archive@.service
+

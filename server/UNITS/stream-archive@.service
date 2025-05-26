@@ -1,0 +1,16 @@
+# /etc/systemd/system/stream-archive@.service
+[Unit]
+Description=Write FLV archive for stream %i
+After=network.target
+Requires=network.target
+
+[Service]
+User=www-data
+Group=www-data
+Restart=on-failure
+ExecStart=/usr/local/bin/record-archive.sh live %i
+ExecStopPost=/usr/bin/systemctl start after-archive@%i.service
+
+
+
+#nano /etc/systemd/system/stream-archive@.service

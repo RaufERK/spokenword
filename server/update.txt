@@ -1,0 +1,32 @@
+#/usr/local/bin/record-archive.sh
+
+
+
+#Ночью по cron сможете конвертировать в MP4 без перекодирования:
+#ffmpeg -i input.flv -c copy output.mp4
+
+
+
+#systemctl daemon-reload
+#nginx -t && systemctl reload nginx
+#Перечитать юниты и перезапустить
+#systemctl daemon-reload
+#systemctl restart stream-archive@ITMUG2025.service
+
+#chmod +x /usr/local/bin/record-archive.sh
+#chmod +x /usr/local/bin/start-hls.sh
+
+
+
+
+# перезапускаем изменённые юниты и nginx
+systemctl daemon-reload
+nginx -t && systemctl reload nginx
+
+# пробный стрим
+ffmpeg -re -i testsrc.mp4 -c copy -f flv rtmp://SERVER/live/Test
+
+# следим
+journalctl -u hls-worker@Test -u stream-archive@Test -f
+ls /srv/streaming/archive   # должна появиться Test_YYYY-MM-DD_HH-MM-SS.mp4
+
