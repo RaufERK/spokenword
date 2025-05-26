@@ -1,0 +1,9 @@
+[Unit]
+Description=HLS worker for %i
+After=network.target
+
+[Service]
+User=www-data
+ExecStart=/usr/local/bin/start-hls.sh live %i
+Restart=no
+RestartSec=3

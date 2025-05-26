@@ -10,7 +10,3 @@ Group=www-data
 Restart=on-failure
 ExecStart=/usr/local/bin/record-archive.sh live %i
 ExecStopPost=/usr/bin/systemctl start after-archive@%i.service
-
-
-
-#nano /etc/systemd/system/stream-archive@.service

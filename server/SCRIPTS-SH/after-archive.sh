@@ -1,32 +1,28 @@
 #!/usr/bin/env bash
-# Конвертируем все файлы stream_*.flv ➜ stream_*.mp4
-# Сохраняем «быстрый старт» (-movflags +faststart) и
-# удаляем исходный FLV, если конвертация прошла успешно.
+# Перекодируем FLV-файлы, относящиеся к текущему ключу,
+# в H.264/AAC MP4 c -crf 23, +faststart и
+# удаляем исходные .flv.
 
 set -euo pipefail
+KEY="$1"                         # ITMUG2025
+ARCHIVE="/srv/streaming/archive"
 
-NAME="$1"
-ARCHIVE_DIR="/srv/streaming/archive"
-
-# если маска не найдёт ни одного файла — цикл просто не выполнится
 shopt -s nullglob
-for FLV in "${ARCHIVE_DIR}/${NAME}"_*.flv; do
-    MP4="${FLV%.flv}.mp4"
+for FLV in "${ARCHIVE}/${KEY}"_*.flv; do
+    # Имя без ключа:  ITMUG2025_2025-05-26_14-15-53.flv → 2025-05-26_14-15-53
+    TS="${FLV##*/}"              # отрезаем путь
+    TS="${TS#${KEY}_}"           # отрезаем ключ и _
+    TS="${TS%.flv}"              # убираем расширение
+
+    TMP_MP4="${ARCHIVE}/${TS}.tmp.mp4"
+    OUT_MP4="${ARCHIVE}/${TS}.mp4"
 
     /usr/bin/ffmpeg -hide_banner -loglevel error -y \
-        -i "$FLV" -c copy -movflags +faststart "$MP4"
+        -i "$FLV" \
+        -c:v libx264 -preset slow -crf 23 \
+        -c:a aac     -b:a 128k \
+        -movflags +faststart "$TMP_MP4"
 
-    # удалить исходник; если уже стёрт — не падаем
-    rm -f -- "$FLV" || true
-done
-root@cv4775291:/usr/local/bin# cat compress-archive.sh
-# /usr/local/bin/compress-archive.sh
-#!/usr/bin/env bash
-set -euo pipefail
-cd /srv/streaming/archive
-for f in *.flv; do
-  [[ -e "$f" ]] || exit 0
-  mp4="${f%.flv}.mp4"
-  /usr/bin/ffmpeg -hide_banner -loglevel error -i "$f" \
-        -c:v libx264 -preset slow -crf 23 -c:a copy "$mp4" && rm "$f"
+    mv -f "$TMP_MP4" "$OUT_MP4"
+    rm -f -- "$FLV"
 done

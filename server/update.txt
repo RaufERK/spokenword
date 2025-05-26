@@ -18,6 +18,12 @@
 
 
 
+Удобная «кнопка» sw-update
+/usr/local/bin/sw-updat
+Теперь после любых правок: sudo sw-update
+
+
+
 
 # перезапускаем изменённые юниты и nginx
 systemctl daemon-reload
@@ -29,4 +35,7 @@ ffmpeg -re -i testsrc.mp4 -c copy -f flv rtmp://SERVER/live/Test
 # следим
 journalctl -u hls-worker@Test -u stream-archive@Test -f
 ls /srv/streaming/archive   # должна появиться Test_YYYY-MM-DD_HH-MM-SS.mp4
+
+
+
 
