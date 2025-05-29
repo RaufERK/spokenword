@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# было:  set -euo pipefail
+set -uo pipefail
 umask 0002
 
 APP="$1"
@@ -37,6 +38,7 @@ while true; do
     -var_stream_map "v:0,a:0,name:720p v:1,a:1,name:480p v:2,a:2,name:360p" \
     "$LIVE/${NAME}_%v.m3u8"
 
-  echo "$(date '+%F %T') ffmpeg exited with code=$? – retry in 5 s" >> "$LIVE/${NAME}-ffmpeg.log"
+  exit_code=$?
+  echo "$(date '+%F %T') ffmpeg exited with code=$exit_code – retry in 5 s" >> "$LIVE/${NAME}-ffmpeg.log"
   sleep 5
 done
