@@ -27,7 +27,7 @@ export default function ArchiveList({ canDelete }: Props) {
     fetchFiles()
   }
 
-  if (!files.length) return <p className='text-gray-500'>Архив пуст</p>[]
+  if (!files.length) return <p className='text-gray-500'>Архив пуст</p>
 
   return (
     <ul className='space-y-2'>

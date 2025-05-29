@@ -117,7 +117,11 @@ du -sh /srv/streaming/archive
 
 
 ЛОГИ:
+LEFT
+
 clear && date && journalctl -u hls-worker@ITMUG2025 -u stream-archive@ITMUG2025 -f
+
+RIGHT
 clear && date && tail -f /var/log/nginx/error_rtmp.log
 
 
