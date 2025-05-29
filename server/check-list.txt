@@ -1,4 +1,13 @@
-🕓 Чек‑лист, когда будете у компьютера
+
+
+clear && date && journalctl -u hls-worker@ITMUG2025 -f
+
+clear && date && tail -f /var/log/nginx/error_rtmp.log
+
+
+
+
+
 №	Команда	Что должно быть
 1	lsof -nP -iTCP:1935 -sTCP:ESTABLISHED	2 пары: OBS↔nginx и nginx↔ffmpeg
 2	tail -f /usr/local/nginx/logs/error.log | grep exec	при publish → exec: starting … start-hls.sh live ITMUG2025
@@ -108,7 +117,10 @@ du -sh /srv/streaming/archive
 
 
 ЛОГИ:
-journalctl -u hls-worker@ITMUG2025 -u stream-archive@ITMUG2025 -f
-tail -f /var/log/nginx/error_rtmp.log
+clear && date && journalctl -u hls-worker@ITMUG2025 -u stream-archive@ITMUG2025 -f
+clear && date && tail -f /var/log/nginx/error_rtmp.log
 
 
+journalctl -u hls-worker@ITMUG2025 -f
+
+curl -I http://spoken-word.ru/live/playlist.m3u8

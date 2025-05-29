@@ -19,3 +19,13 @@ ls -lh /etc/systemd/system/
 /etc/systemd/system/after-archive@.Service
 /etc/systemd/system/compress-archive.service
 /etc/systemd/system/compress-archive.timer
+
+
+Следим:
+clear && date && journalctl -u hls-worker@ITMUG2025 -f && tail -f /srv/streaming/start-hls.log
+clear && date && tail -f /var/log/nginx/error_rtmp.log
+
+
+Следим2 II:
+
+clear && date && journalctl -u hls-worker@ITMUG2025 -u stream-archive@ITMUG2025 -f

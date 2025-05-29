@@ -4,6 +4,11 @@ After=network.target
 
 [Service]
 User=www-data
+Group=www-data
+UMask=0002
 ExecStart=/usr/local/bin/start-hls.sh live %i
 Restart=no
-RestartSec=3
+SuccessExitStatus=0 143
+
+[Install]
+WantedBy=multi-user.target

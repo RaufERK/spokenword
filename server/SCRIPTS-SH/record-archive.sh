@@ -10,5 +10,5 @@ mkdir -p "$ARCHIVE"
 outfile="${ARCHIVE}/${NAME}_$(date +%F_%H-%M-%S).flv"
 
 /usr/bin/ffmpeg -hide_banner -loglevel error \
-  -i "rtmp://127.0.0.1/${APP}/${NAME}" \
+  -i "rtmp://127.0.0.1/live/${NAME}" \
   -c copy -f flv "$outfile"
