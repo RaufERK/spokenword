@@ -4,48 +4,59 @@ import { useEffect, useRef, useState } from 'react'
 import Hls from 'hls.js'
 
 export interface HlsPlayerProps {
-  /** URL мастер-плейлиста */
   src: string
-  /** CSS-классы для <video> */
   className?: string
 }
 
 /**
- * Вариант без HEAD-проверки. Если эфира ещё нет, Hls.js крутит
- * собственный спиннер и периодически делает re-try.
+ * HEAD-polling раз в 3 с.
  */
-export default function HlsPlayerNoHead({ src, className }: HlsPlayerProps) {
+export default function HlsPlayerPolling({ src, className }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [available, setAvailable] = useState(false)
   const [muted, setMuted] = useState(true)
 
-  /* Подключаем Hls.js / native HLS */
+  /* Периодически спрашиваем наличие плейлиста */
   useEffect(() => {
+    // let timer:
+
+    const probe = () => {
+      fetch(src, { method: 'HEAD', cache: 'no-store' })
+        .then((r) =>
+          setAvailable(r.ok && Number(r.headers.get('content-length')) > 0)
+        )
+        .catch(() => setAvailable(false))
+    }
+
+    probe() // первый опрос
+    const timer: NodeJS.Timeout = setInterval(probe, 3000)
+
+    return () => clearInterval(timer)
+  }, [src])
+
+  /* Подключаем Hls только когда плейлист появился */
+  useEffect(() => {
+    if (!available) return
     const video = videoRef.current
     if (!video) return
 
     if (Hls.isSupported()) {
-      const hls = new Hls({
-        backBufferLength: 90, // слегка экономим память
-      })
-
+      const hls = new Hls()
       hls.loadSource(src)
       hls.attachMedia(video)
 
-      /* Можно обрабатывать фатальные ошибки, если нужно */
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal && data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          hls.startLoad() // повторяем загрузку
+          hls.startLoad()
         }
       })
 
       return () => hls.destroy()
     } else {
-      // Safari / iOS
       video.src = src
     }
-  }, [src])
+  }, [available, src])
 
-  /** Снимаем mute по клику */
   const handleUnmute = async () => {
     const video = videoRef.current
     if (!video) return
@@ -57,6 +68,11 @@ export default function HlsPlayerNoHead({ src, className }: HlsPlayerProps) {
     } catch (e) {
       console.warn('Не удалось включить звук:', e)
     }
+  }
+
+  /* Пока эфира нет — показываем сообщение */
+  if (!available) {
+    return <p className='text-center text-xl'>Трансляция не ведётся</p>
   }
 
   return (
