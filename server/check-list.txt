@@ -128,3 +128,8 @@ clear && date && tail -f /var/log/nginx/error_rtmp.log
 journalctl -u hls-worker@ITMUG2025 -f
 
 curl -I http://spoken-word.ru/live/playlist.m3u8
+
+
+ЛОГ АРХИВАЦИИ:
+journalctl -u after-archive@ITMUG2025 -f
+journalctl -fu stream-archive@ITMUG2025

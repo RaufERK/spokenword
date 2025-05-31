@@ -17,9 +17,9 @@ for FLV in "${ARCHIVE}/${KEY}"_*.flv; do
     TMP_MP4="${ARCHIVE}/${TS}.tmp.mp4"
     OUT_MP4="${ARCHIVE}/${TS}.mp4"
 
-    /usr/bin/ffmpeg -hide_banner -loglevel error -y \
+    /usr/bin/ffmpeg -hide_banner -loglevel warning -y \
         -i "$FLV" \
-        -c:v libx264 -preset slow -crf 23 \
+        -c:v libx264 -preset ultrafast -crf 26 \
         -c:a aac     -b:a 128k \
         -movflags +faststart "$TMP_MP4"
 

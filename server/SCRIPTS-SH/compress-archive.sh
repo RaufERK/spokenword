@@ -7,3 +7,10 @@ for f in *.flv; do
   /usr/bin/ffmpeg -hide_banner -loglevel error -i "$f" \
         -c:v libx264 -preset slow -crf 23 -c:a copy "$mp4" && rm "$f"
 done
+
+
+
+#
+#
+#НОЧНОЙЙ
+#

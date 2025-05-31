@@ -8,6 +8,7 @@ ls -lh /usr/local/bin/
 /usr/local/bin/start-hls.sh
 /usr/local/bin/record-archive.sh
 /usr/local/bin/after-archive.sh
+
 /usr/local/bin/compress-archive.sh
 
 
@@ -16,7 +17,8 @@ ls -lh /etc/systemd/system/
 
 /etc/systemd/system/hls-worker@.service
 /etc/systemd/system/stream-archive@.service
-/etc/systemd/system/after-archive@.Service
+/etc/systemd/system/after-archive@.service
+
 /etc/systemd/system/compress-archive.service
 /etc/systemd/system/compress-archive.timer
 

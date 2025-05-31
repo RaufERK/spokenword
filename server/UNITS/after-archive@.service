@@ -1,10 +1,8 @@
 [Unit]
-Description=Archive recorder for %i
-After=network.target
+Description=Convert FLV to MP4 for %i
 
 [Service]
-Type=simple
-ExecStart=/usr/local/bin/record-archive.sh live %i
-ExecStopPost=/usr/bin/systemctl kill -s SIGKILL stream-archive@%i.service
-Restart=on-failure
-RestartSec=2
+User=www-data
+Group=www-data
+Type=oneshot
+ExecStart=/usr/local/bin/after-archive.sh %i

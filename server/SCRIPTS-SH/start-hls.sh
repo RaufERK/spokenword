@@ -32,7 +32,7 @@ while true; do
     -map 0:a?   -c:a:0 aac      -b:a:0 128k \
     -map 0:a?   -c:a:1 aac      -b:a:1  96k \
     -map 0:a?   -c:a:2 aac      -b:a:2  64k \
-    -f hls -hls_time 4 -hls_list_size 0 -hls_playlist_type event \
+    -f hls -hls_time 2 -hls_list_size 0 -hls_playlist_type event \
     -hls_flags independent_segments+program_date_time \
     -master_pl_name "${NAME}.m3u8" \
     -var_stream_map "v:0,a:0,name:720p v:1,a:1,name:480p v:2,a:2,name:360p" \
