@@ -4,22 +4,22 @@ import { useEffect, useRef, useState } from 'react'
 import Hls from 'hls.js'
 
 export interface HlsPlayerProps {
+  /** URL мастер‑плейлиста */
   src: string
+  /** Дополнительные классы для <video> */
   className?: string
 }
 
 /**
- * HEAD-polling раз в 3 с.
+ * HLS‑плеер с polling‑HEAD (каждые 3 с) и фоном цвета indigo‑900 вокруг кадра.
  */
 export default function HlsPlayerPolling({ src, className }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [available, setAvailable] = useState(false)
   const [muted, setMuted] = useState(true)
 
-  /* Периодически спрашиваем наличие плейлиста */
+  /* Проверяем наличие плейлиста */
   useEffect(() => {
-    // let timer:
-
     const probe = () => {
       fetch(src, { method: 'HEAD', cache: 'no-store' })
         .then((r) =>
@@ -28,13 +28,12 @@ export default function HlsPlayerPolling({ src, className }: HlsPlayerProps) {
         .catch(() => setAvailable(false))
     }
 
-    probe() // первый опрос
-    const timer: NodeJS.Timeout = setInterval(probe, 3000)
-
+    probe()
+    const timer = setInterval(probe, 3000)
     return () => clearInterval(timer)
   }, [src])
 
-  /* Подключаем Hls только когда плейлист появился */
+  /* Подключаем Hls.js, когда эфир найден */
   useEffect(() => {
     if (!available) return
     const video = videoRef.current
@@ -70,16 +69,20 @@ export default function HlsPlayerPolling({ src, className }: HlsPlayerProps) {
     }
   }
 
-  /* Пока эфира нет — показываем сообщение */
+  /* Пока эфира нет — выводим сообщение */
   if (!available) {
-    return <p className='text-center text-xl'>Трансляция не ведётся</p>
+    return (
+      <p className='text-center text-xl text-white bg-indigo-950 p-4 rounded-xl'>
+        Трансляция не ведётся
+      </p>
+    )
   }
 
   return (
-    <div className='relative'>
+    <div className='relative bg-indigo-950 p-2 rounded-xl'>
       <video
         ref={videoRef}
-        className={className}
+        className={`${className ?? ''} w-full h-full`} /* передаём пользовательские классы */
         controls
         autoPlay
         muted
