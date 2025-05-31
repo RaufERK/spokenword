@@ -1,62 +1,92 @@
+// components/HlsPlayerPolling.tsx
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import Hls from 'hls.js'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import Hls, { Events, ErrorTypes } from 'hls.js'
 
 export interface HlsPlayerProps {
-  /** URL мастер‑плейлиста */
+  /** HLS playlist URL (master or media) */
   src: string
-  /** Дополнительные классы для <video> */
+  /** Extra classes passed to the <video> element */
   className?: string
+  /** How often to probe the playlist (ms). Default = 3000 */
+  pollingIntervalMs?: number
 }
 
 /**
- * HLS‑плеер с polling‑HEAD (каждые 3 с) и фоном цвета indigo‑900 вокруг кадра.
+ * Live‑стрим с HEAD‑polling + auto‑reconnect.
+ * ▸ Запрашивает плейлист HEAD‑ом каждые `pollingIntervalMs` мс.
+ * ▸ Как только размер > 0 — поднимает hls.js и начинает воспроизведение.
+ * ▸ Фон вокруг кадра — тёмно‑индиго.
  */
-export default function HlsPlayerPolling({ src, className }: HlsPlayerProps) {
+export default function HlsPlayerPolling({
+  src,
+  className = '',
+  pollingIntervalMs = 3000,
+}: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [available, setAvailable] = useState(false)
   const [muted, setMuted] = useState(true)
 
-  /* Проверяем наличие плейлиста */
+  /* ─── 1. HEAD‑polling ─────────────────────────────────────────────── */
   useEffect(() => {
     const probe = () => {
-      fetch(src, { method: 'HEAD', cache: 'no-store' })
+      // cache‑buster ➜ избегаем 304/кеша браузера/прокси
+      fetch(`${src}?t=${Date.now()}`, {
+        method: 'HEAD',
+        cache: 'no-store',
+      })
         .then((r) =>
-          setAvailable(r.ok && Number(r.headers.get('content-length')) > 0)
+          setAvailable(r.ok && Number(r.headers.get('content-length') ?? 0) > 0)
         )
         .catch(() => setAvailable(false))
     }
 
-    probe()
-    const timer = setInterval(probe, 3000)
+    probe() // первый запрос сразу
+    const timer = setInterval(probe, pollingIntervalMs)
     return () => clearInterval(timer)
-  }, [src])
+  }, [src, pollingIntervalMs])
 
-  /* Подключаем Hls.js, когда эфир найден */
+  /* ─── 2. Поднимаем hls.js, когда плейлист появился ───────────────── */
   useEffect(() => {
     if (!available) return
     const video = videoRef.current
     if (!video) return
 
-    if (Hls.isSupported()) {
-      const hls = new Hls()
-      hls.loadSource(src)
+    const hls = new Hls({
+      liveDurationInfinity: true,
+      lowLatencyMode: true,
+      backBufferLength: 30,
+    })
+
+    const attachSrc = () => {
+      hls.loadSource(`${src}?t=${Date.now()}`)
       hls.attachMedia(video)
-
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal && data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          hls.startLoad()
-        }
-      })
-
-      return () => hls.destroy()
-    } else {
-      video.src = src
     }
+
+    attachSrc()
+
+    // авто‑восстановление на фатальных ошибках
+    hls.on(Events.ERROR, (_e, data) => {
+      if (!data.fatal) return
+      switch (data.type) {
+        case ErrorTypes.NETWORK_ERROR:
+          hls.startLoad() // повторная загрузка
+          break
+        case ErrorTypes.MEDIA_ERROR:
+          hls.recoverMediaError()
+          break
+        default:
+          hls.destroy()
+          attachSrc()
+      }
+    })
+
+    return () => hls.destroy()
   }, [available, src])
 
-  const handleUnmute = async () => {
+  /* ─── 3. Кнопка «включить звук» ──────────────────────────────────── */
+  const handleUnmute = useCallback(async () => {
     const video = videoRef.current
     if (!video) return
     try {
@@ -64,31 +94,30 @@ export default function HlsPlayerPolling({ src, className }: HlsPlayerProps) {
       video.volume = 1
       await video.play()
       setMuted(false)
-    } catch (e) {
-      console.warn('Не удалось включить звук:', e)
+    } catch (err) {
+      console.warn('Не удалось включить звук', err)
     }
-  }
+  }, [])
 
-  /* Пока эфира нет — выводим сообщение */
+  /* ─── 4. UI ──────────────────────────────────────────────────────── */
   if (!available) {
     return (
-      <p className='text-center text-xl text-white bg-indigo-950 p-4 rounded-xl'>
-        Трансляция не ведётся
-      </p>
+      <p className='text-center text-xl text-white'>Трансляция не ведётся</p>
     )
   }
 
   return (
-    <div className='relative bg-indigo-950 p-2 rounded-xl'>
+    <div className='relative bg-indigo-900 p-2 rounded-xl'>
       <video
         ref={videoRef}
-        className={`${className ?? ''} w-full h-full`} /* передаём пользовательские классы */
+        className={className}
         controls
         autoPlay
         muted
         playsInline
         preload='none'
       />
+
       {muted && (
         <button
           onClick={handleUnmute}
