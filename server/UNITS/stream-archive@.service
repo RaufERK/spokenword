@@ -10,9 +10,9 @@ Group=www-data
 ExecStart=/usr/local/bin/record-archive.sh live %i
 ExecStopPost=/usr/bin/sudo -n /bin/systemctl start after-archive@%i.service
 
-Restart=always
-#RestartForceExitStatus=0 143
-RestartSec=5s
+Restart=on-failure
+RestartSec=10
+SuccessExitStatus=0 143
 
 TimeoutStopSec=0
 KillMode=control-group
