@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
-# HLS-трансляция с 30-минутным DVR.
-# Сегменты старше окна удаляются (delete_segments).
+# HLS + 30-минутный DVR-буфер с авто-очисткой.
+# Битрейты: 720p → 3 M, 480p → 1 M, 360p → 600 k.
 
 set -uo pipefail
 umask 0002
 
-APP="$1"               # «live» – имя application в nginx-rtmp
-NAME="$2"              # ключ стрима (ITMUG2025 …)
+APP="$1"          # live
+NAME="$2"         # ITMUG2025 …
 
 BASE=/srv/streaming
 LIVE="$BASE/live"
 mkdir -p "$LIVE"
 
-# ─── чистим хвосты предыдущего запуска ────────────────────────────────
-find "$LIVE" -maxdepth 1 -type f \( -name "${NAME}_*.ts" -o -name "${NAME}_*.m3u8" \) -delete 2>/dev/null || true
+# ── чистим хвосты предыдущего эфира ────────────────────────────────────
+find "$LIVE" -maxdepth 1 -type f \
+     \( -name "${NAME}_*.ts" -o -name "${NAME}_*.m3u8" \) -delete || true
 
-# пустой master – чтобы HEAD-проверка видела size==0
-printf '#EXTM3U\n' > "$LIVE/${NAME}.m3u8"
+: >"$LIVE/${NAME}.m3u8"            # пустой master (size 0)
 ln -sf "$LIVE/${NAME}.m3u8" "$LIVE/playlist.m3u8"
 
 export FFREPORT=file="$LIVE/${NAME}-ffmpeg.log":level=32
 
-HLS_TIME=2           # сек, длина сегмента
-WINDOW_MIN=30        # минут DVR
-LIST_SIZE=$(( WINDOW_MIN*60 / HLS_TIME ))   # 30 мин = 900 записей
+SEG=2                      # длина сегмента, сек
+WIN=30                     # буфер, минут
+LIST_SZ=$(( WIN*60/SEG ))  # сколько строк держать в media-листах
 
 while true; do
   echo "$(date '+%F %T') ► ffmpeg start" >>"$LIVE/${NAME}-ffmpeg.log"
@@ -33,21 +33,20 @@ while true; do
     -filter_complex \
       "[0:v]split=3[v1][v2][v3]; \
        [v1]scale=1280:720[v1o]; \
-       [v2]scale=854:480[v2o];  \
+       [v2]scale=854:480[v2o]; \
        [v3]scale=640:360[v3o]" \
     -map "[v1o]" -c:v:0 libx264 -b:v:0 3M   -preset veryfast \
-    -map "[v2o]" -c:v:1 libx264 -b:v:1 1.5M -preset veryfast \
-    -map "[v3o]" -c:v:2 libx264 -b:v:2 800k -preset veryfast \
+    -map "[v2o]" -c:v:1 libx264 -b:v:1 1M   -preset veryfast \
+    -map "[v3o]" -c:v:2 libx264 -b:v:2 600k -preset veryfast \
     -map 0:a?   -c:a:0 aac      -b:a:0 128k \
     -map 0:a?   -c:a:1 aac      -b:a:1  96k \
     -map 0:a?   -c:a:2 aac      -b:a:2  64k \
     -f hls \
-    -hls_time            "$HLS_TIME" \
-    -hls_list_size       "$LIST_SIZE" \
-    -hls_playlist_type   event \
-    -hls_flags           delete_segments+program_date_time+independent_segments \
-    -master_pl_name      "${NAME}.m3u8" \
-    -var_stream_map      "v:0,a:0,name:720p v:1,a:1,name:480p v:2,a:2,name:360p" \
+    -hls_time "$SEG" \
+    -hls_list_size "$LIST_SZ" \
+    -hls_flags delete_segments+program_date_time+independent_segments \
+    -master_pl_name "${NAME}.m3u8" \
+    -var_stream_map "v:0,a:0,name:720p v:1,a:1,name:480p v:2,a:2,name:360p" \
     "$LIVE/${NAME}_%v.m3u8"
 
   echo "$(date '+%F %T') ► ffmpeg exited ($?) – retry in 5 s" >>"$LIVE/${NAME}-ffmpeg.log"
