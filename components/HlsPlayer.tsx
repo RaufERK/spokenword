@@ -29,23 +29,25 @@ export default function HlsPlayerPolling({
   const [muted, setMuted] = useState(true)
 
   /* ─── 1. HEAD‑polling ─────────────────────────────────────────────── */
-  useEffect(() => {
-    const probe = () => {
-      // cache‑buster ➜ избегаем 304/кеша браузера/прокси
-      fetch(`${src}?t=${Date.now()}`, {
-        method: 'HEAD',
-        cache: 'no-store',
-      })
-        .then((r) =>
-          setAvailable(r.ok && Number(r.headers.get('content-length') ?? 0) > 0)
-        )
-        .catch(() => setAvailable(false))
-    }
 
+  const MIN_SIZE = 128 // меньше — считаем, что сегментов нет
+
+  // 1. HEAD-polling
+  const probe = useCallback(() => {
+    fetch(`${src}?t=${Date.now()}`, { method: 'HEAD', cache: 'no-store' })
+      .then((r) =>
+        setAvailable(
+          r.ok && Number(r.headers.get('content-length') ?? 0) > MIN_SIZE
+        )
+      )
+      .catch(() => setAvailable(false))
+  }, [src])
+
+  useEffect(() => {
     probe() // первый запрос сразу
     const timer = setInterval(probe, pollingIntervalMs)
     return () => clearInterval(timer)
-  }, [src, pollingIntervalMs])
+  }, [src, probe, pollingIntervalMs])
 
   /* ─── 2. Поднимаем hls.js, когда плейлист появился ───────────────── */
   useEffect(() => {
