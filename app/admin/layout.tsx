@@ -15,7 +15,7 @@ export default async function AdminLayout({
   return (
     <>
       <SideNav variant='admin' />
-      <main className='p-6 bg-green-700 min-h-screen'>{children}</main>
+      <main className='p-6 bg-blue-950 min-h-screen'>{children}</main>
     </>
   )
 }

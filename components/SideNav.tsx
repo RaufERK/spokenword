@@ -10,10 +10,7 @@ interface Props {
 export default function SideNav({ variant }: Props) {
   const links =
     variant === 'admin'
-      ? [
-          { href: '/admin', label: 'Управление трансляцией' },
-          { href: '/admin/archive', label: 'Управление архивом' },
-        ]
+      ? [{ href: '/admin', label: 'Управление архивом' }]
       : [
           { href: '/', label: 'Главная' },
           { href: '/archive', label: 'Архив' },
@@ -22,7 +19,7 @@ export default function SideNav({ variant }: Props) {
   return (
     <nav
       className={clsx(
-        'flex items-center justify-between p-4 border-b-4 border-red-600',
+        'flex items-center justify-between p-4 border-b-4 border-green-600',
         variant === 'admin' ? 'bg-indigo-700' : 'bg-blue-700'
       )}
     >
@@ -31,7 +28,7 @@ export default function SideNav({ variant }: Props) {
           <Link
             key={l.href}
             href={l.href}
-            className='text-lg font-medium hover:underline'
+            className='text-lg text-blue-500 font-medium hover:underline'
           >
             {l.label}
           </Link>
@@ -40,7 +37,7 @@ export default function SideNav({ variant }: Props) {
       {variant === 'admin' && (
         <Link
           href='/logout'
-          className='text-red-600 font-medium hover:underline'
+          className='text-green-600 font-medium hover:underline'
         >
           Выйти
         </Link>

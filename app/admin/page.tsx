@@ -1,11 +1,11 @@
-// ---------- app/admin/page.tsx (управление трансляцией) ----------
-import StreamControls from '@/components/StreamControls'
+// ---------- app/admin/page.tsx (архив с удалением) ----------
+import ArchiveList from '@/components/ArchiveList'
 
-export default function AdminStreamPage() {
+export default function AdminArchivePage() {
   return (
     <>
-      <h1 className='text-2xl font-semibold mb-6'>Управление трансляцией</h1>
-      <StreamControls />
+      <h1 className='text-2xl font-semibold mb-6'>Архив записей</h1>
+      <ArchiveList canDelete />
     </>
   )
 }
