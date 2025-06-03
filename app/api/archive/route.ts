@@ -13,11 +13,11 @@ export async function GET() {
       .sort()
       .reverse()
 
-    return NextResponse.json(files) // ← массив строк, не объект!
-  } catch (e) {
-    console.error(e)
+    return NextResponse.json(files)
+  } catch (err) {
+    console.error(err)
     return NextResponse.json(
-      { error: 'Не удалось прочитать архив' },
+      { error: 'Не удалось прочитать архив', err },
       { status: 500 }
     )
   }

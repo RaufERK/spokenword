@@ -18,6 +18,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)
-    return NextResponse.json({ ok: false }, { status: 500 })
+    return NextResponse.json({ ok: false, err }, { status: 500 })
   }
 }
