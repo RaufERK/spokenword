@@ -1,4 +1,5 @@
-// ---------- app/admin/page.tsx (архив с удалением) ----------
+// app/admin/page.tsx
+
 import ArchiveList from '@/components/ArchiveList'
 
 export default function AdminArchivePage() {

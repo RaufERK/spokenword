@@ -1,4 +1,5 @@
-// ---------- app/admin/layout.tsx (оборачивает все admin‑маршруты, проверяет auth) ----------
+// app/admin/layout.tsx
+
 import { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth-server'
