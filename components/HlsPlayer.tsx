@@ -1,4 +1,4 @@
-// components/HlsPlayerPolling.tsx
+// components/HlsPlayer.tsx
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'

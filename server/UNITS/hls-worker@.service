@@ -11,7 +11,7 @@ ExecStart=/usr/local/bin/start-hls.sh live %i
 
 # если ffmpeg упал (код≠0), пробуем запустить снова через 10 с
 Restart=on-failure
-RestartSec=10
+RestartSec=30
 
 # штатными считаем выход 0 (нормально) и 143 (SIGTERM от nginx-rtmp)
 SuccessExitStatus=0 143
