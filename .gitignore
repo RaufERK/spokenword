@@ -40,3 +40,6 @@ next-env.d.ts
 public/live/
 public/archive/
 local/
+
+/generated/prisma
+*.db

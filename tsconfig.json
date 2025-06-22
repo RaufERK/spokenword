@@ -36,9 +36,14 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "prisma/seed.js"
   ],
   "exclude": [
     "node_modules"
+  ],
+  "typeRoots": [
+    "./types",
+    "./node_modules/@types"
   ]
 }
