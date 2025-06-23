@@ -1,6 +1,6 @@
 // app/conf-arch/page.tsx
 
-export default function Conf() {
+export default function ConfArch() {
   return (
     <main>
       <div className='bg-purple-900 rounded-md'>
