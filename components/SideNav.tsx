@@ -1,46 +1,55 @@
 // components/SideNav.tsx
 'use client'
 import Link from 'next/link'
-import clsx from 'clsx'
+import { useSession } from 'next-auth/react'
 
-interface Props {
-  variant: 'public' | 'admin'
-}
+type Role = 'USER' | 'ADMIN' | 'SUPER'
 
-export default function SideNav({ variant }: Props) {
-  const links =
-    variant === 'admin'
-      ? [{ href: '/admin', label: 'Управление архивом' }]
-      : [
-          { href: '/', label: 'Главная' },
-          { href: '/archive', label: 'Архив' },
-        ]
+export default function SideNav() {
+  const { data } = useSession()
+  const role: Role | undefined = data?.user?.role
+
+  const links: { href: string; label: string; roles?: Role[] }[] = [
+    { href: '/', label: 'Главная' },
+    { href: '/archive', label: 'Архив' },
+    { href: '/conf', label: 'Конференция', roles: ['USER', 'ADMIN', 'SUPER'] },
+    {
+      href: '/conf-arc',
+      label: 'Архив конф.',
+      roles: ['USER', 'ADMIN', 'SUPER'],
+    },
+    { href: '/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },
+  ]
 
   return (
-    <nav
-      className={clsx(
-        'flex items-center justify-between p-4 border-b-4 border-green-600',
-        variant === 'admin' ? 'bg-indigo-700' : 'bg-blue-700'
-      )}
-    >
+    <nav className='flex items-center justify-between p-4 bg-blue-700 border-b-4 border-green-600'>
       <div className='flex gap-6'>
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className='text-lg text-blue-500 font-medium hover:underline'
-          >
-            {l.label}
-          </Link>
-        ))}
+        {links
+          .filter((l) => !l.roles || (role && l.roles.includes(role)))
+          .map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className='text-lg text-white hover:underline'
+            >
+              {l.label}
+            </Link>
+          ))}
       </div>
-      {variant === 'admin' && (
-        <Link
-          href='/logout'
-          className='text-green-600 font-medium hover:underline'
-        >
+
+      {role ? (
+        <Link href='/logout' className='text-green-400 hover:underline'>
           Выйти
         </Link>
+      ) : (
+        <>
+          <Link href='/login' className='text-green-400 hover:underline mr-3'>
+            Войти
+          </Link>
+          <Link href='/register' className='text-green-400 hover:underline'>
+            Регистрация
+          </Link>
+        </>
       )}
     </nav>
   )

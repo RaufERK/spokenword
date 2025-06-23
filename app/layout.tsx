@@ -1,13 +1,22 @@
-// ---------- app/layout.tsx ----------
-import './globals.css'
-import { ReactNode } from 'react'
-import { AuthProvider } from '@/lib/auth‑context'
+// app/layout.tsx  (без 'use client' — остаётся серверным!)
+import Providers from '@/components/Providers'
+import SideNav from '@/components/SideNav'
+import '@/styles/globals.css'
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export const metadata = { title: 'Spoken-Word' }
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang='ru'>
-      <body className='min-h-screen bg-gray-50 text-gray-900'>
-        <AuthProvider>{children}</AuthProvider>
+      <body className='flex flex-col min-h-screen'>
+        <Providers>
+          <SideNav />
+          <main className='flex-grow p-6'>{children}</main>
+        </Providers>
       </body>
     </html>
   )
