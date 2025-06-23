@@ -19,6 +19,11 @@ export default function SideNav() {
       roles: ['USER', 'ADMIN', 'SUPER'],
     },
     { href: '/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },
+    {
+      href: '/admin',
+      label: 'Управление архивом',
+      roles: ['ADMIN', 'SUPER'],
+    },
   ]
 
   return (

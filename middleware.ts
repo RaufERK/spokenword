@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server'
 
 // список защищённых маршрутов
 const protectedRoutes = ['/cabinet', '/conf', '/conf-arch']
-const adminOnlyRoutes = ['/users']
+const adminOnlyRoutes = ['/users', '/admin']
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
