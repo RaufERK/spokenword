@@ -1,3 +1,4 @@
+// app/login2/LoginForm.tsx
 'use client'
 
 import { useState } from 'react'
@@ -13,7 +14,7 @@ export default function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const res = await fetch('/api/login', {
+    const res = await fetch('/api/login2', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),

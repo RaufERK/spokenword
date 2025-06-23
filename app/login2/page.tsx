@@ -1,4 +1,4 @@
-// app/login/page.tsx
+// app/login2/page.tsx
 
 import { Suspense } from 'react'
 import LoginForm from './LoginForm'

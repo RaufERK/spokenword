@@ -27,17 +27,27 @@ export default function LoginPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className='max-w-sm mx-auto p-6 space-y-4'>
-      <input name='login' placeholder='Логин' className='input' required />
+    <form
+      onSubmit={handleSubmit}
+      className='max-w-sm mx-auto mt-20 p-6 bg-white border border-blue-500 text-gray-900 rounded shadow-lg'
+    >
       <input
+        className='w-full border border-blue-400 rounded p-2 mb-3 text-black placeholder-gray-500'
+        name='login'
+        placeholder='Логин'
+        required
+      />
+      <input
+        className='w-full border border-blue-400 rounded p-2 mb-3 text-black placeholder-gray-500'
         name='password'
         placeholder='Пароль'
-        className='input'
         type='password'
         required
       />
       {error && <p className='text-red-600'>{error}</p>}
-      <button className='btn w-full'>Войти</button>
+      <button className='w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-800 font-semibold'>
+        Войти11
+      </button>
     </form>
   )
 }

@@ -1,8 +1,8 @@
-// app/login/page.tsx
+// app/cabinet/page.tsx
 
 export default function Cabinet() {
   return (
-    <div>
+    <main>
       Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vel voluptatibus
       optio soluta numquam facere dolor dolorem corporis dolorum quas tenetur
       doloribus porro libero odit, amet vero sapiente. Fugiat quo, eveniet et
@@ -56,6 +56,6 @@ export default function Cabinet() {
       necessitatibus excepturi exercitationem totam molestias eos! Voluptates
       veniam voluptatum omnis, pariatur, sapiente esse alias aliquid dolor et
       debitis dolores soluta maxime.
-    </div>
+    </main>
   )
 }
