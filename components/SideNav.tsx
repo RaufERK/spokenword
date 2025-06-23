@@ -14,7 +14,7 @@ export default function SideNav() {
     { href: '/archive', label: 'Архив' },
     { href: '/conf', label: 'Конференция', roles: ['USER', 'ADMIN', 'SUPER'] },
     {
-      href: '/conf-arc',
+      href: '/conf-arch',
       label: 'Архив конф.',
       roles: ['USER', 'ADMIN', 'SUPER'],
     },

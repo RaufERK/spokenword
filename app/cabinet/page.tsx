@@ -1,10 +1,8 @@
 // app/cabinet/page.tsx
 
-
 export default function Cabinet() {
   return (
-    <main>
-
+    <main className='bg-blue-700'>
       Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vel voluptatibus
       optio soluta numquam facere dolor dolorem corporis dolorum quas tenetur
       doloribus porro libero odit, amet vero sapiente. Fugiat quo, eveniet et
