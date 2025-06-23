@@ -46,7 +46,7 @@ export default function LoginPage() {
       />
       {error && <p className='text-red-600'>{error}</p>}
       <button className='w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-800 font-semibold'>
-        Войти11
+        Войти
       </button>
     </form>
   )

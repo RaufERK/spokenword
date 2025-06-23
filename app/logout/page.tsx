@@ -2,16 +2,12 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 
 export default function LogoutPage() {
-  const router = useRouter()
-
   useEffect(() => {
-    fetch('/api/logout', { method: 'POST' }).then(() => {
-      router.push('/')
-    })
-  }, [router])
+    signOut({ callbackUrl: '/' })
+  }, [])
 
   return <p className='text-center mt-20'>Выход…</p>
 }
