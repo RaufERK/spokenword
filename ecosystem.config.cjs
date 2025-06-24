@@ -19,7 +19,7 @@ module.exports = {
       repo: 'git@github.com:RaufERK/spokenword.git',
       path: '/var/www/spokenword',
       'post-deploy':
-        'export PATH=$HOME/.nvm/versions/node/v22.15.1/bin:$PATH && pnpm install && pnpm build && pm2 reload ecosystem.config.js --only www.spokenword.ru',
+        'export PATH=$HOME/.nvm/versions/node/v22.15.1/bin:$PATH && pnpm install && pnpm build && pm2 reload ecosystem.config.cjs --only www.spokenword.ru',
       ssh_options: 'StrictHostKeyChecking=no',
     },
   },
