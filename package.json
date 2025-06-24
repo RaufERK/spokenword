@@ -9,7 +9,7 @@
     "start": "next start",
     "prod": "next start",
     "lint": "next lint",
-    "prisma": "npx prisma studio",
+    "dblist": "npx prisma studio",
     "deploy": "pm2 deploy ecosystem.config.cjs production"
   },
   "dependencies": {
