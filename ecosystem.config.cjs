@@ -17,9 +17,9 @@ module.exports = {
       host: '89.111.172.86',
       ref: 'origin/master',
       repo: 'git@github.com:RaufERK/spokenword.git',
-      path: '/var/www/spokenword',
-      'post-deploy':
-        'export PATH=$HOME/.nvm/versions/node/v22.15.1/bin:$PATH && pnpm install && pnpm build && pm2 reload ecosystem.config.cjs --only www.spokenword.ru',
+      // ecosystem.config.cjs  (фрагмент)
+      postDeploy:
+        'export PATH=$HOME/.nvm/versions/node/v22.15.1/bin:$PATH && pnpm install && pnpm prisma generate && pnpm prisma migrate deploy && pnpm build && pm2 reload ecosystem.config.cjs --only www.spokenword.ru',
       ssh_options: 'StrictHostKeyChecking=no',
     },
   },

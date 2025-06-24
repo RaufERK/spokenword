@@ -11,6 +11,10 @@ ls -lh /usr/local/bin/
 
 /usr/local/bin/compress-archive.sh
 
+SPOKENWORD
+cd /var/www/spokenword/source
+
+
 
 Темплйт-UNITS
 ls -lh /etc/systemd/system/
