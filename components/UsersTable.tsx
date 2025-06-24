@@ -8,11 +8,19 @@ export interface UserRow {
   lastName: string
   login: string
   password: string
-  paymentDate: string | Date | null // ← приняли оба варианта
+  paymentDate: string | Date | null
+  role: 'USER' | 'ADMIN' | 'SUPER'
 }
 
-export default function UsersTable({ users }: { users: UserRow[] }) {
+export default function UsersTable({
+  users,
+  currentRole,
+}: {
+  users: UserRow[]
+  currentRole: 'USER' | 'ADMIN' | 'SUPER'
+}) {
   const [list, setList] = useState(users)
+  const isSuper = currentRole === 'SUPER'
 
   const togglePaid = async (id: number, current: boolean) => {
     const res = await fetch(`/api/users/${id}/payment`, {
@@ -20,11 +28,22 @@ export default function UsersTable({ users }: { users: UserRow[] }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ paid: !current }),
     })
-    if (!res.ok) return alert('Не удалось обновить')
+    if (!res.ok) return alert('Не удалось обновить оплату')
     const { paymentDate } = await res.json()
     setList((prev) =>
       prev.map((u) => (u.id === id ? { ...u, paymentDate } : u))
     )
+  }
+
+  const toggleAdmin = async (id: number, current: boolean) => {
+    const res = await fetch(`/api/users/${id}/admin`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ makeAdmin: !current }),
+    })
+    if (!res.ok) return alert('Не удалось обновить роль')
+    const { role } = await res.json()
+    setList((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)))
   }
 
   return (
@@ -37,11 +56,14 @@ export default function UsersTable({ users }: { users: UserRow[] }) {
             <th className='px-3 py-2 text-black'>Логин</th>
             <th className='px-3 py-2 text-black'>Пароль</th>
             <th className='px-3 py-2 text-black'>Оплата</th>
+            {isSuper && <th className='px-3 py-2 text-black'>Админ</th>}
           </tr>
         </thead>
         <tbody>
           {list.map((u) => {
             const paid = !!u.paymentDate
+            const isAdmin = u.role === 'ADMIN'
+            const isSuperUser = u.role === 'SUPER'
             return (
               <tr key={u.id} className='border-t'>
                 <td className='px-3 py-1 text-black'>{u.firstName}</td>
@@ -65,6 +87,22 @@ export default function UsersTable({ users }: { users: UserRow[] }) {
                     )}
                   </label>
                 </td>
+                {isSuper && (
+                  <td className='px-3 py-1'>
+                    <label className='inline-flex items-center gap-2 cursor-pointer'>
+                      <input
+                        type='checkbox'
+                        checked={isAdmin}
+                        onChange={() => toggleAdmin(u.id, isAdmin)}
+                        disabled={isSuperUser}
+                        className='accent-blue-600 h-4 w-4'
+                      />
+                      {isSuperUser && (
+                        <span className='text-xs text-slate-500'>SUPER</span>
+                      )}
+                    </label>
+                  </td>
+                )}
               </tr>
             )
           })}

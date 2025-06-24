@@ -1,0 +1,13 @@
+[Unit]
+Description=RTMP Streaming Server (custom NGINX)
+After=network.target
+
+[Service]
+ExecStart=/usr/local/nginx_backup/sbin/nginx -c /etc/rtmp-nginx/nginx.conf
+ExecReload=/usr/local/nginx_backup/sbin/nginx -s reload
+ExecStop=/usr/local/nginx_backup/sbin/nginx -s quit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

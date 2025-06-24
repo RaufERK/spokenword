@@ -1,4 +1,0 @@
-nano /etc/nginx/sites-available/spokenword
-
-
-sudo ln -s /etc/nginx/sites-available/spokenword /etc/nginx/sites-enabled/

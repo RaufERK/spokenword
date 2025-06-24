@@ -2,6 +2,10 @@ NGINX
 cat /usr/local/nginx/conf/nginx.conf
 nginx /usr/local/nginx/conf/nginx.conf
 
+
+sudo nano /etc/nginx/nginx.conf
+
+
 файлы со скриптами: /usr/local/bin/
 ls -lh /usr/local/bin/
 
@@ -9,7 +13,6 @@ ls -lh /usr/local/bin/
 /usr/local/bin/record-archive.sh
 /usr/local/bin/after-archive.sh
 
-/usr/local/bin/compress-archive.sh
 
 SPOKENWORD
 su - appuser
@@ -31,6 +34,9 @@ tail -f /srv/streaming/archive/ITMUG2025-rec.log
 
 
 clear && date && tail -f /var/log/nginx/error_rtmp.log
+
+NGINX
+/var/log/nginx/error_rtmp.log
 
 
 | Что хотим увидеть                          | Команда                                                                                 |

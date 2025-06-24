@@ -33,7 +33,7 @@ export default async function UsersPage() {
   return (
     <main className='p-6'>
       <h1 className='text-2xl font-bold mb-6'>Пользователи</h1>
-      <UsersTable users={users} />
+      <UsersTable users={users} currentRole={session.user.role} />
     </main>
   )
 }
