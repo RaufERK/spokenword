@@ -8,6 +8,7 @@ export interface UserRow {
   lastName: string
   login: string
   password: string
+  phoneNumber: string | null
   paymentDate: string | Date | null
   role: 'USER' | 'ADMIN' | 'SUPER'
 }
@@ -51,8 +52,10 @@ export default function UsersTable({
       <table className='min-w-full border border-slate-300 bg-white'>
         <thead className='bg-slate-100'>
           <tr className='text-left'>
+            <th className='px-2 py-2 w-8 text-gray-400'>№</th>
             <th className='px-3 py-2 text-black'>Имя</th>
             <th className='px-3 py-2 text-black'>Фамилия</th>
+            <th className='px-3 py-2 text-black'>Телефон</th>
             <th className='px-3 py-2 text-black'>Логин</th>
             <th className='px-3 py-2 text-black'>Пароль</th>
             <th className='px-3 py-2 text-black'>Оплата</th>
@@ -60,15 +63,19 @@ export default function UsersTable({
           </tr>
         </thead>
         <tbody>
-          {list.map((u) => {
+          {list.map((u, i) => {
             const paid = !!u.paymentDate
             const isAdmin = u.role === 'ADMIN'
             const isSuperUser = u.role === 'SUPER'
             return (
               <tr key={u.id} className='border-t'>
+                <td className='px-2 py-1 text-gray-400 text-sm'>{i + 1}</td>
                 <td className='px-3 py-1 text-black'>{u.firstName}</td>
                 <td className='px-3 py-1 text-black'>{u.lastName}</td>
-                <td className='px-3 py-1 font-mono text-black'>{u.login}</td>
+                <td className='px-3 py-1 font-mono text-gray-600'>
+                  {u.phoneNumber}
+                </td>
+                <td className='px-3 py-1 font-mono text-gray-600'>{u.login}</td>
                 <td className='px-3 py-1 font-mono text-gray-400'>
                   {u.password}
                 </td>
@@ -81,7 +88,7 @@ export default function UsersTable({
                       className='accent-green-600 h-4 w-4'
                     />
                     {paid && (
-                      <span className='text-xs text-slate-500'>
+                      <span className='text-xs text-slate-900'>
                         {new Date(u.paymentDate!).toLocaleDateString()}
                       </span>
                     )}

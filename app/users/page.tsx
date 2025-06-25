@@ -21,7 +21,7 @@ export default async function UsersPage() {
   /** ② явно типизируем параметр `u` */
   const users: UserDTO[] = (
     await prisma.user.findMany({
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      orderBy: [{ lastName: 'asc' }],
     })
   ).map(
     (u: PrismaUser): UserDTO => ({

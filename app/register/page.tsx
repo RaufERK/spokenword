@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import IMask from 'imask'
+import { useState } from 'react'
 
 interface ApiOk {
   login: string
@@ -12,22 +11,9 @@ const myStyle =
   'w-full border border-stone-200 rounded p-2 mb-3 text-black placeholder-gray-500'
 
 export default function RegisterPage() {
-  /* ─── local state ─────────────────────────────────────────────── */
   const [result, setResult] = useState<ApiOk | null>(null)
   const [error, setError] = useState('')
-  const telRef = useRef<HTMLInputElement>(null)
 
-  /* ─── 1. вешаем маску на телефон после монтирования ───────────── */
-  useEffect(() => {
-    if (!telRef.current) return
-    const mask = IMask(telRef.current, {
-      /*  +7 (___) ___-__-__  */
-      mask: '+{7} (000) 000-00-00',
-    })
-    return () => mask.destroy()
-  }, [])
-
-  /* ─── 2. отправка формы ───────────────────────────────────────── */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
@@ -55,7 +41,6 @@ export default function RegisterPage() {
     }
   }
 
-  /* ─── 3. успех → показываем логин/пароль ──────────────────────── */
   if (result) {
     return (
       <div className='max-w-md mx-auto p-6 bg-green-100 rounded-xl mt-10'>
@@ -75,7 +60,6 @@ export default function RegisterPage() {
     )
   }
 
-  /* ─── 4. сама форма ───────────────────────────────────────────── */
   return (
     <form
       onSubmit={handleSubmit}
@@ -90,13 +74,12 @@ export default function RegisterPage() {
         className={myStyle}
       />
 
-      {/* телефон с маской */}
+      {/* международный номер телефона */}
       <input
-        ref={telRef}
         name='phone'
-        placeholder='+7 (___) ___-__-__'
+        placeholder='+1234567890'
         required
-        pattern='^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$'
+        pattern='^\+\d{8,15}$'
         className={myStyle}
       />
 
@@ -117,8 +100,3 @@ export default function RegisterPage() {
     </form>
   )
 }
-
-/* ————————————————————————————————————————————————
-   небольшие утилити-классы tailwind для короткой записи
-   .input { @apply w-full border border-blue-400 rounded p-2 text-black placeholder-gray-500; }
-———————————————————————————————————————————————— */
