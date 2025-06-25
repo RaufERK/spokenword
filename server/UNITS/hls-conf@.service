@@ -1,0 +1,17 @@
+[Unit]
+Description=HLS worker for CONF: %i
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+UMask=0002
+
+ExecStart=/usr/local/bin/start-hls-conf.sh conf %i
+
+Restart=on-failure
+RestartSec=30
+SuccessExitStatus=0 143
+
+StandardOutput=null
+StandardError=null

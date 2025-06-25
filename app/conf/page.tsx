@@ -1,13 +1,14 @@
 // app/conf/page.tsx
 
-export default function Conf() {
+import HlsPlayer from '@/components/HlsPlayer'
+
+export default function ConfPage() {
   return (
-    <main>
-      <div className='bg-purple-800 rounded-md'>
-        <p className='text-center text-xl text-white p-20'>
-          Трансляция конференции не ведётся
-        </p>
-      </div>
+    <main className='flex flex-col items-center gap-6 p-4'>
+      <HlsPlayer
+        src='/conf/playlist.m3u8'
+        className='w-full max-w-4xl aspect-video rounded-lg shadow-lg'
+      />
     </main>
   )
 }
