@@ -29,6 +29,7 @@ model User {
 
 enum Role {
   USER
+  MODERATOR
   ADMIN
   SUPER
 }

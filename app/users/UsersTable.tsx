@@ -1,6 +1,8 @@
 // app/users/UsersTable.tsx
 
 'use client'
+
+import { ROLES, Role } from '@/lib/roles'
 import { useState } from 'react'
 
 export interface UserRow {
@@ -11,15 +13,17 @@ export interface UserRow {
   password: string
   phoneNumber: string | null
   paymentDate: string | Date | null
-  role: 'USER' | 'ADMIN' | 'SUPER'
+  role: Role
 }
+
+// app/users/UsersTable.tsx
 
 export default function UsersTable({
   users,
-  currentRole
+  currentRole,
 }: {
   users: UserRow[]
-  currentRole: 'USER' | 'ADMIN' | 'SUPER'
+  currentRole: Role
 }) {
   const [list, setList] = useState(users)
   const isSuper = currentRole === 'SUPER'
@@ -35,7 +39,7 @@ export default function UsersTable({
     const res = await fetch(`/api/users/${id}/payment`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paid: !current })
+      body: JSON.stringify({ paid: !current }),
     })
     if (!res.ok) return alert('Не удалось обновить оплату')
     const { paymentDate } = await res.json()
@@ -44,11 +48,12 @@ export default function UsersTable({
     )
   }
 
-  const toggleAdmin = async (id: number, current: boolean) => {
+  // Новый хендлер для смены роли
+  const changeRole = async (id: number, newRole: Role) => {
     const res = await fetch(`/api/users/${id}/admin`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ makeAdmin: !current })
+      body: JSON.stringify({ role: newRole }),
     })
     if (!res.ok) return alert('Не удалось обновить роль')
     const { role } = await res.json()
@@ -56,8 +61,8 @@ export default function UsersTable({
   }
 
   return (
-    <div className='overflow-x-auto'>
-      <table className='min-w-full border border-slate-300 bg-white'>
+    <div className='overflow-x-auto rounded-2xl'>
+      <table className='min-w-full border border-slate-300 bg-white rounded-2xl'>
         <thead className='bg-slate-100'>
           <tr className='text-left'>
             <th className='px-2 py-2 w-8 text-gray-400'>№</th>
@@ -67,17 +72,16 @@ export default function UsersTable({
             <th className='px-3 py-2 text-black'>Логин</th>
             <th className='px-3 py-2 text-black'>Пароль</th>
             <th className='px-3 py-2 text-black'>Оплата</th>
-            {isSuper && <th className='px-3 py-2 text-black'>Админ</th>}
+            {isSuper && <th className='px-3 py-2 text-black'>Роль</th>}
             <th className='px-3 py-2 text-black'>Профиль</th>
           </tr>
         </thead>
         <tbody>
           {list.map((u, i) => {
             const paid = !!u.paymentDate
-            const isAdmin = u.role === 'ADMIN'
-            const isSuperUser = u.role === 'SUPER'
             return (
               <tr key={u.id} className='border-t'>
+                {/* ... остальные td ... */}
                 <td className='px-2 py-1 text-gray-400 text-sm'>{i + 1}</td>
                 <td className='px-3 py-1 text-black'>{u.firstName}</td>
                 <td className='px-3 py-1 text-black'>{u.lastName}</td>
@@ -104,20 +108,25 @@ export default function UsersTable({
                   </label>
                 </td>
 
+                {/* Новый select для смены роли (только SUPER может менять) */}
                 {isSuper && (
                   <td className='px-3 py-1'>
-                    <label className='inline-flex items-center gap-2 cursor-pointer'>
-                      <input
-                        type='checkbox'
-                        checked={isAdmin}
-                        onChange={() => toggleAdmin(u.id, isAdmin)}
-                        disabled={isSuperUser}
-                        className='accent-blue-600 h-4 w-4'
-                      />
-                      {isSuperUser && (
-                        <span className='text-xs text-slate-500'>SUPER</span>
-                      )}
-                    </label>
+                    <select
+                      value={u.role}
+                      onChange={(e) => changeRole(u.id, e.target.value as Role)}
+                      disabled={u.role === 'SUPER'} // SUPER нельзя изменить
+                      className='border rounded px-2 py-1 bg-white text-blue-700'
+                    >
+                      {ROLES.map((role) => (
+                        <option
+                          key={role}
+                          value={role}
+                          disabled={role === 'SUPER' && u.role !== 'SUPER'} // Только SUPER может оставаться SUPER
+                        >
+                          {role}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                 )}
                 <td className='px-3 py-1'>

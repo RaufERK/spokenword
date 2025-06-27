@@ -1,9 +1,9 @@
 // components/SideNav.tsx
 'use client'
+
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-
-type Role = 'USER' | 'ADMIN' | 'SUPER'
+import { Role } from '@/lib/roles'
 
 export default function SideNav() {
   const { data } = useSession()
@@ -12,26 +12,35 @@ export default function SideNav() {
   const links: { href: string; label: string; roles?: Role[] }[] = [
     { href: '/', label: 'Главная' },
     { href: '/archive', label: 'Архив' },
-    { href: '/conf', label: 'Конференция', roles: ['USER', 'ADMIN', 'SUPER'] },
+    {
+      href: '/conf',
+      label: 'Конференция',
+      roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
+    },
     {
       href: '/conf-arch',
       label: 'Архив конф.',
-      roles: ['USER', 'ADMIN', 'SUPER'],
+      roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
     },
+    {
+      href: '/upload',
+      label: 'Загрузка файлов',
+      roles: ['MODERATOR', 'ADMIN', 'SUPER'],
+    }, // новая страница
     { href: '/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },
     { href: '/admin', label: 'Управление архивом', roles: ['ADMIN', 'SUPER'] },
-    { href: '/profile', label: 'Профиль', roles: ['USER', 'ADMIN', 'SUPER'] }, // ← Новая ссылка
+    {
+      href: '/profile',
+      label: 'Профиль',
+      roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
+    },
   ]
 
   return (
     <nav className='flex items-center justify-between p-4 bg-blue-700 border-b-4 border-green-600'>
       <div className='flex gap-6'>
         {links
-          .filter(
-            (l) =>
-              // Показываем пункт если либо не указаны роли (публичный), либо роль пользователя соответствует
-              !l.roles || (role && l.roles.includes(role))
-          )
+          .filter((l) => !l.roles || (role && l.roles.includes(role)))
           .map((l) => (
             <Link
               key={l.href}
@@ -42,7 +51,6 @@ export default function SideNav() {
             </Link>
           ))}
       </div>
-
       {role ? (
         <Link href='/logout' className='text-green-400 hover:underline'>
           Выйти

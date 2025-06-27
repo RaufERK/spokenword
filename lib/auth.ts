@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 
-export type Role = 'USER' | 'ADMIN' | 'SUPER'
+import type { Role } from '@/lib/roles'
 
 declare module 'next-auth' {
   interface User {
@@ -38,12 +38,12 @@ export const authOptions: NextAuthOptions = {
       name: 'Credentials',
       credentials: {
         login: { label: 'Login', type: 'text' },
-        password: { label: 'Password', type: 'password' }
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(creds) {
         if (!creds?.login || !creds.password) return null
         const user = await prisma.user.findUnique({
-          where: { login: creds.login }
+          where: { login: creds.login },
         })
         if (!user || user.password !== creds.password) return null
 
@@ -54,10 +54,10 @@ export const authOptions: NextAuthOptions = {
           lastName: user.lastName,
           phoneNumber: user.phoneNumber, // <-- важно!
           login: user.login,
-          email: user.email
+          email: user.email,
         }
-      }
-    })
+      },
+    }),
   ],
   callbacks: {
     jwt({ token, user }) {
@@ -81,9 +81,9 @@ export const authOptions: NextAuthOptions = {
         phoneNumber: token.phoneNumber as string | null, // <-- важно!
         login: token.login as string,
         email: token.email as string | null,
-        name: `${token.firstName} ${token.lastName}`
+        name: `${token.firstName} ${token.lastName}`,
       }
       return session
-    }
-  }
+    },
+  },
 }
