@@ -10,7 +10,8 @@
     "prod": "next start",
     "lint": "next lint",
     "dblist": "npx prisma studio",
-    "deploy": "pm2 deploy ecosystem.config.cjs production"
+    "deploy": "pm2 deploy ecosystem.config.cjs production",
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",

@@ -1,7 +1,7 @@
 // components/SideNav.tsx
 'use client'
-import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import Link from 'next/link'
 
 type Role = 'USER' | 'ADMIN' | 'SUPER'
 

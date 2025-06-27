@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/register/route.ts
-import { NextResponse } from 'next/server'
+import { normalizePhone } from '@/helpers/phone'
 import prisma from '@/lib/prisma'
 import crypto from 'crypto'
+import { NextResponse } from 'next/server'
 import { slugify } from 'transliteration'
-import { normalizePhone } from '@/helpers/phone'
 
 export async function POST(request: Request) {
   try {

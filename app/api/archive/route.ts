@@ -1,7 +1,7 @@
 // app/api/archive/route.ts
-import { NextResponse } from 'next/server'
-import fs from 'fs'
 import { ARCHIVE_DIR } from '@/data'
+import fs from 'fs'
+import { NextResponse } from 'next/server'
 
 const exts = ['.mp4'] // ← разрешённые расширения
 

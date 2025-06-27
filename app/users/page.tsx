@@ -1,11 +1,11 @@
 // app/users/page.tsx
 
-import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import prisma from '@/lib/prisma'
-import UsersTable from '@/components/UsersTable'
 import type { User as PrismaUser } from '@prisma/client'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+import UsersTable from './UsersTable'
 
 /** ① Убираем поле paymentDate и кладём своё строковое  */
 type UserDTO = Omit<PrismaUser, 'paymentDate'> & {
@@ -21,12 +21,12 @@ export default async function UsersPage() {
   /** ② явно типизируем параметр `u` */
   const users: UserDTO[] = (
     await prisma.user.findMany({
-      orderBy: [{ lastName: 'asc' }],
+      orderBy: [{ lastName: 'asc' }]
     })
   ).map(
     (u: PrismaUser): UserDTO => ({
       ...u,
-      paymentDate: u.paymentDate ? u.paymentDate.toISOString() : null,
+      paymentDate: u.paymentDate ? u.paymentDate.toISOString() : null
     })
   )
 

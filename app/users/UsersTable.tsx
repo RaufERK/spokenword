@@ -1,5 +1,6 @@
-'use client'
+// app/users/UsersTable.tsx
 
+'use client'
 import { useState } from 'react'
 
 export interface UserRow {
@@ -15,7 +16,7 @@ export interface UserRow {
 
 export default function UsersTable({
   users,
-  currentRole,
+  currentRole
 }: {
   users: UserRow[]
   currentRole: 'USER' | 'ADMIN' | 'SUPER'
@@ -23,11 +24,18 @@ export default function UsersTable({
   const [list, setList] = useState(users)
   const isSuper = currentRole === 'SUPER'
 
+  const handleCopyLink = async (id: number) => {
+    const res = await fetch(`/api/users/${id}/token`)
+    const data = await res.json()
+    if (!res.ok) return alert('Ошибка при создании ссылки')
+    await navigator.clipboard.writeText(data.url)
+  }
+
   const togglePaid = async (id: number, current: boolean) => {
     const res = await fetch(`/api/users/${id}/payment`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paid: !current }),
+      body: JSON.stringify({ paid: !current })
     })
     if (!res.ok) return alert('Не удалось обновить оплату')
     const { paymentDate } = await res.json()
@@ -40,7 +48,7 @@ export default function UsersTable({
     const res = await fetch(`/api/users/${id}/admin`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ makeAdmin: !current }),
+      body: JSON.stringify({ makeAdmin: !current })
     })
     if (!res.ok) return alert('Не удалось обновить роль')
     const { role } = await res.json()
@@ -60,6 +68,7 @@ export default function UsersTable({
             <th className='px-3 py-2 text-black'>Пароль</th>
             <th className='px-3 py-2 text-black'>Оплата</th>
             {isSuper && <th className='px-3 py-2 text-black'>Админ</th>}
+            <th className='px-3 py-2 text-black'>Профиль</th>
           </tr>
         </thead>
         <tbody>
@@ -94,6 +103,7 @@ export default function UsersTable({
                     )}
                   </label>
                 </td>
+
                 {isSuper && (
                   <td className='px-3 py-1'>
                     <label className='inline-flex items-center gap-2 cursor-pointer'>
@@ -110,6 +120,14 @@ export default function UsersTable({
                     </label>
                   </td>
                 )}
+                <td className='px-3 py-1'>
+                  <button
+                    className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'
+                    onClick={() => handleCopyLink(u.id)}
+                  >
+                    Копировать
+                  </button>
+                </td>
               </tr>
             )
           })}
