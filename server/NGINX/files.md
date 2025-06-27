@@ -6,8 +6,21 @@ sudo ln -s /etc/nginx/sites-available/spokenword /etc/nginx/sites-enabled/
 
 /etc/systemd/system/nginx-rtmp.service
 
-**RTMP-сервер**
+****RTMP-сервер ОБЫЧНЫЙ NGINX**
+/etc/nginx/nginx.conf
+
+перезапуск:
+sudo nginx -t && sudo systemctl reload nginx
+
+
+
+
+
+RTMP nginx — запускать ОТДЕЛЬНО
+
 /etc/rtmp-nginx/nginx.conf
+
+
 
 **папки:**
 /etc/rtmp-nginx
@@ -19,12 +32,9 @@ sudo ln -s /etc/nginx/sites-available/spokenword /etc/nginx/sites-enabled/
 /etc/nginx/sites-available/spokenword
 cat /etc/nginx/sites-available/spokenword
 
-
-
 **ЛОГИ ЛЕЖИТ ТУТ:**
 
 /etc/rtmp-nginx/logs/
-
 
 **ПЕРЕЗАГРУЗКА ЮНИТА:**
 

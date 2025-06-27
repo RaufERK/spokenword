@@ -12,7 +12,7 @@ interface UserProfile {
   email: string
   login: string
   role: string
-  password: string
+  password?: string // опционально
 }
 
 export default function ProfileClient() {
@@ -24,11 +24,9 @@ export default function ProfileClient() {
   const [loading, setLoading] = useState(false)
   const [authTried, setAuthTried] = useState(false)
 
+  // Если есть токен — грузим профиль по токену
   useEffect(() => {
-    if (!token) {
-      setError('Токен отсутствует')
-      return
-    }
+    if (!token) return // Если токена нет — ничего не делаем тут
     setLoading(true)
     fetch(`/api/profile-from-token?token=${encodeURIComponent(token)}`)
       .then((res) => res.json())
@@ -40,26 +38,38 @@ export default function ProfileClient() {
       .finally(() => setLoading(false))
   }, [token])
 
-  // <-- вот тут автоматическая авторизация
+  // Если user получен по токену, а сессии нет — авторизуемся по логину/паролю (автоматически)
   useEffect(() => {
     if (user && !session && !authTried && user.login && user.password) {
       setAuthTried(true)
       signIn('credentials', {
         login: user.login,
         password: user.password,
-        redirect: false
+        redirect: false,
       }).then((res) => {
         if (!res?.ok) setError('Не удалось авторизоваться')
-        // Можно router.replace('/profile') чтобы убрать токен из URL
+        // router.replace('/profile') — убрать токен из url если надо
       })
     }
   }, [user, session, authTried])
 
+  // Логика показа:
+  // 1. Если есть ошибка — показываем её
+  // 2. Если токен есть — ждём загрузки user (и авторизации)
+  // 3. Если нет токена, но есть сессия — показываем user из сессии
+  // 4. Если нет ничего — просим войти
+
   if (error) return <div className='p-10 text-red-600'>{error}</div>
-  if (loading || !user || status === 'loading')
+  if (token && (loading || !user || status === 'loading'))
     return <div className='p-10'>Загрузка...</div>
 
-  // Можно не показывать пароль после авторизации
+  // Если нет токена, но есть сессия — показываем профиль из сессии
+  const profile = user || session?.user
+
+  if (!profile)
+    return <div className='p-10 text-red-600'>Вы не авторизованы</div>
+
+  // Можно не показывать пароль, если пользователь уже залогинен обычным способом
   const labelClass = 'text-blue-500 font-semibold w-32 text-right'
   const valueClass = 'text-gray-900 font-mono font-bold text-green-500'
 
@@ -71,35 +81,34 @@ export default function ProfileClient() {
       <ul className='space-y-3'>
         <li className='flex'>
           <span className={labelClass}>Имя:</span>
-          <span className={valueClass + ' ml-2'}>{user.firstName}</span>
+          <span className={valueClass + ' ml-2'}>{profile.firstName}</span>
         </li>
         <li className='flex'>
           <span className={labelClass}>Фамилия:</span>
-          <span className={valueClass + ' ml-2'}>{user.lastName}</span>
+          <span className={valueClass + ' ml-2'}>{profile.lastName}</span>
         </li>
         <li className='flex'>
           <span className={labelClass}>Телефон:</span>
-          <span className={valueClass + ' ml-2'}>{user.phoneNumber}</span>
+          <span className={valueClass + ' ml-2'}>{profile.phoneNumber}</span>
         </li>
         <li className='flex'>
           <span className={labelClass}>Email:</span>
-          <span className={valueClass + ' ml-2'}>{user.email}</span>
+          <span className={valueClass + ' ml-2'}>{profile.email}</span>
         </li>
         <li className='flex'>
           <span className={labelClass}>Логин:</span>
-          <span className={valueClass + ' ml-2'}>{user.login}</span>
+          <span className={valueClass + ' ml-2'}>{profile.login}</span>
         </li>
-        {/* Не показывай пароль, если пользователь уже залогинен */}
-        {/* {!session && ( */}
-        <li className='flex'>
-          <span className={labelClass}>Пароль:</span>
-          <span className={valueClass + ' ml-2'}>{user.password}</span>
-        </li>
-        {/* )} */}
-        {user.role && (
+        {token && session && 'password' in profile && !!profile.password && (
+          <li className='flex'>
+            <span className={labelClass}>Пароль:</span>
+            <span className={valueClass + ' ml-2'}>{profile.password}</span>
+          </li>
+        )}
+        {profile.role && (
           <li className='flex'>
             <span className={labelClass}>Роль:</span>
-            <span className={valueClass + ' ml-2'}>{user.role}</span>
+            <span className={valueClass + ' ml-2'}>{profile.role}</span>
           </li>
         )}
       </ul>

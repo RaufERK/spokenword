@@ -19,18 +19,19 @@ export default function SideNav() {
       roles: ['USER', 'ADMIN', 'SUPER'],
     },
     { href: '/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },
-    {
-      href: '/admin',
-      label: 'Управление архивом',
-      roles: ['ADMIN', 'SUPER'],
-    },
+    { href: '/admin', label: 'Управление архивом', roles: ['ADMIN', 'SUPER'] },
+    { href: '/profile', label: 'Профиль', roles: ['USER', 'ADMIN', 'SUPER'] }, // ← Новая ссылка
   ]
 
   return (
     <nav className='flex items-center justify-between p-4 bg-blue-700 border-b-4 border-green-600'>
       <div className='flex gap-6'>
         {links
-          .filter((l) => !l.roles || (role && l.roles.includes(role)))
+          .filter(
+            (l) =>
+              // Показываем пункт если либо не указаны роли (публичный), либо роль пользователя соответствует
+              !l.roles || (role && l.roles.includes(role))
+          )
           .map((l) => (
             <Link
               key={l.href}
