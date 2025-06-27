@@ -33,3 +33,14 @@ enum Role {
   ADMIN
   SUPER
 }
+
+
+model ConferenceFile {
+  id           Int      @id @default(autoincrement())
+  displayName  String   // Красивое имя
+  originalName String   // Имя при загрузке
+  systemName   String   @unique
+  uploadedAt   DateTime @default(now())
+  uploadedBy   Int
+  size         Int
+}

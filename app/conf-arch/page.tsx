@@ -1,11 +1,10 @@
-// app/conf-arch/page.tsx
+import ArchiveConfList from '@/components/ArchiveConfList'
 
-export default function ConfArch() {
+export default function ConfArchPage() {
   return (
-    <main>
-      <div className='bg-purple-900 rounded-md'>
-        <p className='text-center text-xl text-white p-20'>Архив конференции</p>
-      </div>
+    <main className='p-4 max-w-4xl mx-auto'>
+      <h1 className='text-2xl font-semibold mb-4'>Архив конференций</h1>
+      <ArchiveConfList canDelete={false} />
     </main>
   )
 }
