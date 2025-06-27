@@ -1,7 +1,7 @@
 'use client'
 
 import { signIn, useSession } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 interface UserProfile {
@@ -17,7 +17,6 @@ interface UserProfile {
 
 export default function ProfileClient() {
   const params = useSearchParams()
-  const router = useRouter()
   const token = params.get('token')
   const { data: session, status } = useSession()
   const [user, setUser] = useState<UserProfile | null>(null)
