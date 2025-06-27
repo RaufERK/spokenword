@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
       phoneNumber: user.phoneNumber,
       email: user.email,
       login: user.login,
-      role: user.role
+      role: user.role,
+      password: user.password
     })
   } catch {
     return NextResponse.json({ error: 'Bad token' }, { status: 400 })
