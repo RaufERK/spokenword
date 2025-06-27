@@ -1,40 +1,44 @@
 'use client'
 
+import { decryptToken } from '@/lib/token'
+import { signIn, useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-
-interface UserProfile {
-  id: number
-  firstName: string
-  lastName: string
-  phoneNumber: string
-  email: string
-  login: string
-  role: string
-}
 
 export default function ProfileClient() {
   const params = useSearchParams()
   const token = params.get('token')
-  const [user, setUser] = useState<UserProfile | null>(null)
+  const { data: session, status } = useSession()
   const [error, setError] = useState<string | null>(null)
+  const [authTried, setAuthTried] = useState(false)
 
   useEffect(() => {
     if (!token) {
       setError('Токен отсутствует')
       return
     }
-    fetch(`/api/profile-from-token?token=${encodeURIComponent(token)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) setError(data.error)
-        else setUser(data)
-      })
-      .catch(() => setError('Ошибка загрузки'))
-  }, [token])
+    if (status === 'unauthenticated' && !authTried) {
+      try {
+        const { login, password } = decryptToken(token)
+        setAuthTried(true)
+        signIn('credentials', {
+          login,
+          password,
+          redirect: false
+        }).then((res) => {
+          if (!res?.ok) setError('Не удалось авторизоваться')
+        })
+      } catch {
+        setError('Неверный токен')
+      }
+    }
+  }, [token, status, authTried, signIn])
 
+  if (status === 'loading') return <div className='p-10'>Загрузка...</div>
   if (error) return <div className='p-10 text-red-600'>{error}</div>
-  if (!user) return <div className='p-10'>Загрузка...</div>
+  if (!session) return <div className='p-10 text-red-600'>Нет сессии</div>
+
+  const { user } = session
 
   const labelClass = 'text-blue-500 font-semibold w-32 text-right'
   const valueClass = 'text-gray-900 font-mono font-bold text-green-500'
