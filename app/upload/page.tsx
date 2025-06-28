@@ -84,7 +84,7 @@ export default function UploadPage() {
             accept='video/mp4'
             ref={fileInputRef}
             onChange={handleFileChange}
-            className='w-full'
+            className='w-full rounded p-2 text-white-900  bg-purple-700'
             disabled={status === 'uploading'}
           />
         </div>

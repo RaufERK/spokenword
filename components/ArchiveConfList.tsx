@@ -1,3 +1,5 @@
+// components/ArchiveConfList.tsx
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -53,8 +55,19 @@ export default function ArchiveConfList({
             {canDelete && (
               <button
                 className='text-red-600 underline'
-                onClick={() => {
-                  /* TODO: handle delete */
+                onClick={async () => {
+                  if (!confirm(`Удалить файл ${f.displayName}?`)) return
+                  const res = await fetch(
+                    `/api/conf-archive/${encodeURIComponent(f.systemName)}`,
+                    { method: 'DELETE' }
+                  )
+                  if (res.ok) {
+                    setFiles((files) =>
+                      files.filter((x) => x.systemName !== f.systemName)
+                    )
+                  } else {
+                    alert('Ошибка удаления файла')
+                  }
                 }}
               >
                 Удалить

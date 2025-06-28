@@ -1,3 +1,4 @@
+// lib/auth.ts
 import prisma from '@/lib/prisma'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
@@ -10,9 +11,10 @@ declare module 'next-auth' {
     role: Role
     firstName: string
     lastName: string
-    phoneNumber: string | null // <-- так!
+    phoneNumber: string | null
     login: string
     email?: string | null
+    paymentDate?: string | null
   }
   interface Session {
     user: User
@@ -25,9 +27,10 @@ declare module 'next-auth/jwt' {
     role: Role
     firstName: string
     lastName: string
-    phoneNumber: string | null // <-- так!
+    phoneNumber: string | null
     login: string
     email?: string | null
+    paymentDate?: string | null
   }
 }
 
@@ -52,9 +55,10 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           firstName: user.firstName,
           lastName: user.lastName,
-          phoneNumber: user.phoneNumber, // <-- важно!
+          phoneNumber: user.phoneNumber,
           login: user.login,
           email: user.email,
+          paymentDate: user.paymentDate ? user.paymentDate.toISOString() : null,
         }
       },
     }),
@@ -69,6 +73,7 @@ export const authOptions: NextAuthOptions = {
         token.phoneNumber = user.phoneNumber
         token.login = user.login
         token.email = user.email
+        token.paymentDate = user.paymentDate ?? null
       }
       return token
     },
@@ -82,6 +87,7 @@ export const authOptions: NextAuthOptions = {
         login: token.login as string,
         email: token.email as string | null,
         name: `${token.firstName} ${token.lastName}`,
+        paymentDate: token.paymentDate as string | null,
       }
       return session
     },
