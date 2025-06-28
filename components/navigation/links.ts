@@ -1,3 +1,5 @@
+// components/navigation/links.ts
+
 import { Role } from '@/lib/roles'
 
 const links: { href: string; label: string; roles?: Role[] }[] = [
@@ -19,7 +21,6 @@ const links: { href: string; label: string; roles?: Role[] }[] = [
     roles: ['MODERATOR', 'ADMIN', 'SUPER'],
   },
   { href: '/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },
-  { href: '/admin', label: 'Управление архивом', roles: ['ADMIN', 'SUPER'] },
   {
     href: '/profile',
     label: 'Профиль',
