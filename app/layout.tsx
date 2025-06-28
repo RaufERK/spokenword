@@ -1,7 +1,7 @@
 // app/layout.tsx
 
 import Providers from '@/components/Providers'
-import SideNav from '@/components/SideNav'
+import SideNav from '@/components/navigation/SideNav'
 import '@/styles/globals.css'
 
 export const metadata = { title: 'Spoken-Word' }
