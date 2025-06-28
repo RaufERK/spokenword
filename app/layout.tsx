@@ -1,4 +1,5 @@
-// app/layout.tsx  (без 'use client' — остаётся серверным!)
+// app/layout.tsx
+
 import Providers from '@/components/Providers'
 import SideNav from '@/components/SideNav'
 import '@/styles/globals.css'
