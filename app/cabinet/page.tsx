@@ -1,5 +1,7 @@
 // app/cabinet/page.tsx
 
+import Announcement from '@/components/Announcement'
+
 export default function Cabinet() {
   return (
     <main>
@@ -21,6 +23,7 @@ export default function Cabinet() {
             ИНЫМ СПОСОБОМ.
           </li>
         </ul>
+        <Announcement />
       </div>
     </main>
   )
