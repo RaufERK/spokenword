@@ -1,4 +1,5 @@
 // app/watch/[filename]/page.tsx
+
 import { notFound } from 'next/navigation'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -32,7 +33,8 @@ export default async function WatchPage(
         src={`/archive/${encodeURIComponent(safe)}`}
         className='w-full max-w-3xl aspect-video rounded-xl shadow'
         controls
-        preload='auto'
+        preload='none'
+        controlsList='nodownload'
       />
     </main>
   )

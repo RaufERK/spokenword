@@ -1,3 +1,4 @@
+// components/ConferencePlayer.tsx
 'use client'
 
 export default function ConferencePlayer({ src }: { src: string }) {
@@ -6,8 +7,10 @@ export default function ConferencePlayer({ src }: { src: string }) {
       <video
         src={src}
         controls
+        controlsList='nodownload'
         style={{ width: '100%', maxHeight: 480, background: '#000' }}
         preload='none'
+        onContextMenu={(e) => e.preventDefault()}
       />
     </div>
   )
