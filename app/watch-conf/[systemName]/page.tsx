@@ -22,6 +22,7 @@ export default async function WatchConfFilePage({
       <h1 className='text-2xl mb-4'>{file.displayName}</h1>
       <ConferencePlayer
         src={`/conf-archive/${encodeURIComponent(file.systemName)}`}
+        systemName={file.systemName}
       />
     </main>
   )

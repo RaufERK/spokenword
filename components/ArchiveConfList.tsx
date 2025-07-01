@@ -11,6 +11,7 @@ type ConfFile = {
   systemName: string
   size: number
   uploadedAt: string
+  views: number
 }
 
 export default function ArchiveConfList({
@@ -40,9 +41,11 @@ export default function ArchiveConfList({
             <b>{f.displayName}</b>
             <span className='ml-3 text-xs text-gray-400'>
               ({(f.size / 1024 / 1024).toFixed(1)} МБ,{' '}
-              {new Date(f.uploadedAt).toLocaleString('ru-RU')})
+              {new Date(f.uploadedAt).toLocaleString('ru-RU')}, )
             </span>
+            <div className='text-xs text-indigo-900'>просмотров: {f.views}</div>
           </span>
+
           <div className='space-x-2'>
             <Link
               href={`/watch-conf/${encodeURIComponent(f.systemName)}`}

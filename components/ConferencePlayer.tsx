@@ -1,7 +1,21 @@
 // components/ConferencePlayer.tsx
 'use client'
 
-export default function ConferencePlayer({ src }: { src: string }) {
+import { useEffect } from 'react'
+
+export default function ConferencePlayer({
+  src,
+  systemName,
+}: {
+  src: string
+  systemName: string
+}) {
+  useEffect(() => {
+    fetch(`/api/conf-archive/${encodeURIComponent(systemName)}/view`, {
+      method: 'POST',
+    }).catch(() => {})
+  }, [systemName])
+
   return (
     <div className='relative bg-indigo-900 p-2 rounded-xl'>
       <video
