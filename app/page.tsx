@@ -1,15 +1,13 @@
 // app/page.tsx
 
-// import HlsPlayer from '@/components/HlsPlayer'
-import Announcement from '@/components/Announcement'
+import HlsPlayer from '@/components/HlsPlayer'
 export default function HomePage() {
   return (
     <main className='flex flex-col items-center gap-6 p-4'>
-      <Announcement />
-      {/* <HlsPlayer
+      <HlsPlayer
         src='/live/playlist.m3u8'
         className='w-full max-w-3xl aspect-video rounded-lg shadow'
-      /> */}
+      />
     </main>
   )
 }
