@@ -5,10 +5,12 @@ module.exports = {
       script: 'npm',
       args: 'run prod',
       cwd: '/var/www/spokenword/current',
+      exec_mode: 'cluster',
+      instances: 'max',
       env: {
         NODE_ENV: 'production',
       },
-      log_date_format: 'YYYY-MM-DD HH:mm:ss', // ← вот это
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
     },
   ],
   deploy: {
