@@ -6,7 +6,7 @@ module.exports = {
       args: 'run prod',
       cwd: '/var/www/spokenword/current',
       exec_mode: 'cluster',
-      instances: 'max',
+      // instances: 2,
       env: {
         NODE_ENV: 'production',
       },
