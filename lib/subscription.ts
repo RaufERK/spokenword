@@ -7,5 +7,5 @@ export function isSubscriptionActive(
     typeof paymentDate === 'string' ? new Date(paymentDate) : paymentDate
   const now = new Date()
   const diff = (now.getTime() - paid.getTime()) / (1000 * 60 * 60 * 24)
-  return diff < 37
+  return diff < 30
 }
