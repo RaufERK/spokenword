@@ -3,7 +3,7 @@
 import { Role } from '@/lib/roles'
 
 const links: { href: string; label: string; roles?: Role[] }[] = [
-  // { href: '/', label: 'Главная' },
+  { href: '/', label: 'Главная' },
   // { href: '/archive', label: 'Архив' },
   // {
   //   href: '/conf',
@@ -18,6 +18,11 @@ const links: { href: string; label: string; roles?: Role[] }[] = [
   {
     href: '/upload',
     label: 'Загрузка файлов',
+    roles: ['MODERATOR', 'ADMIN', 'SUPER'],
+  },
+  {
+    href: '/links',
+    label: 'Ссылки',
     roles: ['MODERATOR', 'ADMIN', 'SUPER'],
   },
   { href: '/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },

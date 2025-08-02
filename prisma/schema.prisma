@@ -45,3 +45,11 @@ model ConferenceFile {
   size         Int
   views        Int      @default(0)
 }
+
+model StreamLink {
+  id        Int      @id @default(autoincrement())
+  url       String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
