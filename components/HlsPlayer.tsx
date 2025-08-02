@@ -104,7 +104,8 @@ export default function HlsPlayerPolling({
   /* ─── 4. UI ──────────────────────────────────────────────────────── */
   if (!available) {
     return (
-      <p className='text-center text-xl text-white'>Трансляция не ведётся</p>
+      <p className='text-center text-xl text-white'></p>
+      // <p className='text-center text-xl text-white'>Трансляция не ведётся</p>
     )
   }
 
