@@ -1,28 +1,42 @@
 module.exports = {
   apps: [
     {
-      name: 'www.spokenword.ru',
-      script: 'npm',
-      args: 'run prod',
-      cwd: '/var/www/spokenword/current',
-      exec_mode: 'cluster',
-      // instances: 2,
+      name: 'spokenword',
+      script: 'node_modules/next/dist/bin/next',
+      args: 'start -p 3005',
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
       env: {
         NODE_ENV: 'production',
       },
-      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      env_production: {
+        NODE_ENV: 'production',
+      },
     },
   ],
+
   deploy: {
     production: {
       user: 'appuser',
-      host: '89.111.172.86',
+      host: 'amster_app',
       ref: 'origin/master',
       repo: 'git@github.com:RaufERK/spokenword.git',
-      path: '/var/www/spokenword',
-      'post-deploy':
-        'export PATH=$HOME/.nvm/versions/node/v22.15.1/bin:$PATH && pnpm install && pnpm prisma generate && pnpm prisma migrate deploy && pnpm build && pm2 reload ecosystem.config.cjs --only www.spokenword.ru',
-      ssh_options: 'StrictHostKeyChecking=no',
+      path: '/home/appuser/apps/spokenword',
+      'pre-deploy-local': '',
+      'post-deploy': [
+        'source ~/.nvm/nvm.sh && nvm use --lts',
+        'ln -sf /home/appuser/shared/spokenword/.env.production ./.env.production || true',
+        'npm ci --include=dev',
+        'npx prisma generate',
+        'npx prisma migrate deploy',
+        'npm run build',
+        'pm2 startOrReload ecosystem.config.cjs --env production',
+        'pm2 save',
+      ].join(' && '),
+      env: {
+        NODE_ENV: 'production',
+      },
     },
   },
 }

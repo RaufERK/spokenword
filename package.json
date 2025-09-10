@@ -11,7 +11,9 @@
     "lint": "next lint",
     "dblist": "npx prisma studio",
     "deploy": "pm2 deploy ecosystem.config.cjs production",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "db:export": "node scripts/export-data.js",
+    "db:import": "node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",

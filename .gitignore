@@ -44,3 +44,6 @@ local/
 /generated/prisma
 *.db
 /public/conf-archive/*.mp4
+
+# database exports
+database-export-*.json
