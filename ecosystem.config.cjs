@@ -25,8 +25,11 @@ module.exports = {
       path: '/home/appuser/apps/spokenword',
       'pre-deploy-local': '',
       'post-deploy': [
+        'export NODE_ENV=production',
         'source ~/.nvm/nvm.sh && nvm use --lts',
-        'ln -sf /home/appuser/shared/spokenword/.env.production ./.env.production || true',
+        // симлинки создаём в КОРНЕ проекта (текущая cwd = /home/appuser/apps/spokenword/source)
+        'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env',
+        'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env.production',
         'npm ci --include=dev',
         'npx prisma generate',
         'npx prisma migrate deploy',
@@ -34,6 +37,7 @@ module.exports = {
         'pm2 startOrReload ecosystem.config.cjs --env production',
         'pm2 save',
       ].join(' && '),
+
       env: {
         NODE_ENV: 'production',
       },
