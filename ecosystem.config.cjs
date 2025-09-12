@@ -19,7 +19,7 @@ module.exports = {
   deploy: {
     production: {
       user: 'appuser',
-      host: 'amster_app',
+      host: '185.200.178.73',
       ref: 'origin/master',
       repo: 'git@github.com:RaufERK/spokenword.git',
       path: '/home/appuser/apps/spokenword',

@@ -18,7 +18,7 @@ npm run db:export
 
 ```bash
 # Скопировать файл экспорта
-scp database-export-*.json appuser@amster_app:/home/appuser/apps/spokenword/
+scp database-export-*.json appuser@185.200.178.73:/home/appuser/apps/spokenword/
 ```
 
 ### 3. На НОВОМ сервере (импорт данных)
