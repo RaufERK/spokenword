@@ -1,20 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Hls from 'hls.js'
 
 // Declare HLS.js types for window object
 declare global {
   interface Window {
-    Hls?: {
-      new (): {
-        loadSource: (url: string) => void
-        attachMedia: (element: HTMLVideoElement) => void
-        on: (
-          event: string,
-          callback: (event: string, data: { details: string }) => void
-        ) => void
-      }
-    }
+    Hls?: typeof Hls
   }
 }
 
@@ -35,6 +27,8 @@ export default function HlsPlayer({
     const video = videoRef.current
     if (!video || !streamUrl) return
 
+    let hls: Hls | null = null
+
     const loadStream = async () => {
       try {
         setIsLoading(true)
@@ -44,16 +38,38 @@ export default function HlsPlayer({
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
           // Нативный HLS (Safari)
           video.src = streamUrl
-        } else if (typeof window !== 'undefined' && window.Hls) {
+        } else if (Hls.isSupported()) {
           // HLS.js для других браузеров
-          const hls = new window.Hls()
+          hls = new Hls({
+            debug: false,
+            enableWorker: true,
+            lowLatencyMode: true,
+          })
+
           hls.loadSource(streamUrl)
           hls.attachMedia(video)
 
-          hls.on('error', (event: string, data: { details: string }) => {
-            console.error('HLS error:', data)
-            setError(`Ошибка воспроизведения: ${data.details}`)
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log('HLS manifest parsed, starting playback')
             setIsLoading(false)
+          })
+
+          hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error('HLS error:', data)
+            if (data.fatal) {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  setError('Ошибка сети при загрузке потока')
+                  break
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  setError('Ошибка воспроизведения медиа')
+                  break
+                default:
+                  setError('Ошибка воспроизведения потока')
+                  break
+              }
+              setIsLoading(false)
+            }
           })
         } else {
           setError('HLS не поддерживается в вашем браузере')
@@ -79,6 +95,9 @@ export default function HlsPlayer({
     loadStream()
 
     return () => {
+      if (hls) {
+        hls.destroy()
+      }
       if (video) {
         video.src = ''
       }

@@ -103,6 +103,25 @@ sudo find /srv/streaming/live/ -name "*.m3u8" -exec chmod 644 {} \;
 ```
 Или используйте скрипт: `./scripts/fix-stream-permissions.sh`
 
+### Проблема: "HLS не поддерживается в вашем браузере"
+**Причина:** HLS.js библиотека не загружается или отсутствуют CORS заголовки
+**Решение:** 
+```bash
+# На сервере (ssh amster)
+sudo chmod -R 755 /srv/streaming/live/
+sudo find /srv/streaming/live/ -name "*.m3u8" -exec chmod 644 {} \;
+
+# Добавить CORS заголовки в nginx конфигурацию
+sudo nano /etc/nginx/sites-available/spoken-word.ru
+# В секции location /live/ добавить:
+# add_header Access-Control-Allow-Origin "*";
+# add_header Access-Control-Allow-Methods "GET, OPTIONS";
+# add_header Access-Control-Allow-Headers "Range";
+
+sudo nginx -t && sudo systemctl reload nginx
+```
+Или используйте скрипт: `./scripts/fix-hls-issues.sh`
+
 ### Проблема: Стрим не воспроизводится в браузере
 **Причина:** Проблемы с CORS или HLS.js
 **Решение:** Проверьте консоль браузера, попробуйте другой браузер
