@@ -36,14 +36,27 @@ export default function HlsPlayer({
 
         // Проверяем поддержку HLS в браузере
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          // Нативный HLS (Safari)
+          // Нативный HLS (Safari, Safari на iOS)
           video.src = streamUrl
+          video.load()
         } else if (Hls.isSupported()) {
-          // HLS.js для других браузеров
+          // HLS.js для других браузеров (включая мобильные)
           hls = new Hls({
             debug: false,
             enableWorker: true,
-            lowLatencyMode: true,
+            lowLatencyMode: false, // Отключаем для мобильных
+            maxBufferLength: 30, // Уменьшаем буфер для мобильных
+            maxMaxBufferLength: 60,
+            startLevel: -1, // Автоматический выбор качества
+            capLevelToPlayerSize: true, // Ограничиваем качество размером плеера
+            backBufferLength: 90,
+            // Настройки для мобильных устройств
+            manifestLoadingTimeOut: 10000,
+            manifestLoadingMaxRetry: 2,
+            levelLoadingTimeOut: 10000,
+            levelLoadingMaxRetry: 2,
+            fragLoadingTimeOut: 20000,
+            fragLoadingMaxRetry: 3,
           })
 
           hls.loadSource(streamUrl)
@@ -149,6 +162,9 @@ export default function HlsPlayer({
         autoPlay
         muted
         playsInline
+        preload='metadata'
+        webkit-playsinline='true'
+        x-webkit-airplay='allow'
         className='w-full h-full'
         style={{ aspectRatio: '16/9' }}
       >
