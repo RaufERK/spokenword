@@ -4,7 +4,8 @@ import { Role } from '@/lib/roles'
 
 const links: { href: string; label: string; roles?: Role[] }[] = [
   { href: '/', label: 'Главная' },
-  // { href: '/archive', label: 'Архив' },
+  { href: '/live', label: 'Стрим' },
+  { href: '/archive', label: 'Архив стримов' },
   // {
   //   href: '/conf',
   //   label: 'Конференция',

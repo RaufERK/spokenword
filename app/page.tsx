@@ -8,7 +8,7 @@ export default function HomePage() {
     <main className='flex flex-col items-center gap-6 p-4'>
       <StreamLinkBlock />
       <HlsPlayer
-        src='/live/playlist.m3u8'
+        streamUrl='/live/playlist.m3u8'
         className='w-full max-w-3xl aspect-video rounded-lg shadow'
       />
     </main>

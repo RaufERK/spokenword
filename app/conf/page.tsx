@@ -7,7 +7,7 @@ export default function ConfPage() {
     <main className='flex flex-col items-center gap-6 p-4'>
       {/* <Announcement /> */}
       <HlsPlayer
-        src='/conf/playlist.m3u8'
+        streamUrl='/conf/playlist.m3u8'
         className='w-full max-w-4xl aspect-video rounded-lg shadow-lg'
       />
     </main>
