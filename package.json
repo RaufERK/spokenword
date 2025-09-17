@@ -11,6 +11,8 @@
     "lint": "next lint",
     "dblist": "npx prisma studio",
     "deploy": "pm2 deploy ecosystem.config.cjs production",
+    "deploy:full": "npm run deploy && npm run fix-streaming",
+    "fix-streaming": "ssh amster \"bash /root/fix-streaming-permissions.sh\"",
     "seed": "node prisma/seed.js",
     "db:export": "node scripts/export-data.js",
     "db:import": "node prisma/seed.js"
