@@ -34,6 +34,12 @@ module.exports = {
         'npx prisma generate',
         'npx prisma migrate deploy',
         'npm run build',
+        // Восстанавливаем права доступа к файлам стриминга после деплоя
+        'sudo mkdir -p /srv/streaming/live/main',
+        'sudo chown -R www-data:www-data /srv/streaming/',
+        'sudo chmod -R 755 /srv/streaming/',
+        'sudo find /srv/streaming/ -name "*.m3u8" -exec chmod 644 {} \\;',
+        'sudo find /srv/streaming/ -name "*.ts" -exec chmod 644 {} \\;',
         'pm2 startOrReload ecosystem.config.cjs --env production',
         'pm2 save',
       ].join(' && '),
