@@ -32,6 +32,15 @@ ffmpeg -f lavfi -i testsrc=duration=10:size=640x480:rate=30 \
 ```
 
 ### Использование тестового скрипта
+
+**Локальное тестирование (рекомендуется):**
+```bash
+# На вашей машине (требует ffmpeg)
+cd /path/to/SPOKENWORD
+./scripts/test-stream-local.sh
+```
+
+**Тестирование на сервере (если SSH доступен):**
 ```bash
 # На сервере (ssh amster)
 cd /path/to/SPOKENWORD
@@ -40,25 +49,32 @@ cd /path/to/SPOKENWORD
 
 ## 🔍 Диагностика проблем
 
-### 1. Проверка статуса сервисов
+### 1. Проверка доступности сервисов (без SSH)
 ```bash
-ssh amster "sudo systemctl status nginx"
-ssh amster "netstat -tlnp | grep 1935"
+# Проверка веб-сайта
+curl -I https://www.spoken-word.ru/
+
+# Проверка RTMP сервера
+nc -zv 185.200.178.73 1935
+
+# Проверка HLS потока
+curl -I https://spoken-word.ru/live/main/index.m3u8
 ```
 
-### 2. Проверка файлов стрима
-```bash
-ssh amster "ls -la /srv/streaming/live/main/"
-ssh amster "curl -I https://spoken-word.ru/live/main/index.m3u8"
-```
-
-### 3. Проверка API
+### 2. Проверка API
 ```bash
 curl "https://spoken-word.ru/api/stream-status?key=main"
 curl "https://spoken-word.ru/api/stream-link"
 ```
 
-### 4. Проверка логов
+### 3. Проверка статуса сервисов (с SSH, если доступен)
+```bash
+ssh amster "sudo systemctl status nginx"
+ssh amster "netstat -tlnp | grep 1935"
+ssh amster "ls -la /srv/streaming/live/main/"
+```
+
+### 4. Проверка логов (с SSH, если доступен)
 ```bash
 ssh amster "sudo tail -f /var/log/nginx/spoken_word_error.log"
 ssh amster "sudo journalctl -u nginx -f"
@@ -66,13 +82,26 @@ ssh amster "sudo journalctl -u nginx -f"
 
 ## 🚨 Частые проблемы
 
+### Проблема: SSH соединение не работает ("Connection reset")
+**Причина:** SSH сервис может быть недоступен или заблокирован
+**Решение:** 
+- Используйте локальное тестирование: `./scripts/test-stream-local.sh`
+- Проверьте доступность через веб: `curl -I https://www.spoken-word.ru/`
+- RTMP сервер работает независимо от SSH
+
 ### Проблема: "404 Not Found" для HLS потока
 **Причина:** Стрим не запущен или недавно завершился
 **Решение:** Запустите стрим через OBS или тестовый скрипт
 
-### Проблема: Плеер показывает "Трансляция не ведется"
-**Причина:** API не находит активный стрим
-**Решение:** Убедитесь, что стрим запущен и файлы обновляются
+### Проблема: Плеер показывает "Трансляция не ведется" (даже при активном стриме)
+**Причина:** Проблема с правами доступа - приложение не может читать файлы стрима
+**Решение:** 
+```bash
+# На сервере (ssh amster)
+sudo chmod -R 755 /srv/streaming/live/
+sudo find /srv/streaming/live/ -name "*.m3u8" -exec chmod 644 {} \;
+```
+Или используйте скрипт: `./scripts/fix-stream-permissions.sh`
 
 ### Проблема: Стрим не воспроизводится в браузере
 **Причина:** Проблемы с CORS или HLS.js
