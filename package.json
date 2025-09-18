@@ -13,6 +13,13 @@
     "deploy": "pm2 deploy ecosystem.config.cjs production",
     "deploy2": "npm run deploy && npm run fix",
     "fix": "ssh amster \"bash /root/fix-streaming-permissions.sh\"",
+    "stream:status": "./scripts/stream-manager.sh status",
+    "stream:fix": "./scripts/stream-manager.sh fix",
+    "stream:recovery": "./scripts/stream-manager.sh recovery",
+    "stream:monitor": "./scripts/stream-manager.sh monitor-start",
+    "stream:logs": "./scripts/stream-manager.sh logs",
+    "stream:obs": "./scripts/stream-manager.sh obs",
+    "stream:help": "./scripts/stream-manager.sh help",
     "seed": "node prisma/seed.js",
     "db:export": "node scripts/export-data.js",
     "db:import": "node prisma/seed.js"

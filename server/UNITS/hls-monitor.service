@@ -1,0 +1,21 @@
+[Unit]
+Description=HLS Monitor Service
+After=network.target nginx.service
+
+[Service]
+Type=forking
+ExecStart=/usr/local/bin/hls-monitor.sh start
+ExecStop=/usr/local/bin/hls-monitor.sh stop
+ExecReload=/usr/local/bin/hls-monitor.sh restart
+PIDFile=/var/run/hls-monitor.pid
+Restart=on-failure
+RestartSec=5s
+User=root
+Group=root
+
+# Логирование
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
