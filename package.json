@@ -20,6 +20,7 @@
     "stream:logs": "./scripts/stream-manager.sh logs",
     "stream:obs": "./scripts/stream-manager.sh obs",
     "stream:help": "./scripts/stream-manager.sh help",
+    "save": "node scripts/save-server-scripts.mjs",
     "seed": "node prisma/seed.js",
     "db:export": "node scripts/export-data.js",
     "db:import": "node prisma/seed.js"

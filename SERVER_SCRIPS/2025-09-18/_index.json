@@ -1,0 +1,119 @@
+{
+  "savedAt": "2025-09-18T15:27:02.079Z",
+  "results": [
+    {
+      "path": "/etc/nginx/nginx.conf",
+      "description": "Основная конфигурация nginx с RTMP блоком",
+      "ok": true,
+      "remotePath": "/etc/nginx/nginx.conf",
+      "destPath": "SERVER_SCRIPS/2025-09-18/etc/nginx/nginx.conf",
+      "bytes": 2428
+    },
+    {
+      "path": "/etc/nginx/sites-available/spoken-word.ru",
+      "description": "Конфигурация виртуального хоста для сайта и HLS",
+      "ok": true,
+      "remotePath": "/etc/nginx/sites-available/spoken-word.ru",
+      "destPath": "SERVER_SCRIPS/2025-09-18/etc/nginx/sites-available/spoken-word.ru",
+      "bytes": 5109
+    },
+    {
+      "path": "/usr/local/bin/hls-monitor.sh",
+      "description": "Мониторинг HLS: ссылки, права, авто-восстановление",
+      "ok": true,
+      "remotePath": "/usr/local/bin/hls-monitor.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-18/usr/local/bin/hls-monitor.sh",
+      "bytes": 8958
+    },
+    {
+      "path": "/usr/local/bin/stream-watchdog.sh",
+      "description": "Watchdog по cron: проверка и восстановление стрима",
+      "ok": true,
+      "remotePath": "/usr/local/bin/stream-watchdog.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-18/usr/local/bin/stream-watchdog.sh",
+      "bytes": 6571
+    },
+    {
+      "path": "/root/fix-streaming-permissions.sh",
+      "description": "Быстрое восстановление прав на /srv/streaming",
+      "ok": true,
+      "remotePath": "/root/fix-streaming-permissions.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-18/root/fix-streaming-permissions.sh",
+      "bytes": 4123
+    },
+    {
+      "path": "/root/fix-streaming-enhanced.sh",
+      "description": "Расширенное исправление стриминга (перезагрузка nginx, права, ссылки)",
+      "ok": true,
+      "remotePath": "/root/fix-streaming-enhanced.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-18/root/fix-streaming-enhanced.sh",
+      "bytes": 6802
+    },
+    {
+      "path": "/usr/local/bin/start-hls.sh",
+      "description": "Скрипт HLS конвертации (если используется)",
+      "ok": true,
+      "remotePath": "/usr/local/bin/start-hls.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-18/usr/local/bin/start-hls.sh",
+      "bytes": 1536
+    },
+    {
+      "path": "/usr/local/bin/start-stream-services.sh",
+      "description": "Запуск systemd сервисов стриминга (если используется)",
+      "ok": true,
+      "remotePath": "/usr/local/bin/start-stream-services.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-18/usr/local/bin/start-stream-services.sh",
+      "bytes": 126
+    },
+    {
+      "path": "/usr/local/bin/stop-stream-services.sh",
+      "description": "Остановка systemd сервисов стриминга (если используется)",
+      "ok": true,
+      "remotePath": "/usr/local/bin/stop-stream-services.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-18/usr/local/bin/stop-stream-services.sh",
+      "bytes": 126
+    },
+    {
+      "path": "/etc/systemd/system/hls-worker@.service",
+      "description": "Systemd юнит: HLS конвертация",
+      "ok": true,
+      "remotePath": "/etc/systemd/system/hls-worker@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-18/etc/systemd/system/hls-worker@.service",
+      "bytes": 359
+    },
+    {
+      "path": "/etc/systemd/system/hls-conf@.service",
+      "description": "Systemd юнит: HLS для конференций",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/hls-conf@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-18/etc/systemd/system/hls-conf@.service",
+      "error": "Error: Command failed: ssh amster \"sudo bash -lc 'set -e; if [ -f \"/etc/systemd/system/hls-conf@.service\" ]; then cat \"/etc/systemd/system/hls-conf@.service\"; else exit 3; fi'\"\n"
+    },
+    {
+      "path": "/etc/systemd/system/stream-archive@.service",
+      "description": "Systemd юнит: Архивирование потоков",
+      "ok": true,
+      "remotePath": "/etc/systemd/system/stream-archive@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-18/etc/systemd/system/stream-archive@.service",
+      "bytes": 363
+    },
+    {
+      "path": "/etc/systemd/system/after-archive@.service",
+      "description": "Systemd юнит: Пост-обработка архива",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/after-archive@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-18/etc/systemd/system/after-archive@.service",
+      "error": "Error: Command failed: ssh amster \"sudo bash -lc 'set -e; if [ -f \"/etc/systemd/system/after-archive@.service\" ]; then cat \"/etc/systemd/system/after-archive@.service\"; else exit 3; fi'\"\n"
+    },
+    {
+      "dump": true,
+      "cmd": "sudo nginx -T",
+      "outRel": "etc/nginx/nginx.full.conf.txt",
+      "description": "Полный дамп конфигурации nginx (включая include)",
+      "ok": true,
+      "remoteCmd": "sudo nginx -T",
+      "destPath": "SERVER_SCRIPS/2025-09-18/etc/nginx/nginx.full.conf.txt",
+      "bytes": 32811
+    }
+  ]
+}

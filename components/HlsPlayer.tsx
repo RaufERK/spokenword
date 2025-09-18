@@ -22,6 +22,12 @@ export default function HlsPlayer({
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const retryCountRef = useRef<number>(0)
+
+  const withCacheBuster = (url: string) => {
+    const ts = Date.now()
+    return url ? `${url}${url.includes('?') ? '&' : '?'}cb=${ts}` : url
+  }
 
   useEffect(() => {
     const video = videoRef.current
@@ -37,7 +43,7 @@ export default function HlsPlayer({
         // Проверяем поддержку HLS в браузере
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
           // Нативный HLS (Safari, Safari на iOS)
-          video.src = streamUrl
+          video.src = withCacheBuster(streamUrl)
           video.load()
         } else if (Hls.isSupported()) {
           // HLS.js для других браузеров (включая мобильные)
@@ -59,12 +65,13 @@ export default function HlsPlayer({
             fragLoadingMaxRetry: 3,
           })
 
-          hls.loadSource(streamUrl)
+          hls.loadSource(withCacheBuster(streamUrl))
           hls.attachMedia(video)
 
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             console.log('HLS manifest parsed, starting playback')
             setIsLoading(false)
+            retryCountRef.current = 0
           })
 
           hls.on(Hls.Events.ERROR, (event, data) => {
@@ -82,6 +89,18 @@ export default function HlsPlayer({
                   break
               }
               setIsLoading(false)
+
+              // Мягкий авто-ретрай с cache-busting
+              if (retryCountRef.current < 3) {
+                retryCountRef.current += 1
+                setTimeout(() => {
+                  try {
+                    hls?.destroy()
+                  } catch {}
+                  // Перезапуск загрузки с новым cb
+                  loadStream()
+                }, 1000 * retryCountRef.current)
+              }
             }
           })
         } else {
@@ -108,8 +127,11 @@ export default function HlsPlayer({
     loadStream()
 
     return () => {
+      retryCountRef.current = 0
       if (hls) {
-        hls.destroy()
+        try {
+          hls.destroy()
+        } catch {}
       }
       if (video) {
         video.src = ''
