@@ -15,6 +15,7 @@ export default function AudioHlsPlayer({
   const audioRef = useRef<HTMLAudioElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const retryCountRef = useRef(0)
 
   useEffect(() => {
     const audio = audioRef.current
@@ -46,11 +47,26 @@ export default function AudioHlsPlayer({
           })
           hls.loadSource(withCb(streamUrl))
           hls.attachMedia(audio)
-          hls.on(Hls.Events.MANIFEST_PARSED, () => setIsLoading(false))
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setIsLoading(false)
+            retryCountRef.current = 0
+          })
           hls.on(Hls.Events.ERROR, (_e, data) => {
             if (data.fatal) {
-              setError('Ошибка загрузки аудио')
-              setIsLoading(false)
+              // Не показываем ошибку пользователю, пробуем мягкий ретрай
+              setIsLoading(true)
+              if (retryCountRef.current < 5) {
+                retryCountRef.current += 1
+                setTimeout(() => {
+                  try {
+                    hls?.destroy()
+                  } catch {}
+                  load()
+                }, 800 * retryCountRef.current)
+              } else {
+                setError('Ошибка загрузки аудио')
+                setIsLoading(false)
+              }
             }
           })
         } else {
@@ -72,6 +88,7 @@ export default function AudioHlsPlayer({
     load()
 
     return () => {
+      retryCountRef.current = 0
       if (hls) {
         try {
           hls.destroy()
