@@ -1,0 +1,21 @@
+[Unit]
+Description=HLS worker for %i
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+UMask=0002
+
+ExecStart=/usr/local/bin/start-hls.sh live %i
+
+Restart=on-failure
+RestartSec=30
+SuccessExitStatus=0 143
+
+# отключаем потоковый вывод в журнал
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target
