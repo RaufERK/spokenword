@@ -31,7 +31,7 @@ export default function AudioHlsPlayer({
         setError(null)
 
         if (
-          (audio as any).canPlayType &&
+          typeof audio.canPlayType === 'function' &&
           audio.canPlayType('application/vnd.apple.mpegurl')
         ) {
           audio.src = withCb(streamUrl)
