@@ -37,3 +37,4 @@ curl -I "https://spoken-word.ru/live/main/index.m3u8" 2>/dev/null | head -1 || e
 
 echo ""
 echo "✅ Создание ссылок завершено!"
+

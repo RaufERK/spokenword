@@ -42,3 +42,4 @@ export FFREPORT=file="${LIVE_DIR}/${NAME}-ffmpeg.log":level=32
     "${LIVE_DIR}/${NAME}_%v.m3u8"
 
 printf '%(%F %T)T  STREAM %s/%s STOPPED (pid=%d)\n' -1 "$APP" "$NAME" $$ >>"$LOG"
+
