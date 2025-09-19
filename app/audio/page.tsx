@@ -24,7 +24,7 @@ export default function AudioPage() {
   }, [])
 
   return (
-    <div className='min-h-screen bg-black'>
+    <div className='min-h-screen'>
       <div className='container mx-auto px-4 py-10 max-w-2xl'>
         <h1 className='text-2xl font-semibold text-white mb-6'>
           Аудио трансляция

@@ -28,7 +28,7 @@ export default function LivePage() {
   }, [])
 
   return (
-    <div className='min-h-screen bg-black'>
+    <div className='min-h-screen'>
       {isLive ? (
         <HlsPlayer streamUrl={streamUrl} className='w-full max-w-none' />
       ) : (
