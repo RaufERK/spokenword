@@ -1,0 +1,199 @@
+{
+  "savedAt": "2025-09-25T16:45:15.902Z",
+  "results": [
+    {
+      "path": "/etc/nginx/nginx.conf",
+      "description": "Основная конфигурация nginx с RTMP блоком",
+      "ok": false,
+      "remotePath": "/etc/nginx/nginx.conf",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/nginx/nginx.conf",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/nginx/sites-available/spoken-word.ru",
+      "description": "Конфигурация виртуального хоста для сайта и HLS",
+      "ok": false,
+      "remotePath": "/etc/nginx/sites-available/spoken-word.ru",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/nginx/sites-available/spoken-word.ru",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/cleanup-hls.sh",
+      "description": "Скрипт очистки/подготовки HLS при publish",
+      "ok": false,
+      "remotePath": "/usr/local/bin/cleanup-hls.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/cleanup-hls.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/on-publish-done.sh",
+      "description": "Скрипт действий при окончании публикации",
+      "ok": false,
+      "remotePath": "/usr/local/bin/on-publish-done.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/on-publish-done.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/hls-monitor.sh",
+      "description": "Мониторинг HLS: ссылки, права, авто-восстановление",
+      "ok": false,
+      "remotePath": "/usr/local/bin/hls-monitor.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/hls-monitor.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/stream-watchdog.sh",
+      "description": "Watchdog по cron: проверка и восстановление стрима",
+      "ok": false,
+      "remotePath": "/usr/local/bin/stream-watchdog.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/stream-watchdog.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/start-forwards.sh",
+      "description": "Запуск форвардов (YouTube/RuTube) при publish",
+      "ok": false,
+      "remotePath": "/usr/local/bin/start-forwards.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/start-forwards.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/stop-forwards.sh",
+      "description": "Остановка форвардов (YouTube/RuTube) при done",
+      "ok": false,
+      "remotePath": "/usr/local/bin/stop-forwards.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/stop-forwards.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/root/fix-streaming-permissions.sh",
+      "description": "Быстрое восстановление прав на /srv/streaming",
+      "ok": false,
+      "remotePath": "/root/fix-streaming-permissions.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/root/fix-streaming-permissions.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/root/fix-streaming-enhanced.sh",
+      "description": "Расширенное исправление стриминга (перезагрузка nginx, права, ссылки)",
+      "ok": false,
+      "remotePath": "/root/fix-streaming-enhanced.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/root/fix-streaming-enhanced.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/start-hls.sh",
+      "description": "Скрипт HLS конвертации (если используется)",
+      "ok": false,
+      "remotePath": "/usr/local/bin/start-hls.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/start-hls.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/start-stream-services.sh",
+      "description": "Запуск systemd сервисов стриминга (если используется)",
+      "ok": false,
+      "remotePath": "/usr/local/bin/start-stream-services.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/start-stream-services.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/usr/local/bin/stop-stream-services.sh",
+      "description": "Остановка systemd сервисов стриминга (если используется)",
+      "ok": false,
+      "remotePath": "/usr/local/bin/stop-stream-services.sh",
+      "destPath": "SERVER_SCRIPS/2025-09-25/usr/local/bin/stop-stream-services.sh",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/systemd/system/hls-worker@.service",
+      "description": "Systemd юнит: HLS конвертация",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/hls-worker@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/systemd/system/hls-worker@.service",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/systemd/system/hls-conf@.service",
+      "description": "Systemd юнит: HLS для конференций",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/hls-conf@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/systemd/system/hls-conf@.service",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/systemd/system/audio-hls@.service",
+      "description": "Systemd юнит: Аудио HLS для ключа",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/audio-hls@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/systemd/system/audio-hls@.service",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/systemd/system/stream-archive@.service",
+      "description": "Systemd юнит: Архивирование потоков",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/stream-archive@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/systemd/system/stream-archive@.service",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/systemd/system/after-archive@.service",
+      "description": "Systemd юнит: Пост-обработка архива",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/after-archive@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/systemd/system/after-archive@.service",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/systemd/system/youtube-forward@.service",
+      "description": "Systemd юнит: форвард на YouTube (copy)",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/youtube-forward@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/systemd/system/youtube-forward@.service",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/systemd/system/rutube-forward@.service",
+      "description": "Systemd юнит: форвард на RuTube (copy)",
+      "ok": false,
+      "remotePath": "/etc/systemd/system/rutube-forward@.service",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/systemd/system/rutube-forward@.service",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/default/youtube-forward",
+      "description": "Окружение: YOUTUBE_RTMP/YOUTUBE_KEY",
+      "ok": false,
+      "remotePath": "/etc/default/youtube-forward",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/default/youtube-forward",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/default/rutube-forward",
+      "description": "Окружение: RUTUBE_RTMP/RUTUBE_KEY",
+      "ok": false,
+      "remotePath": "/etc/default/rutube-forward",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/default/rutube-forward",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "path": "/etc/sudoers.d/rtmp-forwards",
+      "description": "Права sudo для www-data на управление форвардами",
+      "ok": false,
+      "remotePath": "/etc/sudoers.d/rtmp-forwards",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/sudoers.d/rtmp-forwards",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    },
+    {
+      "dump": true,
+      "cmd": "sudo nginx -T",
+      "outRel": "etc/nginx/nginx.full.conf.txt",
+      "description": "Полный дамп конфигурации nginx (включая include)",
+      "ok": false,
+      "remoteCmd": "sudo nginx -T",
+      "destPath": "SERVER_SCRIPS/2025-09-25/etc/nginx/nginx.full.conf.txt",
+      "error": "Connection reset by 185.200.178.73 port 22"
+    }
+  ]
+}

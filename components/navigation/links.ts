@@ -7,11 +7,11 @@ const links: { href: string; label: string; roles?: Role[] }[] = [
   { href: '/live', label: 'Стрим' },
   { href: '/audio', label: 'Аудио' },
   { href: '/archive', label: 'Архив стримов' },
-  // {
-  //   href: '/conf',
-  //   label: 'Конференция',
-  //   roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
-  // },
+  {
+    href: '/conf',
+    label: 'Конференция',
+    roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
+  },
   {
     href: '/conf-arch',
     label: 'Архив конф.',

@@ -1,0 +1,19 @@
+[Unit]
+Description=Forward RTMP to RuTube for stream %i
+After=network.target nginx.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/rutube-forward
+ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel warning -rw_timeout 3000000 -i rtmp://127.0.0.1/live/%i -c copy -f flv ${RUTUBE_RTMP}/${RUTUBE_KEY}
+Restart=always
+RestartSec=2
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target
+
+

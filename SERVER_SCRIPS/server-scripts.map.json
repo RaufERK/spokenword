@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2025-09-19T12:26:06.549Z",
+  "generatedAt": "2025-09-25T16:49:54.022Z",
   "items": [
     {
       "path": "/etc/nginx/nginx.conf",
@@ -10,12 +10,28 @@
       "description": "Конфигурация виртуального хоста для сайта и HLS"
     },
     {
+      "path": "/usr/local/bin/cleanup-hls.sh",
+      "description": "Скрипт очистки/подготовки HLS при publish"
+    },
+    {
+      "path": "/usr/local/bin/on-publish-done.sh",
+      "description": "Скрипт действий при окончании публикации"
+    },
+    {
       "path": "/usr/local/bin/hls-monitor.sh",
       "description": "Мониторинг HLS: ссылки, права, авто-восстановление"
     },
     {
       "path": "/usr/local/bin/stream-watchdog.sh",
       "description": "Watchdog по cron: проверка и восстановление стрима"
+    },
+    {
+      "path": "/usr/local/bin/start-forwards.sh",
+      "description": "Запуск форвардов (YouTube/RuTube) при publish"
+    },
+    {
+      "path": "/usr/local/bin/stop-forwards.sh",
+      "description": "Остановка форвардов (YouTube/RuTube) при done"
     },
     {
       "path": "/root/fix-streaming-permissions.sh",
@@ -46,12 +62,36 @@
       "description": "Systemd юнит: HLS для конференций"
     },
     {
+      "path": "/etc/systemd/system/audio-hls@.service",
+      "description": "Systemd юнит: Аудио HLS для ключа"
+    },
+    {
       "path": "/etc/systemd/system/stream-archive@.service",
       "description": "Systemd юнит: Архивирование потоков"
     },
     {
       "path": "/etc/systemd/system/after-archive@.service",
       "description": "Systemd юнит: Пост-обработка архива"
+    },
+    {
+      "path": "/etc/systemd/system/youtube-forward@.service",
+      "description": "Systemd юнит: форвард на YouTube (copy)"
+    },
+    {
+      "path": "/etc/systemd/system/rutube-forward@.service",
+      "description": "Systemd юнит: форвард на RuTube (copy)"
+    },
+    {
+      "path": "/etc/default/youtube-forward",
+      "description": "Окружение: YOUTUBE_RTMP/YOUTUBE_KEY"
+    },
+    {
+      "path": "/etc/default/rutube-forward",
+      "description": "Окружение: RUTUBE_RTMP/RUTUBE_KEY"
+    },
+    {
+      "path": "/etc/sudoers.d/rtmp-forwards",
+      "description": "Права sudo для www-data на управление форвардами"
     }
   ]
 }

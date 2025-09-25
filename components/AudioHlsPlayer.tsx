@@ -41,9 +41,12 @@ export default function AudioHlsPlayer({
           hls = new Hls({
             enableWorker: true,
             lowLatencyMode: false,
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
-            backBufferLength: 90,
+            maxBufferLength: 15,
+            maxMaxBufferLength: 30,
+            backBufferLength: 60,
+            liveSyncDurationCount: 3,
+            liveMaxLatencyDurationCount: 5,
+            startPosition: -1,
           })
           hls.loadSource(withCb(streamUrl))
           hls.attachMedia(audio)
