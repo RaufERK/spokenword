@@ -45,17 +45,28 @@ export default function HlsPlayer({
           // Нативный HLS (Safari, Safari на iOS)
           video.src = withCacheBuster(streamUrl)
           video.load()
+          ;(async () => {
+            try {
+              await video.play()
+            } catch {}
+          })()
         } else if (Hls.isSupported()) {
           // HLS.js для других браузеров (включая мобильные)
           hls = new Hls({
             debug: false,
             enableWorker: true,
-            lowLatencyMode: false, // Отключаем для мобильных
-            maxBufferLength: 30, // Уменьшаем буфер для мобильных
-            maxMaxBufferLength: 60,
+            lowLatencyMode: false,
+            // Буфер поменьше для мобильных
+            maxBufferLength: 10,
+            maxMaxBufferLength: 30,
             startLevel: -1, // Автоматический выбор качества
             capLevelToPlayerSize: true, // Ограничиваем качество размером плеера
-            backBufferLength: 90,
+            backBufferLength: 30,
+            // Настройки Live-режима ближе к live-edge
+            liveSyncDuration: 3,
+            liveMaxLatencyDuration: 10,
+            maxLiveSyncPlaybackRate: 1.5,
+            startPosition: -3,
             // Настройки для мобильных устройств
             manifestLoadingTimeOut: 10000,
             manifestLoadingMaxRetry: 2,
@@ -72,6 +83,22 @@ export default function HlsPlayer({
             console.log('HLS manifest parsed, starting playback')
             setIsLoading(false)
             retryCountRef.current = 0
+            ;(async () => {
+              try {
+                await video.play()
+              } catch {}
+            })()
+          })
+
+          hls.on(Hls.Events.LEVEL_LOADED, (_e, data) => {
+            if (data.details?.live) {
+              // При необходимости дополнительно поджимаем к краю онлайн
+              const liveEdgeSec =
+                (data.details.edge ?? 0) - (data.details.totalduration ?? 0) + 3
+              if (!Number.isNaN(liveEdgeSec) && video.readyState >= 1) {
+                // Без агрессивных seek'ов: hls уже использует startPosition=-3
+              }
+            }
           })
 
           hls.on(Hls.Events.ERROR, (event, data) => {
