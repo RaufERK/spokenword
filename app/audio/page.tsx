@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import AudioHlsPlayer from '@/components/AudioHlsPlayer'
+import IcecastPlayer from '@/components/IcecastPlayer'
 
 export default function AudioPage() {
   const [streamUrl, setStreamUrl] = useState('')
@@ -12,7 +12,7 @@ export default function AudioPage() {
         const res = await fetch(`/api/stream-status?key=main`)
         const data = await res.json()
         setStreamUrl(
-          data.isLive ? `https://spoken-word.ru/audio/main/index.m3u8` : ''
+          data.isLive ? `https://spoken-word.ru/audio-stream/main` : ''
         )
       } catch {
         setStreamUrl('')
@@ -29,7 +29,7 @@ export default function AudioPage() {
         <h1 className='text-2xl font-semibold text-white mb-6'>
           Аудио трансляция
         </h1>
-        <AudioHlsPlayer streamUrl={streamUrl} />
+        <IcecastPlayer streamUrl={streamUrl} />
         {!streamUrl && (
           <p className='text-gray-400 mt-4'>
             Эфир пока не начался. Обновляется автоматически.

@@ -1,0 +1,46 @@
+📁 Файлы Icecast Setup
+
+═══════════════════════════════════════════════════════
+
+🔧 Конфигурация сервера:
+   icecast.xml                    → /etc/icecast2/icecast.xml
+   
+🔧 Systemd:
+   audio-icecast@.service         → /etc/systemd/system/
+   
+🔧 Скрипты:
+   start-audio-icecast.sh         → /usr/local/bin/
+   stop-audio-icecast.sh          → /usr/local/bin/
+   start-icecast-audio.sh         → /usr/local/bin/
+   stop-icecast-audio.sh          → /usr/local/bin/
+   
+🔧 Патчи nginx:
+   nginx-rtmp-icecast.conf        (инструкция для nginx.conf)
+   nginx-icecast-proxy.conf       (инструкция для spoken-word.ru)
+   
+🚀 Установка:
+   install-icecast.sh             (запустить на сервере)
+   
+📚 Документация:
+   README.md                      (полная инструкция)
+   QUICK_START.md                 (быстрый старт)
+   FILES.txt                      (этот файл)
+
+═══════════════════════════════════════════════════════
+
+📦 Frontend (уже обновлён):
+   components/IcecastPlayer.tsx   (новый компонент)
+   app/audio/page.tsx             (обновлён для Icecast)
+
+═══════════════════════════════════════════════════════
+
+🎯 URL после установки:
+
+   Аудио стрим:  https://spoken-word.ru/audio-stream/main
+   Аудио плеер:  https://spoken-word.ru/audio
+   Видео плеер:  https://spoken-word.ru/live (HLS, без изменений)
+
+═══════════════════════════════════════════════════════
+
+✅ Следуй QUICK_START.md для установки!
+
