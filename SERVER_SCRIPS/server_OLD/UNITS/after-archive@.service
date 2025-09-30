@@ -1,8 +1,0 @@
-[Unit]
-Description=Convert FLV to MP4 for %i
-
-[Service]
-User=www-data
-Group=www-data
-Type=oneshot
-ExecStart=/usr/local/bin/after-archive.sh %i
