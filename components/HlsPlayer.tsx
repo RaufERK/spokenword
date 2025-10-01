@@ -56,24 +56,32 @@ export default function HlsPlayer({
             debug: false,
             enableWorker: true,
             lowLatencyMode: false,
-            // Буфер поменьше для мобильных
-            maxBufferLength: 10,
-            maxMaxBufferLength: 30,
-            startLevel: -1, // Автоматический выбор качества
-            capLevelToPlayerSize: true, // Ограничиваем качество размером плеера
-            backBufferLength: 30,
-            // Настройки Live-режима ближе к live-edge
+            // Adaptive bitrate - начинаем с низкого качества для быстрого старта
+            startLevel: 0, // Начинаем с 240p для быстрого старта
+            capLevelToPlayerSize: false, // Разрешаем адаптивный выбор
+            // Буфер для стабильности на мобильных
+            maxBufferLength: 20,
+            maxMaxBufferLength: 40,
+            backBufferLength: 10,
+            // Настройки Live-режима
             liveSyncDuration: 3,
             liveMaxLatencyDuration: 10,
             maxLiveSyncPlaybackRate: 1.5,
-            startPosition: -3,
-            // Настройки для мобильных устройств
-            manifestLoadingTimeOut: 10000,
-            manifestLoadingMaxRetry: 2,
-            levelLoadingTimeOut: 10000,
-            levelLoadingMaxRetry: 2,
-            fragLoadingTimeOut: 20000,
-            fragLoadingMaxRetry: 3,
+            startPosition: -1,
+            // Агрессивное переключение качества для мобильных
+            abrEwmaDefaultEstimate: 500000, // Начинаем с консервативной оценки
+            abrBandWidthFactor: 0.95, // Запас 5% для стабильности
+            abrBandWidthUpFactor: 0.7, // Медленно повышаем качество
+            // Таймауты для надежности
+            manifestLoadingTimeOut: 15000,
+            manifestLoadingMaxRetry: 5,
+            manifestLoadingRetryDelay: 1000,
+            levelLoadingTimeOut: 15000,
+            levelLoadingMaxRetry: 5,
+            levelLoadingRetryDelay: 1000,
+            fragLoadingTimeOut: 25000,
+            fragLoadingMaxRetry: 6,
+            fragLoadingRetryDelay: 1000,
           })
 
           hls.loadSource(withCacheBuster(streamUrl))
