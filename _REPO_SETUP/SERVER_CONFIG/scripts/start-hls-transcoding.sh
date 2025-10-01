@@ -15,7 +15,7 @@ LOG_FILE="/var/log/ffmpeg-hls-${STREAM_NAME}.log"
 echo "$(date): Starting HLS transcoding for ${STREAM_NAME}" > "${LOG_FILE}"
 
 # FFmpeg с 3 профилями качества
-/usr/bin/ffmpeg -i "${RTMP_URL}" \
+/usr/local/bin/ffmpeg -i "${RTMP_URL}" \
   -c:v libx264 -preset veryfast -tune zerolatency \
   -c:a aac -ar 48000 -b:a 96k \
   \
