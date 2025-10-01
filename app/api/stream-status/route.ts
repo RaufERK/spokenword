@@ -7,8 +7,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const streamKey = searchParams.get('key') || 'main'
 
-    // Проверяем существование мастер-плейлиста adaptive HLS
-    const hlsPath = path.join('/srv/streaming/hls', streamKey, 'master.m3u8')
+    // Проверяем существование HLS плейлиста (360p single profile)
+    const hlsPath = path.join('/srv/streaming/hls', streamKey, 'index.m3u8')
 
     try {
       await fs.access(hlsPath)
