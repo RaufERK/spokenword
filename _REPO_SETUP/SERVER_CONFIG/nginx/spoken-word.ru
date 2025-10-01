@@ -35,6 +35,30 @@ server {
     add_header Access-Control-Allow-Origin "*" always;
 
     # ─ HLS/видео ─
+    # Adaptive HLS (multiple quality profiles)
+    location /hls/ {
+        alias /srv/streaming/hls/;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        add_header Access-Control-Allow-Origin "*";
+        add_header Access-Control-Allow-Methods "GET, OPTIONS";
+        add_header Access-Control-Allow-Headers "Range, Content-Type";
+        add_header Access-Control-Expose-Headers "Content-Length, Content-Range";
+        
+        types {
+            application/vnd.apple.mpegurl m3u8;
+            video/mp2t ts;
+        }
+        
+        if ($request_method = OPTIONS) {
+            add_header Access-Control-Allow-Origin "*";
+            add_header Access-Control-Allow-Methods "GET, OPTIONS";
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
     location /live/ {
         alias /srv/streaming/live/;
         add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0" always;
