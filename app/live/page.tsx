@@ -13,7 +13,9 @@ export default function LivePage() {
         const res = await fetch(`/api/stream-status?key=main`)
         const data = await res.json()
         setIsLive(Boolean(data.isLive))
-        setStreamUrl(data.isLive ? `https://spoken-word.ru/live/main/index.m3u8` : '')
+        setStreamUrl(
+          data.isLive ? `https://spoken-word.ru/live/main/index.m3u8` : ''
+        )
       } catch {
         setIsLive(false)
         setStreamUrl('')
