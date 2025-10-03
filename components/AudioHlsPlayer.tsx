@@ -82,7 +82,7 @@ export default function AudioHlsPlayer({
             ;(async () => {
               try {
                 await audio.play()
-              } catch (err) {
+              } catch {
                 console.log('Auto-play prevented, user interaction needed')
               }
             })()
