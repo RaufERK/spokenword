@@ -14,7 +14,7 @@ export default function LivePage() {
         const data = await res.json()
         setIsLive(Boolean(data.isLive))
         setStreamUrl(
-          data.isLive ? `https://spoken-word.ru/hls/main/index.m3u8` : ''
+          data.isLive ? `https://spoken-word.ru/hls/live/main.m3u8` : ''
         )
       } catch {
         setIsLive(false)

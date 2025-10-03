@@ -12,7 +12,7 @@ export default function AudioPage() {
         const res = await fetch(`/api/stream-status?key=main`)
         const data = await res.json()
         setStreamUrl(
-          data.isLive ? `https://spoken-word.ru/hls/main/index.m3u8` : ''
+          data.isLive ? `https://spoken-word.ru/hls/live/main.m3u8` : ''
         )
       } catch {
         setStreamUrl('')
