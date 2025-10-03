@@ -15,80 +15,155 @@ export default function AudioHlsPlayer({
   const audioRef = useRef<HTMLAudioElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const retryCountRef = useRef(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const retryCountRef = useRef<number>(0)
+
+  const withCacheBuster = (url: string) => {
+    const ts = Date.now()
+    const random = Math.random()
+      .toString(36)
+      .substring(7)
+    return url
+      ? `${url}${url.includes('?') ? '&' : '?'}cb=${ts}-${random}`
+      : url
+  }
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio || !streamUrl) return
+    if (!audio || !streamUrl) {
+      setIsLoading(false)
+      return
+    }
 
     let hls: Hls | null = null
 
-    const withCb = (url: string) =>
-      `${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`
-
-    const load = async () => {
+    const loadStream = async () => {
       try {
         setIsLoading(true)
         setError(null)
 
-        if (
-          typeof audio.canPlayType === 'function' &&
-          audio.canPlayType('application/vnd.apple.mpegurl')
-        ) {
-          audio.src = withCb(streamUrl)
+        if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+          audio.src = withCacheBuster(streamUrl)
           audio.load()
+          ;(async () => {
+            try {
+              await audio.play()
+            } catch {}
+          })()
         } else if (Hls.isSupported()) {
           hls = new Hls({
+            debug: false,
             enableWorker: true,
             lowLatencyMode: false,
             maxBufferLength: 15,
             maxMaxBufferLength: 30,
-            backBufferLength: 60,
-            liveSyncDurationCount: 3,
-            liveMaxLatencyDurationCount: 5,
+            backBufferLength: 5,
+            liveSyncDuration: 2,
+            liveMaxLatencyDuration: 8,
             startPosition: -1,
+            manifestLoadingTimeOut: 15000,
+            manifestLoadingMaxRetry: 10,
+            manifestLoadingRetryDelay: 500,
+            levelLoadingTimeOut: 10000,
+            levelLoadingMaxRetry: 10,
+            levelLoadingRetryDelay: 500,
+            fragLoadingTimeOut: 20000,
+            fragLoadingMaxRetry: 8,
+            fragLoadingRetryDelay: 500,
           })
-          hls.loadSource(withCb(streamUrl))
+
+          hls.loadSource(withCacheBuster(streamUrl))
           hls.attachMedia(audio)
+
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log('HLS audio manifest parsed')
             setIsLoading(false)
             retryCountRef.current = 0
-          })
-          hls.on(Hls.Events.ERROR, (_e, data) => {
-            if (data.fatal) {
-              // Не показываем ошибку пользователю, пробуем мягкий ретрай
-              setIsLoading(true)
-              if (retryCountRef.current < 5) {
-                retryCountRef.current += 1
-                setTimeout(() => {
-                  try {
-                    hls?.destroy()
-                  } catch {}
-                  load()
-                }, 800 * retryCountRef.current)
-              } else {
-                setError('Ошибка загрузки аудио')
-                setIsLoading(false)
+            ;(async () => {
+              try {
+                await audio.play()
+              } catch (err) {
+                console.log('Auto-play prevented, user interaction needed')
               }
+            })()
+          })
+
+          hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error('HLS audio error:', data)
+            if (data.fatal) {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  setError('Ошибка сети при загрузке аудио')
+                  if (retryCountRef.current < 5) {
+                    retryCountRef.current += 1
+                    setTimeout(() => {
+                      try {
+                        hls?.destroy()
+                      } catch {}
+                      loadStream()
+                    }, 1000 * retryCountRef.current)
+                  }
+                  break
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  setError('Ошибка воспроизведения аудио')
+                  if (retryCountRef.current < 3) {
+                    retryCountRef.current += 1
+                    setTimeout(() => {
+                      try {
+                        hls?.recoverMediaError()
+                      } catch {
+                        loadStream()
+                      }
+                    }, 500)
+                  }
+                  break
+                default:
+                  setError('Ошибка воспроизведения потока')
+                  break
+              }
+              setIsLoading(false)
             }
           })
         } else {
-          setError('Ваш браузер не поддерживает HLS')
+          setError('HLS не поддерживается в вашем браузере')
           setIsLoading(false)
+          return
         }
 
-        audio.addEventListener('loadeddata', () => setIsLoading(false))
-        audio.addEventListener('error', () => {
-          setError('Ошибка аудио')
+        audio.addEventListener('loadeddata', () => {
           setIsLoading(false)
         })
-      } catch {
-        setError('Ошибка аудио')
+
+        audio.addEventListener('play', () => {
+          setIsPlaying(true)
+          setError(null)
+        })
+
+        audio.addEventListener('pause', () => {
+          setIsPlaying(false)
+        })
+
+        audio.addEventListener('waiting', () => {
+          setIsLoading(true)
+        })
+
+        audio.addEventListener('playing', () => {
+          setIsLoading(false)
+          setIsPlaying(true)
+        })
+
+        audio.addEventListener('error', () => {
+          setError('Ошибка загрузки аудио')
+          setIsLoading(false)
+        })
+      } catch (err) {
+        console.error('Audio stream loading error:', err)
+        setError('Ошибка загрузки потока')
         setIsLoading(false)
       }
     }
 
-    load()
+    loadStream()
 
     return () => {
       retryCountRef.current = 0
@@ -97,26 +172,130 @@ export default function AudioHlsPlayer({
           hls.destroy()
         } catch {}
       }
-      if (audio) audio.src = ''
+      if (audio) {
+        audio.pause()
+        audio.src = ''
+      }
     }
   }, [streamUrl])
 
+  if (error) {
+    return (
+      <div className={`bg-gray-900 rounded-lg p-6 ${className}`}>
+        <div className='text-center'>
+          <div className='text-red-400 mb-3'>
+            <svg
+              className='w-12 h-12 mx-auto mb-3'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z'
+              />
+            </svg>
+            <p className='text-base font-semibold'>{error}</p>
+          </div>
+          <p className='text-gray-400 text-sm'>Попробуйте обновить страницу</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`relative ${className}`}>
-      {isLoading && (
-        <div className='absolute inset-0 flex items-center justify-center bg-gray-900'>
-          <div className='text-center text-gray-300'>Загрузка аудио…</div>
+      <div className='bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-6 shadow-xl border border-gray-700'>
+        <div className='flex items-center justify-between mb-4'>
+          <div className='flex items-center space-x-3'>
+            {isPlaying ? (
+              <div className='relative'>
+                <div className='w-12 h-12 bg-green-500 rounded-full flex items-center justify-center animate-pulse'>
+                  <svg
+                    className='w-6 h-6 text-white'
+                    fill='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path d='M8 5v14l11-7z' />
+                  </svg>
+                </div>
+                <div className='absolute inset-0 w-12 h-12 bg-green-500 rounded-full animate-ping opacity-20'></div>
+              </div>
+            ) : (
+              <div className='w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center'>
+                <svg
+                  className='w-6 h-6 text-gray-400'
+                  fill='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path d='M8 5v14l11-7z' />
+                </svg>
+              </div>
+            )}
+            <div>
+              <h3 className='text-lg font-semibold text-white'>
+                Аудио трансляция
+              </h3>
+              <p className='text-sm text-gray-400'>
+                {isPlaying
+                  ? '🎙️ В эфире'
+                  : isLoading
+                  ? 'Загрузка...'
+                  : 'Остановлено'}
+              </p>
+            </div>
+          </div>
+          {isPlaying && (
+            <div className='flex space-x-1'>
+              <div
+                className='w-1 h-8 bg-green-400 rounded-full animate-pulse'
+                style={{ animationDelay: '0ms' }}
+              ></div>
+              <div
+                className='w-1 h-6 bg-green-400 rounded-full animate-pulse'
+                style={{ animationDelay: '150ms' }}
+              ></div>
+              <div
+                className='w-1 h-10 bg-green-400 rounded-full animate-pulse'
+                style={{ animationDelay: '300ms' }}
+              ></div>
+              <div
+                className='w-1 h-7 bg-green-400 rounded-full animate-pulse'
+                style={{ animationDelay: '450ms' }}
+              ></div>
+            </div>
+          )}
         </div>
-      )}
-      {error ? (
-        <div className='bg-gray-900 text-red-400 p-6 rounded-lg text-center'>
-          {error}
-        </div>
-      ) : (
-        <audio ref={audioRef} controls playsInline className='w-full'>
+
+        <audio
+          ref={audioRef}
+          controls
+          playsInline
+          preload='none'
+          className='w-full'
+        >
           Ваш браузер не поддерживает аудио.
         </audio>
-      )}
+
+        {isPlaying && (
+          <div className='mt-3 text-center'>
+            <p className='text-xs text-green-400'>
+              ✅ Прямой эфир • Задержка ~3-5 секунд
+            </p>
+          </div>
+        )}
+
+        {isLoading && !error && (
+          <div className='mt-3 text-center'>
+            <div className='inline-flex items-center space-x-2'>
+              <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400'></div>
+              <p className='text-sm text-blue-400'>Буферизация потока...</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
