@@ -13,16 +13,19 @@ declare global {
 interface HlsPlayerProps {
   streamUrl: string
   className?: string
+  streamInfo?: any
 }
 
 export default function HlsPlayer({
   streamUrl,
   className = '',
+  streamInfo,
 }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const retryCountRef = useRef<number>(0)
+  const isYoungStreamRef = useRef<boolean>(false)
 
   const withCacheBuster = (url: string) => {
     const ts = Date.now()
@@ -35,10 +38,21 @@ export default function HlsPlayer({
 
     let hls: Hls | null = null
 
+    // Определяем является ли стрим "молодым" (первые 30 секунд)
+    isYoungStreamRef.current =
+      streamInfo?.isWarmingUp || streamInfo?.streamAge < 30
+
     const loadStream = async () => {
       try {
         setIsLoading(true)
         setError(null)
+
+        console.log('🎬 Loading stream:', {
+          streamUrl,
+          isYoungStream: isYoungStreamRef.current,
+          streamAge: streamInfo?.streamAge,
+          segmentCount: streamInfo?.segmentCount,
+        })
 
         // Проверяем поддержку HLS в браузере
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -112,12 +126,34 @@ export default function HlsPlayer({
           hls.on(Hls.Events.ERROR, (event, data) => {
             console.error('HLS error:', data)
             if (data.fatal) {
+              const isYoungStream = isYoungStreamRef.current
+              const maxRetries = isYoungStream ? 8 : 3
+              const retryDelay = isYoungStream
+                ? 1500
+                : 1000 * retryCountRef.current
+
+              console.log('🔄 Error handling:', {
+                errorType: data.type,
+                isYoungStream,
+                retryCount: retryCountRef.current,
+                maxRetries,
+                retryDelay,
+              })
+
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  setError('Ошибка сети при загрузке потока')
+                  setError(
+                    isYoungStream
+                      ? 'Подключение к стриму...'
+                      : 'Ошибка сети при загрузке потока'
+                  )
                   break
                 case Hls.ErrorTypes.MEDIA_ERROR:
-                  setError('Ошибка воспроизведения медиа')
+                  setError(
+                    isYoungStream
+                      ? 'Буферизация...'
+                      : 'Ошибка воспроизведения медиа'
+                  )
                   break
                 default:
                   setError('Ошибка воспроизведения потока')
@@ -125,16 +161,22 @@ export default function HlsPlayer({
               }
               setIsLoading(false)
 
-              // Мягкий авто-ретрай с cache-busting
-              if (retryCountRef.current < 3) {
+              // Усиленный авто-ретрай для молодых стримов
+              if (retryCountRef.current < maxRetries) {
                 retryCountRef.current += 1
                 setTimeout(() => {
+                  console.log(
+                    `🔄 Retry attempt ${retryCountRef.current}/${maxRetries}`
+                  )
                   try {
                     hls?.destroy()
                   } catch {}
                   // Перезапуск загрузки с новым cb
+                  setError(null)
                   loadStream()
-                }, 1000 * retryCountRef.current)
+                }, retryDelay)
+              } else {
+                console.log('❌ Max retries reached')
               }
             }
           })
@@ -172,7 +214,7 @@ export default function HlsPlayer({
         video.src = ''
       }
     }
-  }, [streamUrl])
+  }, [streamUrl, streamInfo?.streamAge])
 
   if (error) {
     return (

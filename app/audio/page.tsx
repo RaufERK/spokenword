@@ -1,26 +1,65 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import AudioHlsPlayer from '@/components/AudioHlsPlayer'
 
 export default function AudioPage() {
   const [streamUrl, setStreamUrl] = useState('')
+  const [isWarmingUp, setIsWarmingUp] = useState(false)
+  const [streamInfo, setStreamInfo] = useState<any>(null)
+  const wasOfflineRef = useRef<boolean>(true)
+  const warmupTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const load = async () => {
       try {
         const res = await fetch(`/api/stream-status?key=main`)
         const data = await res.json()
-        setStreamUrl(
-          data.isLive ? `https://spoken-word.ru/hls/live/main.m3u8` : ''
-        )
+
+        console.log('Audio stream status:', data)
+        setStreamInfo(data)
+
+        const currentlyLive = Boolean(data.isLive)
+        const justStarted = wasOfflineRef.current && currentlyLive
+
+        if (justStarted) {
+          console.log(
+            '🎧 Audio stream just started! Entering warm-up period...'
+          )
+          setIsWarmingUp(true)
+          setStreamUrl('')
+
+          if (warmupTimerRef.current) {
+            clearTimeout(warmupTimerRef.current)
+          }
+
+          // Аудио стабилизируется быстрее - 5 секунд достаточно
+          warmupTimerRef.current = setTimeout(() => {
+            console.log('✅ Audio warm-up complete')
+            setIsWarmingUp(false)
+            setStreamUrl(`https://spoken-word.ru/hls/live/main.m3u8`)
+          }, 5000)
+        } else if (currentlyLive && !justStarted) {
+          setIsWarmingUp(false)
+          setStreamUrl(`https://spoken-word.ru/hls/live/main.m3u8`)
+        } else {
+          setIsWarmingUp(false)
+          setStreamUrl('')
+        }
+
+        wasOfflineRef.current = !currentlyLive
       } catch {
         setStreamUrl('')
       }
     }
     load()
     const id = setInterval(load, 10000)
-    return () => clearInterval(id)
+    return () => {
+      clearInterval(id)
+      if (warmupTimerRef.current) {
+        clearTimeout(warmupTimerRef.current)
+      }
+    }
   }, [])
 
   return (
@@ -36,7 +75,34 @@ export default function AudioPage() {
         </div>
 
         {streamUrl ? (
-          <AudioHlsPlayer streamUrl={streamUrl} />
+          <AudioHlsPlayer streamUrl={streamUrl} streamInfo={streamInfo} />
+        ) : isWarmingUp ? (
+          <div className='bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-8 text-center border border-blue-800'>
+            <div className='mb-6'>
+              <div className='w-16 h-16 mx-auto relative'>
+                <div className='absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin'></div>
+                <div
+                  className='absolute inset-2 rounded-full border-4 border-green-500 border-t-transparent animate-spin'
+                  style={{
+                    animationDirection: 'reverse',
+                    animationDuration: '1s',
+                  }}
+                ></div>
+              </div>
+            </div>
+            <h3 className='text-xl font-bold text-blue-400 mb-2 animate-pulse'>
+              🎧 Аудио запускается...
+            </h3>
+            <p className='text-gray-300 mb-2'>Подготовка аудио потока</p>
+            <p className='text-sm text-gray-500'>
+              Ожидание стабилизации (~5 секунд)
+            </p>
+            {streamInfo && (
+              <div className='mt-4 text-xs text-gray-600'>
+                Сегментов: {streamInfo.segmentCount || 0}
+              </div>
+            )}
+          </div>
         ) : (
           <div className='bg-gray-900 rounded-lg p-8 text-center border border-gray-800'>
             <div className='text-gray-400 mb-4'>

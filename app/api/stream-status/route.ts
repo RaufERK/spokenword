@@ -21,11 +21,34 @@ export async function GET(req: NextRequest) {
       // Считаем стрим активным, если файл обновлялся в последние 30 секунд
       const isLive = fileAge < 30000 && stats.size > 0
 
+      // Проверяем количество TS сегментов для определения стабильности
+      const hlsDir = path.dirname(hlsPath)
+      const files = await fs.readdir(hlsDir)
+      const tsFiles = files.filter(
+        (f) => f.startsWith(streamKey) && f.endsWith('.ts')
+      )
+
+      // Читаем плейлист для проверки количества сегментов
+      const playlistContent = await fs.readFile(hlsPath, 'utf-8')
+      const segmentLines = playlistContent
+        .split('\n')
+        .filter((line) => line.endsWith('.ts'))
+      const segmentCount = segmentLines.length
+
+      // Стрим считается "молодым" если сегментов меньше 4 (менее 8 секунд)
+      // или если файлов на диске меньше ожидаемого
+      const isWarmingUp = segmentCount < 4 || tsFiles.length < 3
+      const streamAge = Math.min(segmentCount * 2, fileAge / 1000)
+
       return NextResponse.json({
         isLive,
         streamKey,
         lastModified: stats.mtime.toISOString(),
         fileAge: Math.round(fileAge / 1000),
+        isWarmingUp,
+        segmentCount,
+        streamAge: Math.round(streamAge),
+        tsFilesOnDisk: tsFiles.length,
       })
     } catch {
       // Файл не существует
