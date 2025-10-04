@@ -10,10 +10,18 @@ declare global {
   }
 }
 
+interface StreamInfo {
+  isLive?: boolean
+  isWarmingUp?: boolean
+  streamAge?: number
+  segmentCount?: number
+  tsFilesOnDisk?: number
+}
+
 interface HlsPlayerProps {
   streamUrl: string
   className?: string
-  streamInfo?: any
+  streamInfo?: StreamInfo
 }
 
 export default function HlsPlayer({
@@ -40,7 +48,8 @@ export default function HlsPlayer({
 
     // Определяем является ли стрим "молодым" (первые 30 секунд)
     isYoungStreamRef.current =
-      streamInfo?.isWarmingUp || streamInfo?.streamAge < 30
+      streamInfo?.isWarmingUp ||
+      (streamInfo?.streamAge !== undefined && streamInfo.streamAge < 30)
 
     const loadStream = async () => {
       try {
@@ -214,7 +223,7 @@ export default function HlsPlayer({
         video.src = ''
       }
     }
-  }, [streamUrl, streamInfo?.streamAge])
+  }, [streamUrl, streamInfo])
 
   if (error) {
     return (

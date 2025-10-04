@@ -3,11 +3,21 @@
 import { useEffect, useState, useRef } from 'react'
 import HlsPlayer from '@/components/HlsPlayer'
 
+interface StreamInfo {
+  isLive?: boolean
+  isWarmingUp?: boolean
+  streamAge?: number
+  segmentCount?: number
+  tsFilesOnDisk?: number
+}
+
 export default function LivePage() {
   const [streamUrl, setStreamUrl] = useState<string>('')
   const [isLive, setIsLive] = useState<boolean>(false)
   const [isWarmingUp, setIsWarmingUp] = useState<boolean>(false)
-  const [streamInfo, setStreamInfo] = useState<any>(null)
+  const [streamInfo, setStreamInfo] = useState<StreamInfo | undefined>(
+    undefined
+  )
   const wasOfflineRef = useRef<boolean>(true)
   const warmupTimerRef = useRef<NodeJS.Timeout | null>(null)
 

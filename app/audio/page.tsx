@@ -3,10 +3,20 @@
 import { useEffect, useState, useRef } from 'react'
 import AudioHlsPlayer from '@/components/AudioHlsPlayer'
 
+interface StreamInfo {
+  isLive?: boolean
+  isWarmingUp?: boolean
+  streamAge?: number
+  segmentCount?: number
+  tsFilesOnDisk?: number
+}
+
 export default function AudioPage() {
   const [streamUrl, setStreamUrl] = useState('')
   const [isWarmingUp, setIsWarmingUp] = useState(false)
-  const [streamInfo, setStreamInfo] = useState<any>(null)
+  const [streamInfo, setStreamInfo] = useState<StreamInfo | undefined>(
+    undefined
+  )
   const wasOfflineRef = useRef<boolean>(true)
   const warmupTimerRef = useRef<NodeJS.Timeout | null>(null)
 

@@ -3,10 +3,18 @@
 import { useEffect, useRef, useState } from 'react'
 import Hls from 'hls.js'
 
+interface StreamInfo {
+  isLive?: boolean
+  isWarmingUp?: boolean
+  streamAge?: number
+  segmentCount?: number
+  tsFilesOnDisk?: number
+}
+
 interface AudioHlsPlayerProps {
   streamUrl: string
   className?: string
-  streamInfo?: any
+  streamInfo?: StreamInfo
 }
 
 export default function AudioHlsPlayer({
@@ -42,7 +50,8 @@ export default function AudioHlsPlayer({
 
     // Определяем является ли стрим "молодым"
     isYoungStreamRef.current =
-      streamInfo?.isWarmingUp || streamInfo?.streamAge < 30
+      streamInfo?.isWarmingUp ||
+      (streamInfo?.streamAge !== undefined && streamInfo.streamAge < 30)
 
     const loadStream = async () => {
       try {
@@ -220,7 +229,7 @@ export default function AudioHlsPlayer({
         audio.src = ''
       }
     }
-  }, [streamUrl, streamInfo?.streamAge])
+  }, [streamUrl, streamInfo])
 
   if (error) {
     return (
