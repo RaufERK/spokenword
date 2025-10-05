@@ -224,7 +224,7 @@ export default function AudioHlsPlayer({
                 <div className='absolute inset-0 w-12 h-12 bg-green-500 rounded-full animate-ping opacity-20'></div>
               </div>
             ) : (
-              <div className='w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center'>
+              <div className='w-12 h-12 bg-blue-900 rounded-full flex items-center justify-center'>
                 <svg
                   className='w-6 h-6 text-gray-400'
                   fill='currentColor'
