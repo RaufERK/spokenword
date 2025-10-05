@@ -235,7 +235,7 @@ export default function AudioHlsPlayer({
               </div>
             )}
             <div>
-              <h3 className='text-lg font-semibold text-white bg-blue-900'>
+              <h3 className='text-lg font-semibold text-white'>
                 Аудио трансляция
               </h3>
               <p className='text-sm text-gray-400'>
