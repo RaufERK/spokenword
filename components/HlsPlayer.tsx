@@ -48,8 +48,10 @@ export default function HlsPlayer({
             } catch {}
           })()
         } else if (Hls.isSupported()) {
+          console.log('🔧 [DEBUG] Initializing HLS.js player')
+
           hls = new Hls({
-            debug: false,
+            debug: true,
             enableWorker: true,
             lowLatencyMode: false,
             maxBufferLength: 30,
@@ -70,22 +72,39 @@ export default function HlsPlayer({
             fragLoadingRetryDelay: 1000,
           })
 
+          console.log('🔧 [DEBUG] Loading stream:', streamUrl)
           hls.loadSource(withCacheBuster(streamUrl))
           hls.attachMedia(video)
 
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            console.log('HLS manifest parsed, starting playback')
+          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            console.log('✅ [DEBUG] HLS manifest parsed:', data)
+            console.log('✅ [DEBUG] Levels available:', data.levels)
             setIsLoading(false)
             retryCountRef.current = 0
             ;(async () => {
               try {
+                console.log('▶️ [DEBUG] Attempting to play video...')
                 await video.play()
-              } catch {}
+                console.log('▶️ [DEBUG] Video playback started')
+              } catch (err) {
+                console.error('❌ [DEBUG] Video play failed:', err)
+              }
             })()
           })
 
+          hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+            console.log(
+              '📦 [DEBUG] Fragment loaded:',
+              data.frag.sn,
+              data.frag.duration
+            )
+          })
+
           hls.on(Hls.Events.ERROR, (event, data) => {
-            console.error('HLS error:', data)
+            console.error('❌ [DEBUG] HLS error:', data)
+            console.error('❌ [DEBUG] Error type:', data.type)
+            console.error('❌ [DEBUG] Error details:', data.details)
+            console.error('❌ [DEBUG] Error fatal:', data.fatal)
             if (data.fatal) {
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
@@ -118,10 +137,26 @@ export default function HlsPlayer({
         }
 
         video.addEventListener('loadeddata', () => {
+          console.log('📺 [DEBUG] Video loadeddata event')
           setIsLoading(false)
         })
 
-        video.addEventListener('error', () => {
+        video.addEventListener('canplay', () => {
+          console.log('📺 [DEBUG] Video canplay event')
+        })
+
+        video.addEventListener('playing', () => {
+          console.log('📺 [DEBUG] Video playing event')
+        })
+
+        video.addEventListener('waiting', () => {
+          console.log('⏳ [DEBUG] Video waiting event (buffering)')
+        })
+
+        video.addEventListener('error', (e) => {
+          console.error('❌ [DEBUG] Video error event:', e)
+          console.error('❌ [DEBUG] Video error code:', video.error?.code)
+          console.error('❌ [DEBUG] Video error message:', video.error?.message)
           setError('Ошибка загрузки видео')
           setIsLoading(false)
         })
