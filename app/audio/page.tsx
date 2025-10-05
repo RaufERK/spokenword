@@ -24,7 +24,7 @@ export default function AudioPage() {
   }, [])
 
   return (
-    <div className='min-h-screen bg-gradient-to-b from-gray-950 to-gray-900'>
+    <div className='min-h-scree'>
       <div className='container mx-auto px-4 py-10 max-w-3xl'>
         <div className='mb-8 text-center'>
           <h1 className='text-3xl font-bold text-white mb-2'>
@@ -38,7 +38,7 @@ export default function AudioPage() {
         {streamUrl ? (
           <AudioHlsPlayer streamUrl={streamUrl} />
         ) : (
-          <div className='bg-gray-900 rounded-lg p-8 text-center border border-gray-800'>
+          <div className='bg-violet-900 rounded-lg p-8 text-center border border-gray-800'>
             <div className='text-gray-400 mb-4'>
               <svg
                 className='w-16 h-16 mx-auto mb-4 opacity-50'
