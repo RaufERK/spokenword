@@ -3,31 +3,20 @@
 import { useEffect, useRef, useState } from 'react'
 import Hls from 'hls.js'
 
-interface StreamInfo {
-  isLive?: boolean
-  isWarmingUp?: boolean
-  streamAge?: number
-  segmentCount?: number
-  tsFilesOnDisk?: number
-}
-
 interface AudioHlsPlayerProps {
   streamUrl: string
   className?: string
-  streamInfo?: StreamInfo
 }
 
 export default function AudioHlsPlayer({
   streamUrl,
   className = '',
-  streamInfo,
 }: AudioHlsPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const retryCountRef = useRef<number>(0)
-  const isYoungStreamRef = useRef<boolean>(false)
 
   const withCacheBuster = (url: string) => {
     const ts = Date.now()
@@ -48,22 +37,10 @@ export default function AudioHlsPlayer({
 
     let hls: Hls | null = null
 
-    // Определяем является ли стрим "молодым"
-    isYoungStreamRef.current =
-      streamInfo?.isWarmingUp ||
-      (streamInfo?.streamAge !== undefined && streamInfo.streamAge < 30)
-
     const loadStream = async () => {
       try {
         setIsLoading(true)
         setError(null)
-
-        console.log('🎧 Loading audio stream:', {
-          streamUrl,
-          isYoungStream: isYoungStreamRef.current,
-          streamAge: streamInfo?.streamAge,
-          segmentCount: streamInfo?.segmentCount,
-        })
 
         if (audio.canPlayType('application/vnd.apple.mpegurl')) {
           audio.src = withCacheBuster(streamUrl)
@@ -114,56 +91,27 @@ export default function AudioHlsPlayer({
           hls.on(Hls.Events.ERROR, (event, data) => {
             console.error('HLS audio error:', data)
             if (data.fatal) {
-              const isYoungStream = isYoungStreamRef.current
-              const maxRetries = isYoungStream ? 10 : 5
-              const retryDelay = isYoungStream
-                ? 1200
-                : 1000 * retryCountRef.current
-
-              console.log('🔄 Audio error handling:', {
-                errorType: data.type,
-                isYoungStream,
-                retryCount: retryCountRef.current,
-                maxRetries,
-                retryDelay,
-              })
-
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  setError(
-                    isYoungStream
-                      ? 'Подключение к аудио стриму...'
-                      : 'Ошибка сети при загрузке аудио'
-                  )
-                  if (retryCountRef.current < maxRetries) {
+                  setError('Ошибка сети при загрузке аудио')
+                  if (retryCountRef.current < 5) {
                     retryCountRef.current += 1
                     setTimeout(() => {
-                      console.log(
-                        `🔄 Audio retry ${retryCountRef.current}/${maxRetries}`
-                      )
                       try {
                         hls?.destroy()
                       } catch {}
-                      setError(null)
                       loadStream()
-                    }, retryDelay)
-                  } else {
-                    console.log('❌ Audio max retries reached')
+                    }, 1000 * retryCountRef.current)
                   }
                   break
                 case Hls.ErrorTypes.MEDIA_ERROR:
-                  setError(
-                    isYoungStream
-                      ? 'Буферизация аудио...'
-                      : 'Ошибка воспроизведения аудио'
-                  )
-                  if (retryCountRef.current < maxRetries) {
+                  setError('Ошибка воспроизведения аудио')
+                  if (retryCountRef.current < 3) {
                     retryCountRef.current += 1
                     setTimeout(() => {
                       try {
                         hls?.recoverMediaError()
                       } catch {
-                        setError(null)
                         loadStream()
                       }
                     }, 500)
@@ -229,7 +177,7 @@ export default function AudioHlsPlayer({
         audio.src = ''
       }
     }
-  }, [streamUrl, streamInfo])
+  }, [streamUrl])
 
   if (error) {
     return (

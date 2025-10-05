@@ -3,37 +3,25 @@
 import { useEffect, useRef, useState } from 'react'
 import Hls from 'hls.js'
 
-// Declare HLS.js types for window object
 declare global {
   interface Window {
     Hls?: typeof Hls
   }
 }
 
-interface StreamInfo {
-  isLive?: boolean
-  isWarmingUp?: boolean
-  streamAge?: number
-  segmentCount?: number
-  tsFilesOnDisk?: number
-}
-
 interface HlsPlayerProps {
   streamUrl: string
   className?: string
-  streamInfo?: StreamInfo
 }
 
 export default function HlsPlayer({
   streamUrl,
   className = '',
-  streamInfo,
 }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const retryCountRef = useRef<number>(0)
-  const isYoungStreamRef = useRef<boolean>(false)
 
   const withCacheBuster = (url: string) => {
     const ts = Date.now()
@@ -46,26 +34,12 @@ export default function HlsPlayer({
 
     let hls: Hls | null = null
 
-    // Определяем является ли стрим "молодым" (первые 30 секунд)
-    isYoungStreamRef.current =
-      streamInfo?.isWarmingUp ||
-      (streamInfo?.streamAge !== undefined && streamInfo.streamAge < 30)
-
     const loadStream = async () => {
       try {
         setIsLoading(true)
         setError(null)
 
-        console.log('🎬 Loading stream:', {
-          streamUrl,
-          isYoungStream: isYoungStreamRef.current,
-          streamAge: streamInfo?.streamAge,
-          segmentCount: streamInfo?.segmentCount,
-        })
-
-        // Проверяем поддержку HLS в браузере
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          // Нативный HLS (Safari, Safari на iOS)
           video.src = withCacheBuster(streamUrl)
           video.load()
           ;(async () => {
@@ -74,28 +48,17 @@ export default function HlsPlayer({
             } catch {}
           })()
         } else if (Hls.isSupported()) {
-          // HLS.js для других браузеров (включая мобильные)
           hls = new Hls({
             debug: false,
             enableWorker: true,
             lowLatencyMode: false,
-            // Adaptive bitrate - начинаем с низкого качества для быстрого старта
-            startLevel: 0, // Начинаем с 240p для быстрого старта
-            capLevelToPlayerSize: false, // Разрешаем адаптивный выбор
-            // Буфер для стабильности на мобильных
             maxBufferLength: 20,
             maxMaxBufferLength: 40,
             backBufferLength: 10,
-            // Настройки Live-режима
             liveSyncDuration: 3,
             liveMaxLatencyDuration: 10,
             maxLiveSyncPlaybackRate: 1.5,
             startPosition: -1,
-            // Агрессивное переключение качества для мобильных
-            abrEwmaDefaultEstimate: 500000, // Начинаем с консервативной оценки
-            abrBandWidthFactor: 0.95, // Запас 5% для стабильности
-            abrBandWidthUpFactor: 0.7, // Медленно повышаем качество
-            // Таймауты для надежности
             manifestLoadingTimeOut: 15000,
             manifestLoadingMaxRetry: 5,
             manifestLoadingRetryDelay: 1000,
@@ -121,48 +84,15 @@ export default function HlsPlayer({
             })()
           })
 
-          hls.on(Hls.Events.LEVEL_LOADED, (_e, data) => {
-            if (data.details?.live) {
-              // При необходимости дополнительно поджимаем к краю онлайн
-              const liveEdgeSec =
-                (data.details.edge ?? 0) - (data.details.totalduration ?? 0) + 3
-              if (!Number.isNaN(liveEdgeSec) && video.readyState >= 1) {
-                // Без агрессивных seek'ов: hls уже использует startPosition=-3
-              }
-            }
-          })
-
           hls.on(Hls.Events.ERROR, (event, data) => {
             console.error('HLS error:', data)
             if (data.fatal) {
-              const isYoungStream = isYoungStreamRef.current
-              const maxRetries = isYoungStream ? 8 : 3
-              const retryDelay = isYoungStream
-                ? 1500
-                : 1000 * retryCountRef.current
-
-              console.log('🔄 Error handling:', {
-                errorType: data.type,
-                isYoungStream,
-                retryCount: retryCountRef.current,
-                maxRetries,
-                retryDelay,
-              })
-
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  setError(
-                    isYoungStream
-                      ? 'Подключение к стриму...'
-                      : 'Ошибка сети при загрузке потока'
-                  )
+                  setError('Ошибка сети при загрузке потока')
                   break
                 case Hls.ErrorTypes.MEDIA_ERROR:
-                  setError(
-                    isYoungStream
-                      ? 'Буферизация...'
-                      : 'Ошибка воспроизведения медиа'
-                  )
+                  setError('Ошибка воспроизведения медиа')
                   break
                 default:
                   setError('Ошибка воспроизведения потока')
@@ -170,22 +100,14 @@ export default function HlsPlayer({
               }
               setIsLoading(false)
 
-              // Усиленный авто-ретрай для молодых стримов
-              if (retryCountRef.current < maxRetries) {
+              if (retryCountRef.current < 3) {
                 retryCountRef.current += 1
                 setTimeout(() => {
-                  console.log(
-                    `🔄 Retry attempt ${retryCountRef.current}/${maxRetries}`
-                  )
                   try {
                     hls?.destroy()
                   } catch {}
-                  // Перезапуск загрузки с новым cb
-                  setError(null)
                   loadStream()
-                }, retryDelay)
-              } else {
-                console.log('❌ Max retries reached')
+                }, 1000 * retryCountRef.current)
               }
             }
           })
@@ -223,7 +145,7 @@ export default function HlsPlayer({
         video.src = ''
       }
     }
-  }, [streamUrl, streamInfo])
+  }, [streamUrl])
 
   if (error) {
     return (
