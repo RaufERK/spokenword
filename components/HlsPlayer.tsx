@@ -29,11 +29,8 @@ export default function HlsPlayer({
   }
 
   useEffect(() => {
-    console.log('🔄 HlsPlayer effect, streamUrl:', streamUrl ? 'есть' : 'НЕТ')
-
     const video = videoRef.current
     if (!video || !streamUrl) {
-      console.log('⏸️ HlsPlayer: нет streamUrl, выход')
       setIsLoading(false)
       return
     }
@@ -55,7 +52,7 @@ export default function HlsPlayer({
           })()
         } else if (Hls.isSupported()) {
           hls = new Hls({
-            debug: true,
+            debug: false,
             enableWorker: true,
             lowLatencyMode: false,
             maxBufferLength: 30,
@@ -79,26 +76,20 @@ export default function HlsPlayer({
           hls.loadSource(withCacheBuster(streamUrl))
           hls.attachMedia(video)
 
-          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            console.log('✅ VIDEO: готов, levels:', data.levels.length)
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
             setIsLoading(false)
             retryCountRef.current = 0
             ;(async () => {
               try {
                 await video.play()
-              } catch {
-                console.error('❌ VIDEO: autoplay blocked')
-              }
+                console.log('▶️ VIDEO')
+              } catch {}
             })()
           })
 
           hls.on(Hls.Events.ERROR, (event, data) => {
-            console.error(
-              `⚠️ VIDEO ERROR: ${data.type} - ${data.details} (fatal: ${data.fatal})`,
-              data
-            )
             if (data.fatal) {
-              console.error(`❌ VIDEO FATAL: ${data.type} - ${data.details}`)
+              console.error(`❌ VIDEO: ${data.details}`)
             }
             if (data.fatal) {
               switch (data.type) {
@@ -160,7 +151,6 @@ export default function HlsPlayer({
     loadStream()
 
     return () => {
-      console.log('🧹 HlsPlayer cleanup вызван!')
       retryCountRef.current = 0
       if (hls) {
         try {

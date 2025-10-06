@@ -75,8 +75,7 @@ export default function AudioHlsPlayer({
           hls.loadSource(withCacheBuster(streamUrl))
           hls.attachMedia(audio)
 
-          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            console.log('✅ AUDIO: готов, levels:', data.levels.length)
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
             setIsLoading(false)
             retryCountRef.current = 0
 
@@ -90,15 +89,14 @@ export default function AudioHlsPlayer({
             ;(async () => {
               try {
                 await audio.play()
-              } catch {
-                console.error('❌ AUDIO: autoplay blocked')
-              }
+                console.log('▶️ AUDIO')
+              } catch {}
             })()
           })
 
           hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
-              console.error(`❌ AUDIO FATAL: ${data.type} - ${data.details}`)
+              console.error(`❌ AUDIO FATAL: ${data.details}`)
             }
             if (data.fatal) {
               switch (data.type) {
