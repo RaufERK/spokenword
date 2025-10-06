@@ -45,9 +45,9 @@ export async function GET(req: NextRequest) {
       const streamStartTime = streamStartCache[streamKey]
       const streamRealAge = Math.floor((now - streamStartTime) / 1000)
 
-      // Стрим прогревается ТОЛЬКО если:
-      // - Меньше 8 сегментов И живёт меньше 30 секунд с момента первого обнаружения
-      const isWarmingUp = segmentCount < 8 && streamRealAge < 30
+      // Стрим прогревается если меньше 5 сегментов И живёт меньше 20 секунд
+      // Низкий порог чтобы показать плеер раньше, HLS.js сам доберёт буфер
+      const isWarmingUp = segmentCount < 5 && streamRealAge < 20
 
       return NextResponse.json({
         isLive,
