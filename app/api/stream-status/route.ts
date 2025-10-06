@@ -35,10 +35,13 @@ export async function GET(req: NextRequest) {
         .filter((line) => line.endsWith('.ts'))
       const segmentCount = segmentLines.length
 
-      // Стрим считается "молодым" если сегментов меньше 7 (менее 14 секунд)
-      // Ждём пока накопится достаточный буфер и все сегменты будут с видео
-      const isWarmingUp = segmentCount < 7 || tsFiles.length < 6
+      // Возраст стрима (сколько секунд с последнего обновления)
       const streamAge = Math.min(segmentCount * 2, fileAge / 1000)
+      
+      // Стрим считается прогретым если:
+      // - Живёт больше 15 секунд (точно накопился буфер)
+      // - ИЛИ есть 8+ стабильных сегментов
+      const isWarmingUp = streamAge < 15 && segmentCount < 8
 
       return NextResponse.json({
         isLive,
