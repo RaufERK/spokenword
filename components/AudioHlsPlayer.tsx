@@ -51,10 +51,8 @@ export default function AudioHlsPlayer({
             } catch {}
           })()
         } else if (Hls.isSupported()) {
-          console.log('🎵 [AUDIO DEBUG] Initializing HLS.js audio player')
-
           hls = new Hls({
-            debug: true,
+            debug: false,
             enableWorker: true,
             lowLatencyMode: false,
             maxBufferLength: 20,
@@ -74,42 +72,26 @@ export default function AudioHlsPlayer({
             fragLoadingRetryDelay: 1000,
           })
 
-          console.log('🎵 [AUDIO DEBUG] Loading audio stream:', streamUrl)
           hls.loadSource(withCacheBuster(streamUrl))
           hls.attachMedia(audio)
 
           hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            console.log('✅ [AUDIO DEBUG] HLS audio manifest parsed:', data)
-            console.log('✅ [AUDIO DEBUG] Levels available:', data.levels)
+            console.log('✅ AUDIO: готов, levels:', data.levels.length)
             setIsLoading(false)
             retryCountRef.current = 0
             ;(async () => {
               try {
-                console.log('▶️ [AUDIO DEBUG] Attempting to play audio...')
                 await audio.play()
-                console.log('▶️ [AUDIO DEBUG] Audio playback started')
               } catch (err) {
-                console.error(
-                  '❌ [AUDIO DEBUG] Audio play failed (auto-play blocked):',
-                  err
-                )
+                console.error('❌ AUDIO: autoplay blocked')
               }
             })()
           })
 
-          hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
-            console.log(
-              '📦 [AUDIO DEBUG] Fragment loaded:',
-              data.frag.sn,
-              data.frag.duration
-            )
-          })
-
           hls.on(Hls.Events.ERROR, (event, data) => {
-            console.error('❌ [AUDIO DEBUG] HLS audio error:', data)
-            console.error('❌ [AUDIO DEBUG] Error type:', data.type)
-            console.error('❌ [AUDIO DEBUG] Error details:', data.details)
-            console.error('❌ [AUDIO DEBUG] Error fatal:', data.fatal)
+            if (data.fatal) {
+              console.error(`❌ AUDIO FATAL: ${data.type} - ${data.details}`)
+            }
             if (data.fatal) {
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
@@ -151,39 +133,30 @@ export default function AudioHlsPlayer({
         }
 
         audio.addEventListener('loadeddata', () => {
-          console.log('🔊 [AUDIO DEBUG] Audio loadeddata event')
           setIsLoading(false)
         })
 
         audio.addEventListener('play', () => {
-          console.log('🔊 [AUDIO DEBUG] Audio play event')
           setIsPlaying(true)
           setError(null)
         })
 
         audio.addEventListener('pause', () => {
-          console.log('🔊 [AUDIO DEBUG] Audio pause event')
           setIsPlaying(false)
         })
 
         audio.addEventListener('waiting', () => {
-          console.log('⏳ [AUDIO DEBUG] Audio waiting event (buffering)')
           setIsLoading(true)
         })
 
         audio.addEventListener('playing', () => {
-          console.log('🔊 [AUDIO DEBUG] Audio playing event')
+          console.log('▶️ AUDIO: playing')
           setIsLoading(false)
           setIsPlaying(true)
         })
 
         audio.addEventListener('error', (e) => {
-          console.error('❌ [AUDIO DEBUG] Audio error event:', e)
-          console.error('❌ [AUDIO DEBUG] Audio error code:', audio.error?.code)
-          console.error(
-            '❌ [AUDIO DEBUG] Audio error message:',
-            audio.error?.message
-          )
+          console.error(`❌ AUDIO: error code ${audio.error?.code}`)
           setError('Ошибка загрузки аудио')
           setIsLoading(false)
         })
