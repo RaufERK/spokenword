@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
 
+// Кеш для отслеживания первого обнаружения стрима
+const streamStartCache: Record<string, number> = {}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -35,23 +38,30 @@ export async function GET(req: NextRequest) {
         .filter((line) => line.endsWith('.ts'))
       const segmentCount = segmentLines.length
 
+      // Отслеживаем РЕАЛЬНЫЙ возраст стрима (от первого обнаружения)
+      if (!streamStartCache[streamKey]) {
+        streamStartCache[streamKey] = now
+      }
+      const streamStartTime = streamStartCache[streamKey]
+      const streamRealAge = Math.floor((now - streamStartTime) / 1000)
+
       // Стрим прогревается ТОЛЬКО если:
-      // - Накоплено меньше 8 сегментов И
-      // - Файл моложе 30 секунд (если старше - точно УЖЕ прогрет)
-      const fileAgeSeconds = fileAge / 1000
-      const isWarmingUp = segmentCount < 8 && fileAgeSeconds < 30
+      // - Меньше 8 сегментов И живёт меньше 30 секунд с момента первого обнаружения
+      const isWarmingUp = segmentCount < 8 && streamRealAge < 30
 
       return NextResponse.json({
         isLive,
         streamKey,
         lastModified: stats.mtime.toISOString(),
         fileAge: Math.round(fileAge / 1000),
+        streamRealAge,
         isWarmingUp,
         segmentCount,
         tsFilesOnDisk: tsFiles.length,
       })
     } catch {
-      // Файл не существует
+      // Файл не существует - очищаем кеш
+      delete streamStartCache[streamKey]
       return NextResponse.json({
         isLive: false,
         streamKey,
