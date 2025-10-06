@@ -82,7 +82,7 @@ export default function AudioHlsPlayer({
             ;(async () => {
               try {
                 await audio.play()
-              } catch (err) {
+              } catch {
                 console.error('❌ AUDIO: autoplay blocked')
               }
             })()
@@ -155,7 +155,7 @@ export default function AudioHlsPlayer({
           setIsPlaying(true)
         })
 
-        audio.addEventListener('error', (e) => {
+        audio.addEventListener('error', () => {
           console.error(`❌ AUDIO: error code ${audio.error?.code}`)
           setError('Ошибка загрузки аудио')
           setIsLoading(false)

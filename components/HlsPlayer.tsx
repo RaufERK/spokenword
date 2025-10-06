@@ -80,7 +80,7 @@ export default function HlsPlayer({
             ;(async () => {
               try {
                 await video.play()
-              } catch (err) {
+              } catch {
                 console.error('❌ VIDEO: autoplay blocked')
               }
             })()
@@ -129,7 +129,7 @@ export default function HlsPlayer({
           console.log('▶️ VIDEO: playing')
         })
 
-        video.addEventListener('error', (e) => {
+        video.addEventListener('error', () => {
           console.error(`❌ VIDEO: error code ${video.error?.code}`)
           setError('Ошибка загрузки видео')
           setIsLoading(false)
