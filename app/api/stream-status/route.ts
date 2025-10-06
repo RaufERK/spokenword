@@ -35,10 +35,9 @@ export async function GET(req: NextRequest) {
         .filter((line) => line.endsWith('.ts'))
       const segmentCount = segmentLines.length
 
-      // Стрим считается "молодым" если сегментов меньше 4 (менее 8 секунд)
-      // или если файлов на диске меньше ожидаемого
-      // TODO: увеличить до 8 после применения серверного fix (hls_window=10)
-      const isWarmingUp = segmentCount < 4 || tsFiles.length < 3
+      // Стрим считается "молодым" если сегментов меньше 7 (менее 14 секунд)
+      // Ждём пока накопится достаточный буфер и все сегменты будут с видео
+      const isWarmingUp = segmentCount < 7 || tsFiles.length < 6
       const streamAge = Math.min(segmentCount * 2, fileAge / 1000)
 
       return NextResponse.json({
