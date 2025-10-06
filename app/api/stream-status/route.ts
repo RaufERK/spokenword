@@ -35,12 +35,11 @@ export async function GET(req: NextRequest) {
         .filter((line) => line.endsWith('.ts'))
       const segmentCount = segmentLines.length
 
-      // Стрим считается молодым (прогревается) если:
-      // - Меньше 8 сегментов (менее 16 секунд накоплено)
-      // - ИЛИ только что обнаружен (файлы свежее 20 секунд)
+      // Стрим прогревается ТОЛЬКО если:
+      // - Накоплено меньше 8 сегментов И
+      // - Файл моложе 30 секунд (если старше - точно УЖЕ прогрет)
       const fileAgeSeconds = fileAge / 1000
-      const isNewStream = fileAgeSeconds < 20
-      const isWarmingUp = segmentCount < 8 && isNewStream
+      const isWarmingUp = segmentCount < 8 && fileAgeSeconds < 30
 
       return NextResponse.json({
         isLive,
