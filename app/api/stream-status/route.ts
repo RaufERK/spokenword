@@ -35,13 +35,12 @@ export async function GET(req: NextRequest) {
         .filter((line) => line.endsWith('.ts'))
       const segmentCount = segmentLines.length
 
-      // Возраст стрима (сколько секунд с последнего обновления)
-      const streamAge = Math.min(segmentCount * 2, fileAge / 1000)
-      
-      // Стрим считается прогретым если:
-      // - Живёт больше 15 секунд (точно накопился буфер)
-      // - ИЛИ есть 8+ стабильных сегментов
-      const isWarmingUp = streamAge < 15 && segmentCount < 8
+      // Стрим считается молодым (прогревается) если:
+      // - Меньше 8 сегментов (менее 16 секунд накоплено)
+      // - ИЛИ только что обнаружен (файлы свежее 20 секунд)
+      const fileAgeSeconds = fileAge / 1000
+      const isNewStream = fileAgeSeconds < 20
+      const isWarmingUp = segmentCount < 8 && isNewStream
 
       return NextResponse.json({
         isLive,
@@ -50,7 +49,6 @@ export async function GET(req: NextRequest) {
         fileAge: Math.round(fileAge / 1000),
         isWarmingUp,
         segmentCount,
-        streamAge: Math.round(streamAge),
         tsFilesOnDisk: tsFiles.length,
       })
     } catch {
