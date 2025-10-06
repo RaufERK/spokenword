@@ -49,7 +49,7 @@ export default function HlsPlayer({
           })()
         } else if (Hls.isSupported()) {
           hls = new Hls({
-            debug: false,
+            debug: true,
             enableWorker: true,
             lowLatencyMode: false,
             maxBufferLength: 30,
@@ -87,6 +87,10 @@ export default function HlsPlayer({
           })
 
           hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error(
+              `⚠️ VIDEO ERROR: ${data.type} - ${data.details} (fatal: ${data.fatal})`,
+              data
+            )
             if (data.fatal) {
               console.error(`❌ VIDEO FATAL: ${data.type} - ${data.details}`)
             }
@@ -130,7 +134,13 @@ export default function HlsPlayer({
         })
 
         video.addEventListener('error', () => {
-          console.error(`❌ VIDEO: error code ${video.error?.code}`)
+          console.error(`❌ VIDEO element error:`, {
+            code: video.error?.code,
+            message: video.error?.message,
+            src: video.src,
+            readyState: video.readyState,
+            networkState: video.networkState,
+          })
           setError('Ошибка загрузки видео')
           setIsLoading(false)
         })
