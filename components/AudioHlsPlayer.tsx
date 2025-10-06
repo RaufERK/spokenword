@@ -55,11 +55,11 @@ export default function AudioHlsPlayer({
             debug: false,
             enableWorker: true,
             lowLatencyMode: false,
-            maxBufferLength: 20,
-            maxMaxBufferLength: 40,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
             backBufferLength: 10,
-            liveSyncDuration: 3,
-            liveMaxLatencyDuration: 10,
+            liveSyncDuration: 5,
+            liveMaxLatencyDuration: 15,
             startPosition: -1,
             manifestLoadingTimeOut: 15000,
             manifestLoadingMaxRetry: 5,
@@ -79,6 +79,14 @@ export default function AudioHlsPlayer({
             console.log('✅ AUDIO: готов, levels:', data.levels.length)
             setIsLoading(false)
             retryCountRef.current = 0
+
+            if ('mediaSession' in navigator) {
+              navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'Прямой эфир',
+                artist: 'Spoken Word',
+              })
+            }
+
             ;(async () => {
               try {
                 await audio.play()

@@ -5,21 +5,31 @@ import AudioHlsPlayer from '@/components/AudioHlsPlayer'
 
 export default function AudioPage() {
   const [streamUrl, setStreamUrl] = useState('')
+  const [isWarmingUp, setIsWarmingUp] = useState(false)
 
   useEffect(() => {
     const load = async () => {
       try {
         const res = await fetch(`/api/stream-status?key=main`)
         const data = await res.json()
-        setStreamUrl(
-          data.isLive ? `https://spoken-word.ru/hls/live/main.m3u8` : ''
-        )
+
+        if (data.isLive && !data.isWarmingUp) {
+          setStreamUrl(`https://spoken-word.ru/hls/live/main.m3u8`)
+          setIsWarmingUp(false)
+        } else if (data.isLive && data.isWarmingUp) {
+          setStreamUrl('')
+          setIsWarmingUp(true)
+        } else {
+          setStreamUrl('')
+          setIsWarmingUp(false)
+        }
       } catch {
         setStreamUrl('')
+        setIsWarmingUp(false)
       }
     }
     load()
-    const id = setInterval(load, 10000)
+    const id = setInterval(load, 5000)
     return () => clearInterval(id)
   }, [])
 
@@ -37,6 +47,18 @@ export default function AudioPage() {
 
         {streamUrl ? (
           <AudioHlsPlayer streamUrl={streamUrl} />
+        ) : isWarmingUp ? (
+          <div className='bg-indigo-900 rounded-lg p-8 text-center border border-blue-500'>
+            <div className='text-blue-400 mb-4'>
+              <div className='w-16 h-16 mx-auto mb-4 border-4 border-blue-500 border-t-transparent rounded-full animate-spin'></div>
+              <h3 className='text-xl font-semibold mb-2'>
+                Аудио запускается...
+              </h3>
+              <p className='text-gray-400'>
+                Накапливаем буфер для стабильного воспроизведения
+              </p>
+            </div>
+          </div>
         ) : (
           <div className='bg-indigo-900 rounded-lg p-8 text-center border border-gray-800'>
             <div className='text-gray-400 mb-4'>
@@ -61,7 +83,7 @@ export default function AudioPage() {
               </p>
             </div>
             <div className='mt-4 text-xs text-gray-600'>
-              Обновление каждые 10 секунд
+              Обновление каждые 5 секунд
             </div>
           </div>
         )}
