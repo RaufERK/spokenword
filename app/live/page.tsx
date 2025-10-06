@@ -13,13 +13,22 @@ export default function LivePage() {
         const res = await fetch(`/api/stream-status?key=main`)
         const data = await res.json()
 
+        console.log('📡 API:', {
+          isLive: data.isLive,
+          isWarmingUp: data.isWarmingUp,
+          segmentCount: data.segmentCount,
+        })
+
         if (data.isLive && data.isWarmingUp) {
+          console.log('🔵 Состояние: прогрев')
           setIsWarmingUp(true)
           setStreamUrl('')
         } else if (data.isLive && !data.isWarmingUp) {
+          console.log('🟢 Состояние: live')
           setIsWarmingUp(false)
           setStreamUrl(`https://spoken-word.ru/hls/live/main.m3u8`)
         } else {
+          console.log('⚪ Состояние: offline')
           setIsWarmingUp(false)
           setStreamUrl('')
         }

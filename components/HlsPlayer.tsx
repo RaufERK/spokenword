@@ -29,8 +29,11 @@ export default function HlsPlayer({
   }
 
   useEffect(() => {
+    console.log('🔄 HlsPlayer effect, streamUrl:', streamUrl ? 'есть' : 'НЕТ')
+
     const video = videoRef.current
     if (!video || !streamUrl) {
+      console.log('⏸️ HlsPlayer: нет streamUrl, выход')
       setIsLoading(false)
       return
     }
@@ -157,6 +160,7 @@ export default function HlsPlayer({
     loadStream()
 
     return () => {
+      console.log('🧹 HlsPlayer cleanup вызван!')
       retryCountRef.current = 0
       if (hls) {
         try {
