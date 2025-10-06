@@ -5,7 +5,6 @@ import HlsPlayer from '@/components/HlsPlayer'
 
 export default function LivePage() {
   const [streamUrl, setStreamUrl] = useState<string>('')
-  const [isLive, setIsLive] = useState<boolean>(false)
   const [isWarmingUp, setIsWarmingUp] = useState<boolean>(false)
 
   useEffect(() => {
@@ -16,19 +15,15 @@ export default function LivePage() {
 
         if (data.isLive && data.isWarmingUp) {
           setIsWarmingUp(true)
-          setIsLive(false)
           setStreamUrl('')
         } else if (data.isLive && !data.isWarmingUp) {
-          setIsLive(true)
           setIsWarmingUp(false)
           setStreamUrl(`https://spoken-word.ru/hls/live/main.m3u8`)
         } else {
-          setIsLive(false)
           setIsWarmingUp(false)
           setStreamUrl('')
         }
       } catch {
-        setIsLive(false)
         setIsWarmingUp(false)
         setStreamUrl('')
       }
@@ -41,7 +36,7 @@ export default function LivePage() {
 
   return (
     <div className='min-h-screen'>
-      {isLive ? (
+      {streamUrl ? (
         <HlsPlayer streamUrl={streamUrl} className='w-full max-w-none' />
       ) : isWarmingUp ? (
         <div className='w-full aspect-video flex items-center justify-center bg-gray-900'>

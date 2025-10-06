@@ -30,7 +30,10 @@ export default function HlsPlayer({
 
   useEffect(() => {
     const video = videoRef.current
-    if (!video || !streamUrl) return
+    if (!video || !streamUrl) {
+      setIsLoading(false)
+      return
+    }
 
     let hls: Hls | null = null
 
@@ -161,7 +164,9 @@ export default function HlsPlayer({
         } catch {}
       }
       if (video) {
-        video.src = ''
+        video.pause()
+        video.removeAttribute('src')
+        video.load()
       }
     }
   }, [streamUrl])
