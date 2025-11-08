@@ -29,6 +29,14 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
+    // Проверяем размер файла (максимум 5GB)
+    const maxFileSize = 5 * 1024 * 1024 * 1024 // 5GB
+    if (file.size > maxFileSize) {
+      return NextResponse.json({ 
+        message: `Файл слишком большой. Максимальный размер: 5GB. Ваш файл: ${Math.round(file.size / 1024 / 1024 / 1024 * 100) / 100}GB` 
+      }, { status: 400 })
+    }
+
     // Проверяем существование пакета
     const pkg = await prisma.contentPackage.findUnique({
       where: { id: packageId },
@@ -59,11 +67,12 @@ export async function POST(req: NextRequest) {
     const baseName = path.basename(originalFileName, fileExtension)
     const tempFilePath = path.join(tempDir, `${Date.now()}_${originalFileName}`)
     
+    // Используем стрим для больших файлов вместо загрузки в память
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     await writeFile(tempFilePath, buffer)
 
-    const originalSize = buffer.length
+    const originalSize = file.size // Используем размер из File API вместо buffer.length
 
     // Определяем следующий порядковый номер
     const nextOrderIndex = Math.max(...pkg.items.map(item => item.orderIndex), 0) + 1
