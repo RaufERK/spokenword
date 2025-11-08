@@ -35,8 +35,8 @@ async function restoreConferenceArchive() {
         const filePath = path.join(archiveDir, fileName)
         const stats = fs.statSync(filePath)
         
-        // Извлекаем systemName из имени файла (формат: YYYYMMDDHHMMSS_hash.mp4)
-        const systemName = path.basename(fileName, '.mp4')
+        // Используем полное имя файла как systemName (включая .mp4)
+        const systemName = fileName
         
         // Проверяем, есть ли уже запись
         const existing = await prisma.conferenceFile.findUnique({
@@ -49,9 +49,10 @@ async function restoreConferenceArchive() {
           continue
         }
 
-        // Создаем красивое имя из системного
-        const datePart = systemName.substring(0, 8) // YYYYMMDD
-        const timePart = systemName.substring(8, 14) // HHMMSS
+        // Создаем красивое имя из системного (убираем .mp4 для парсинга)
+        const nameWithoutExt = path.basename(systemName, '.mp4')
+        const datePart = nameWithoutExt.substring(0, 8) // YYYYMMDD
+        const timePart = nameWithoutExt.substring(8, 14) // HHMMSS
         const year = datePart.substring(0, 4)
         const month = datePart.substring(4, 6)
         const day = datePart.substring(6, 8)

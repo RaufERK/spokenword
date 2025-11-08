@@ -38,9 +38,8 @@ export async function GET(req: NextRequest, { params }: Props) {
       data: { views: { increment: 1 } }
     })
 
-    // Путь к файлу (добавляем .mp4 если нет расширения)
-    const fileName = systemName.includes('.') ? systemName : `${systemName}.mp4`
-    const filePath = path.join(CONF_ARCHIVE_DIR, fileName)
+    // Путь к файлу (systemName уже содержит .mp4)
+    const filePath = path.join(CONF_ARCHIVE_DIR, systemName)
 
     try {
       const stat = statSync(filePath)
