@@ -29,6 +29,9 @@ export default function UsersTable({
   const [list, setList] = useState(users)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<UserRow | null>(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const isSuper = currentRole === 'SUPER'
 
   const handleCopyLink = async (id: number) => {
@@ -73,6 +76,40 @@ export default function UsersTable({
     setSelectedUser(null)
   }
 
+  const handleDeleteUser = (user: UserRow) => {
+    setUserToDelete(user)
+    setIsDeleteModalOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return
+
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/users/${userToDelete.id}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        setList(prev => prev.filter(u => u.id !== userToDelete.id))
+        setIsDeleteModalOpen(false)
+        setUserToDelete(null)
+      } else {
+        const error = await res.json()
+        alert(`Ошибка при удалении: ${error.message}`)
+      }
+    } catch {
+      alert('Произошла ошибка при удалении пользователя')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const cancelDelete = () => {
+    setIsDeleteModalOpen(false)
+    setUserToDelete(null)
+  }
+
   return (
     <div className='overflow-x-auto rounded-2xl'>
       <table className='min-w-full border border-slate-300 bg-white rounded-2xl'>
@@ -88,6 +125,7 @@ export default function UsersTable({
             {isSuper && <th className='px-3 py-2 text-black'>Роль</th>}
             <th className='px-3 py-2 text-black'>Материалы</th>
             <th className='px-3 py-2 text-black'>Профиль</th>
+            <th className='px-3 py-2 text-black'>Действия</th>
           </tr>
         </thead>
         <tbody>
@@ -159,6 +197,16 @@ export default function UsersTable({
                     профиль
                   </button>
                 </td>
+                <td className='px-3 py-1'>
+                  <button
+                    className='bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm'
+                    onClick={() => handleDeleteUser(u)}
+                    disabled={u.role === 'SUPER'} // Нельзя удалить SUPER админа
+                    title={u.role === 'SUPER' ? 'Нельзя удалить SUPER админа' : 'Удалить пользователя'}
+                  >
+                    {u.role === 'SUPER' ? '🔒' : '🗑️'}
+                  </button>
+                </td>
               </tr>
             )
           })}
@@ -171,6 +219,65 @@ export default function UsersTable({
         onClose={handleModalClose}
         onSave={handleModalClose}
       />
+
+      {/* Модальное окно подтверждения удаления */}
+      {isDeleteModalOpen && userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-red-600 mb-2">
+                ⚠️ Подтверждение удаления
+              </h2>
+              <p className="text-gray-700">
+                Вы действительно хотите удалить пользователя:
+              </p>
+              <div className="mt-3 p-3 bg-gray-50 rounded border">
+                <p className="font-medium">
+                  {userToDelete.firstName} {userToDelete.lastName}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Логин: {userToDelete.login}
+                </p>
+                {userToDelete.phoneNumber && (
+                  <p className="text-sm text-gray-600">
+                    Телефон: {userToDelete.phoneNumber}
+                  </p>
+                )}
+              </div>
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-red-800 text-sm font-medium">
+                  ⚠️ Это действие нельзя отменить!
+                </p>
+                <p className="text-red-700 text-sm mt-1">
+                  Будут удалены:
+                </p>
+                <ul className="text-red-700 text-sm mt-1 list-disc list-inside">
+                  <li>Профиль пользователя</li>
+                  <li>Доступы к платным материалам</li>
+                  <li>История покупок</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Удаление...' : 'Удалить пользователя'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

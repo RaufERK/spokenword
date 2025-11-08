@@ -107,8 +107,8 @@ model UserPackageAccess {
   notes        String?  // Заметки (способ оплаты, комментарии)
   
   // Связи
-  user         User           @relation(fields: [userId], references: [id])
-  package      ContentPackage @relation(fields: [packageId], references: [id])
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package      ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   admin        User           @relation("GrantedPackageAccess", fields: [grantedBy], references: [id])
   
   @@unique([userId, packageId])
