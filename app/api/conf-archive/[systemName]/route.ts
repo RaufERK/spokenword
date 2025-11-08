@@ -4,9 +4,93 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import fs from 'fs/promises'
+import { createReadStream, statSync } from 'fs'
 import path from 'path'
 
 const CONF_ARCHIVE_DIR = path.resolve(process.cwd(), 'public/conf-archive')
+
+interface Props {
+  params: Promise<{ systemName: string }>
+}
+
+export async function GET(req: NextRequest, { params }: Props) {
+  try {
+    const { systemName } = await params
+    
+    // Проверяем авторизацию (только для зарегистрированных пользователей)
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return new NextResponse('Unauthorized', { status: 401 })
+    }
+
+    // Находим файл в базе
+    const file = await prisma.conferenceFile.findUnique({
+      where: { systemName }
+    })
+
+    if (!file) {
+      return new NextResponse('File not found', { status: 404 })
+    }
+
+    // Увеличиваем счетчик просмотров
+    await prisma.conferenceFile.update({
+      where: { id: file.id },
+      data: { views: { increment: 1 } }
+    })
+
+    // Путь к файлу (добавляем .mp4 если нет расширения)
+    const fileName = systemName.includes('.') ? systemName : `${systemName}.mp4`
+    const filePath = path.join(CONF_ARCHIVE_DIR, fileName)
+
+    try {
+      const stat = statSync(filePath)
+      const fileSize = stat.size
+      const range = req.headers.get('range')
+
+      // Range request для стриминга
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-')
+        const start = parseInt(parts[0], 10)
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
+        const chunkSize = (end - start) + 1
+
+        const stream = createReadStream(filePath, { start, end })
+
+        return new NextResponse(stream as unknown as ReadableStream, {
+          status: 206,
+          headers: {
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize.toString(),
+            'Content-Type': 'video/mp4',
+            'Cache-Control': 'public, max-age=31536000'
+          }
+        })
+      } else {
+        // Полный файл
+        const stream = createReadStream(filePath)
+
+        return new NextResponse(stream as unknown as ReadableStream, {
+          status: 200,
+          headers: {
+            'Content-Length': fileSize.toString(),
+            'Content-Type': 'video/mp4',
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'public, max-age=31536000'
+          }
+        })
+      }
+
+    } catch (fileError) {
+      console.error('File access error:', fileError)
+      return new NextResponse('File not accessible', { status: 404 })
+    }
+
+  } catch (error) {
+    console.error('Conference file stream error:', error)
+    return new NextResponse('Internal server error', { status: 500 })
+  }
+}
 
 export async function DELETE(req: NextRequest) {
   // Получаем systemName из url (а не из params!)
