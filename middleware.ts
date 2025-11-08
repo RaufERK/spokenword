@@ -4,8 +4,9 @@ import type { NextRequest } from 'next/server'
 import { isSubscriptionActive } from '@/lib/subscription'
 
 const paidRoutes = ['/conf', '/conf-arch']
-const protectedRoutes = ['/cabinet', ...paidRoutes]
+const protectedRoutes = ['/cabinet', '/paid-content', ...paidRoutes]
 const adminOnlyRoutes = ['/users', '/admin']
+const paidContentApiRoutes = ['/api/paid-content']
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
@@ -42,7 +43,14 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // 3. Прочие защищённые маршруты (требуют только авторизации)
+  // 3. API платного контента (требует авторизации, доступ проверяется внутри)
+  if (paidContentApiRoutes.some((route) => pathname.startsWith(route))) {
+    if (!token) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
+  // 4. Прочие защищённые маршруты (требуют только авторизации)
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     if (!token) {
       return NextResponse.redirect(new URL('/login', req.url))

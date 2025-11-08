@@ -4,6 +4,7 @@
 
 import { ROLES, Role } from '@/lib/roles'
 import { useState } from 'react'
+import UserAccessModal from '@/components/admin/UserAccessModal'
 
 export interface UserRow {
   id: number
@@ -26,6 +27,8 @@ export default function UsersTable({
   currentRole: Role
 }) {
   const [list, setList] = useState(users)
+  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const isSuper = currentRole === 'SUPER'
 
   const handleCopyLink = async (id: number) => {
@@ -60,6 +63,16 @@ export default function UsersTable({
     setList((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)))
   }
 
+  const handleManageAccess = (user: UserRow) => {
+    setSelectedUser(user)
+    setIsModalOpen(true)
+  }
+
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    setSelectedUser(null)
+  }
+
   return (
     <div className='overflow-x-auto rounded-2xl'>
       <table className='min-w-full border border-slate-300 bg-white rounded-2xl'>
@@ -73,6 +86,7 @@ export default function UsersTable({
             <th className='px-3 py-2 text-black'>Пароль</th>
             <th className='px-3 py-2 text-black'>Оплата</th>
             {isSuper && <th className='px-3 py-2 text-black'>Роль</th>}
+            <th className='px-3 py-2 text-black'>Материалы</th>
             <th className='px-3 py-2 text-black'>Профиль</th>
           </tr>
         </thead>
@@ -131,6 +145,14 @@ export default function UsersTable({
                 )}
                 <td className='px-3 py-1'>
                   <button
+                    className='bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm'
+                    onClick={() => handleManageAccess(u)}
+                  >
+                    Управлять
+                  </button>
+                </td>
+                <td className='px-3 py-1'>
+                  <button
                     className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'
                     onClick={() => handleCopyLink(u.id)}
                   >
@@ -142,6 +164,13 @@ export default function UsersTable({
           })}
         </tbody>
       </table>
+      
+      <UserAccessModal
+        user={selectedUser}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSave={handleModalClose}
+      />
     </div>
   )
 }

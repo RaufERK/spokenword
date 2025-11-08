@@ -24,6 +24,12 @@ model User {
   role         Role     @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  
+  // Связи с платными материалами
+  uploadedPackages     ContentPackage[]    @relation("UploadedPackages")
+  packageAccess        UserPackageAccess[]
+  grantedPackageAccess UserPackageAccess[] @relation("GrantedPackageAccess")
+  
   @@index([paymentDate])
 }
 
@@ -52,4 +58,60 @@ model StreamLink {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Платные материалы - пакеты лекций
+model ContentPackage {
+  id          Int      @id @default(autoincrement())
+  title       String   // "Курс медитации - 13 лекций"
+  description String?  // Подробное описание пакета
+  price       Decimal  // Цена за весь пакет
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  uploadedBy  Int      // ID админа
+  
+  // Связи
+  items       PackageItem[]       // Лекции в пакете
+  purchases   UserPackageAccess[] // Кто купил пакет
+  uploader    User                @relation("UploadedPackages", fields: [uploadedBy], references: [id])
+}
+
+// Отдельная лекция в пакете
+model PackageItem {
+  id             Int      @id @default(autoincrement())
+  packageId      Int      // К какому пакету относится
+  title          String   // "Лекция 1: Основы"
+  fileName       String   // "lecture_01_compressed.mp3"
+  filePath       String   // Путь к файлу
+  duration       Int?     // Длительность в секундах
+  orderIndex     Int      // Порядок в пакете (1, 2, 3...)
+  originalSize   Int      // Размер до сжатия
+  compressedSize Int      // Размер после сжатия
+  createdAt      DateTime @default(now())
+  
+  // Связи
+  package        ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  
+  @@index([packageId, orderIndex])
+}
+
+// Покупки пользователей (доступ к пакетам)
+model UserPackageAccess {
+  id           Int      @id @default(autoincrement())
+  userId       Int      // Кто купил
+  packageId    Int      // Какой пакет купил
+  purchaseDate DateTime @default(now())
+  price        Decimal  // За сколько купил
+  grantedBy    Int      // Какой админ дал доступ
+  notes        String?  // Заметки (способ оплаты, комментарии)
+  
+  // Связи
+  user         User           @relation(fields: [userId], references: [id])
+  package      ContentPackage @relation(fields: [packageId], references: [id])
+  admin        User           @relation("GrantedPackageAccess", fields: [grantedBy], references: [id])
+  
+  @@unique([userId, packageId])
+  @@index([userId])
+  @@index([packageId])
 }
