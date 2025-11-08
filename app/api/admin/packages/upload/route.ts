@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       const durationCommand = `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${fallbackPath}"`
       const { stdout: durationOutput } = await execAsync(durationCommand)
       duration = Math.round(parseFloat(durationOutput.trim()))
-    } catch (probeError) {
+    } catch (probeError: any) {
       console.log('Could not get video duration:', probeError.message)
     }
 
