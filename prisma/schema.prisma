@@ -83,6 +83,7 @@ model PackageItem {
   packageId      Int      // К какому пакету относится
   title          String   // "Лекция 1: Основы"
   fileName       String   // "lecture_01_compressed.mp3"
+  originalName   String   @default("") // Оригинальное имя файла
   filePath       String   // Путь к файлу
   duration       Int?     // Длительность в секундах
   orderIndex     Int      // Порядок в пакете (1, 2, 3...)
@@ -94,6 +95,7 @@ model PackageItem {
   package        ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   
   @@index([packageId, orderIndex])
+  @@unique([packageId, originalName, originalSize]) // Уникальность по пакету + имя + размер
 }
 
 // Покупки пользователей (доступ к пакетам)

@@ -49,6 +49,19 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
+    // Проверяем на дубликаты (по имени файла + размеру)
+    const originalFileName = file.name
+    const isDuplicate = pkg.items.some(item => 
+      item.originalName === originalFileName && 
+      item.originalSize === file.size
+    )
+
+    if (isDuplicate) {
+      return NextResponse.json({ 
+        message: `Файл "${originalFileName}" уже загружен в этот пакет. Дубликаты не допускаются.` 
+      }, { status: 400 })
+    }
+
     // Создаем папку для пакета если не существует
     const packageDir = path.join(process.cwd(), 'paid-content', 'packages', `package_${packageId}`)
     if (!existsSync(packageDir)) {
@@ -61,8 +74,7 @@ export async function POST(req: NextRequest) {
       await mkdir(tempDir, { recursive: true })
     }
 
-    // Сохраняем оригинальный файл во временную папку
-    const originalFileName = file.name
+    // Сохраняем оригинальный файл во временную папку  
     const fileExtension = path.extname(originalFileName)
     const baseName = path.basename(originalFileName, fileExtension)
     const tempFilePath = path.join(tempDir, `${Date.now()}_${originalFileName}`)
@@ -112,6 +124,7 @@ export async function POST(req: NextRequest) {
             packageId,
             title: `Лекция ${nextOrderIndex}: ${baseName}`,
             fileName: compressedFileName,
+            originalName: originalFileName,
             filePath: `/paid-content/packages/package_${packageId}/${compressedFileName}`,
             duration,
             orderIndex: nextOrderIndex,
@@ -161,6 +174,7 @@ export async function POST(req: NextRequest) {
         packageId,
         title: `Лекция ${nextOrderIndex}: ${baseName}`,
         fileName: fallbackFileName,
+        originalName: originalFileName,
         filePath: `/paid-content/packages/package_${packageId}/${fallbackFileName}`,
         duration,
         orderIndex: nextOrderIndex,
