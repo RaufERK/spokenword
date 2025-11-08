@@ -113,7 +113,7 @@ export async function DELETE(req: NextRequest) {
       success: true,
       deletedAccess,
     })
-  } catch (error: any) {
+  } catch (error) {
     if (error.code === 'P2025') {
       return NextResponse.json(
         {
