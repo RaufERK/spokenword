@@ -99,8 +99,8 @@ export async function POST(req: NextRequest) {
 
     if (shouldCompress) {
       try {
-        // Сжимаем видео с помощью FFmpeg до 720p с ограничением памяти
-        const ffmpegCommand = `ffmpeg -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 23 -preset fast -c:a aac -b:a 128k -movflags +faststart -threads 2 -bufsize 1M "${compressedFilePath}"`
+        // Сжимаем видео с помощью FFmpeg до 720p с максимальной скоростью
+        const ffmpegCommand = `ffmpeg -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 28 -preset ultrafast -c:a aac -b:a 96k -movflags +faststart -threads 4 "${compressedFilePath}"`
         
         // Устанавливаем лимиты для процесса FFmpeg
         const options = {
@@ -108,7 +108,15 @@ export async function POST(req: NextRequest) {
           timeout: 1000 * 60 * 10, // 10 минут таймаут
         }
         
+        console.log(`🎬 Начинаем сжатие видео: ${originalFileName}`)
+        console.log(`📊 Размер исходника: ${Math.round(originalSize / 1024 / 1024)}MB`)
+        console.log(`🔧 FFmpeg команда: ${ffmpegCommand}`)
+        
+        const startTime = Date.now()
         await execAsync(ffmpegCommand, options)
+        const endTime = Date.now()
+        
+        console.log(`⏱️ Сжатие завершено за ${Math.round((endTime - startTime) / 1000)}с`)
 
         // Получаем длительность видео
         const durationCommand = `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${compressedFilePath}"`
@@ -117,6 +125,9 @@ export async function POST(req: NextRequest) {
 
         // Получаем размер сжатого файла
         const { size: compressedSize } = await import('fs').then(fs => fs.promises.stat(compressedFilePath))
+        
+        console.log(`📉 Сжатие: ${Math.round(originalSize / 1024 / 1024)}MB → ${Math.round(compressedSize / 1024 / 1024)}MB`)
+        console.log(`🎯 Коэффициент сжатия: ${Math.round((1 - compressedSize / originalSize) * 100)}%`)
 
         // Создаем запись в БД
         const newItem = await prisma.packageItem.create({
@@ -144,7 +155,10 @@ export async function POST(req: NextRequest) {
         })
 
       } catch (ffmpegError) {
-        console.error('FFmpeg error:', ffmpegError)
+        console.error('❌ FFmpeg error:', ffmpegError)
+        console.error('📁 Temp file path:', tempFilePath)
+        console.error('📁 Output path:', compressedFilePath)
+        console.error('💾 File size:', Math.round(originalSize / 1024 / 1024), 'MB')
         // Если FFmpeg не работает на проде - это ошибка
         if (isProduction) {
           throw ffmpegError

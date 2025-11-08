@@ -33,7 +33,10 @@
     "db:import": "node prisma/seed.js",
     "db:backup": "node scripts/backup-database.cjs",
     "db:restore": "node scripts/restore-database.cjs",
-    "conf:restore": "node scripts/restore-conference-archive.cjs"
+    "conf:restore": "node scripts/restore-conference-archive.cjs",
+    "logs": "ssh amster_app 'bash /home/appuser/apps/spokenword/source/scripts/watch-logs.sh'",
+    "logs:errors": "ssh amster_app 'tail -f /home/appuser/logs/spokenword-error.log'",
+    "logs:output": "ssh amster_app 'tail -f /home/appuser/logs/spokenword-out.log'"
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",

@@ -8,6 +8,11 @@ module.exports = {
       exec_mode: 'fork',
       watch: false,
       max_memory_restart: '512M', // Увеличиваем лимит памяти для обработки видео
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      log_file: '/home/appuser/logs/spokenword-combined.log',
+      out_file: '/home/appuser/logs/spokenword-out.log',
+      error_file: '/home/appuser/logs/spokenword-error.log',
       env: {
         NODE_ENV: 'production',
       },
