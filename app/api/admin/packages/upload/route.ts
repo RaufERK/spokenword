@@ -78,10 +78,16 @@ export async function POST(req: NextRequest) {
 
     if (shouldCompress) {
       try {
-        // Сжимаем видео с помощью FFmpeg до 720p (только на проде или при FORCE_COMPRESSION=true)
-        const ffmpegCommand = `ffmpeg -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 128k -movflags +faststart "${compressedFilePath}"`
+        // Сжимаем видео с помощью FFmpeg до 720p с ограничением памяти
+        const ffmpegCommand = `ffmpeg -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 23 -preset fast -c:a aac -b:a 128k -movflags +faststart -threads 2 -bufsize 1M "${compressedFilePath}"`
         
-        await execAsync(ffmpegCommand)
+        // Устанавливаем лимиты для процесса FFmpeg
+        const options = {
+          maxBuffer: 1024 * 1024 * 10, // 10MB буфер
+          timeout: 1000 * 60 * 10, // 10 минут таймаут
+        }
+        
+        await execAsync(ffmpegCommand, options)
 
         // Получаем длительность видео
         const durationCommand = `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${compressedFilePath}"`
