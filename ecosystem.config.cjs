@@ -7,8 +7,8 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
-      max_memory_restart: '2G', // Увеличиваем до 2GB для обработки больших видео
-      node_args: '--max-old-space-size=2048', // Node.js heap до 2GB
+      max_memory_restart: '4G', // Увеличиваем до 4GB для обработки больших видео
+      node_args: '--max-old-space-size=4096 --expose-gc', // Node.js heap до 4GB + garbage collector
       priority: 10, // Высокий приоритет процесса
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,

@@ -164,6 +164,12 @@ export async function POST(req: NextRequest) {
         // Удаляем временный файл
         await import('fs').then(fs => fs.promises.unlink(tempFilePath))
 
+        // Принудительная очистка памяти после обработки большого файла
+        if (originalSize > 100 * 1024 * 1024 && global.gc) { // Если файл больше 100MB
+          console.log('🧹 Очищаем память после обработки большого файла')
+          global.gc()
+        }
+
         return NextResponse.json({
           success: true,
           item: newItem,
