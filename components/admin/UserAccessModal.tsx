@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { UserRow } from '@/app/users/UsersTable'
 
 interface Package {
@@ -25,13 +25,7 @@ export default function UserAccessModal({ user, isOpen, onClose, onSave }: Props
   const [saving, setSaving] = useState(false)
   const [newNote, setNewNote] = useState('')
 
-  useEffect(() => {
-    if (isOpen && user) {
-      loadUserPackages()
-    }
-  }, [isOpen, user])
-
-  const loadUserPackages = async () => {
+  const loadUserPackages = useCallback(async () => {
     if (!user) return
     
     setLoading(true)
@@ -46,7 +40,13 @@ export default function UserAccessModal({ user, isOpen, onClose, onSave }: Props
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (isOpen && user) {
+      loadUserPackages()
+    }
+  }, [isOpen, user, loadUserPackages])
 
   const toggleAccess = async (packageId: number, hasAccess: boolean) => {
     if (!user) return
