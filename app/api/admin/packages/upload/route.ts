@@ -182,6 +182,15 @@ export async function POST(req: NextRequest) {
         console.error('📁 Temp file path:', tempFilePath)
         console.error('📁 Output path:', compressedFilePath)
         console.error('💾 File size:', Math.round(originalSize / 1024 / 1024), 'MB')
+        
+        // Очищаем временный файл при ошибке FFmpeg
+        try {
+          await import('fs').then(fs => fs.promises.unlink(tempFilePath))
+          console.log('🧹 Временный файл удален после ошибки FFmpeg')
+        } catch (cleanupError) {
+          console.warn('⚠️ Не удалось удалить временный файл:', cleanupError)
+        }
+        
         // Если FFmpeg не работает на проде - это ошибка
         if (isProduction) {
           throw ffmpegError
@@ -230,6 +239,17 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Upload error:', error)
+    
+    // Очищаем временный файл при любой ошибке
+    try {
+      if (tempFilePath) {
+        await import('fs').then(fs => fs.promises.unlink(tempFilePath))
+        console.log('🧹 Временный файл удален после ошибки')
+      }
+    } catch (cleanupError) {
+      console.warn('⚠️ Не удалось удалить временный файл:', cleanupError)
+    }
+    
     return NextResponse.json({ 
       message: 'Ошибка при загрузке файла' 
     }, { status: 500 })
