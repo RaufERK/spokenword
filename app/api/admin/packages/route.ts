@@ -12,6 +12,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Access denied' }, { status: 403 })
     }
 
+    console.log('🔍 Сессия пользователя:', {
+      id: session.user.id,
+      login: session.user.login || session.user.name,
+      role: session.user.role
+    })
+
     const { title, description, price } = await req.json()
 
     // Валидация
@@ -27,13 +33,28 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
+    // Проверяем существование пользователя
+    const userId = parseInt(session.user.id)
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!userExists) {
+      console.error('❌ Пользователь не найден в БД:', userId, session.user.login)
+      return NextResponse.json({ 
+        message: `Пользователь с ID ${userId} не найден в базе данных` 
+      }, { status: 400 })
+    }
+
+    console.log('✅ Создаем пакет от пользователя:', userExists.login, userExists.role)
+
     // Создаем пакет
     const newPackage = await prisma.contentPackage.create({
       data: {
         title: title.trim(),
         description: description?.trim() || null,
         price: parseFloat(price),
-        uploadedBy: parseInt(session.user.id)
+        uploadedBy: userId
       },
       include: {
         uploader: {

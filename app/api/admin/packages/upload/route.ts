@@ -99,13 +99,13 @@ export async function POST(req: NextRequest) {
 
     if (shouldCompress) {
       try {
-        // Сжимаем видео с помощью FFmpeg до 720p с максимальной скоростью
-        const ffmpegCommand = `ffmpeg -y -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 28 -preset ultrafast -c:a aac -b:a 96k -movflags +faststart -threads 4 "${compressedFilePath}"`
+        // Сжимаем видео с помощью FFmpeg до 720p используя все ядра сервера
+        const ffmpegCommand = `ffmpeg -y -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 26 -preset veryfast -c:a aac -b:a 128k -movflags +faststart -threads 0 "${compressedFilePath}"`
         
-        // Устанавливаем лимиты для процесса FFmpeg
+        // Устанавливаем лимиты для процесса FFmpeg (увеличиваем для мощного сервера)
         const options = {
-          maxBuffer: 1024 * 1024 * 10, // 10MB буфер
-          timeout: 1000 * 60 * 10, // 10 минут таймаут
+          maxBuffer: 1024 * 1024 * 50, // 50MB буфер
+          timeout: 1000 * 60 * 20, // 20 минут таймаут для больших файлов
         }
         
         console.log(`🎬 Начинаем сжатие видео: ${originalFileName}`)

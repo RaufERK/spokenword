@@ -7,7 +7,9 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
-      max_memory_restart: '512M', // Увеличиваем лимит памяти для обработки видео
+      max_memory_restart: '2G', // Увеличиваем до 2GB для обработки больших видео
+      node_args: '--max-old-space-size=2048', // Node.js heap до 2GB
+      priority: 10, // Высокий приоритет процесса
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       log_file: '/home/appuser/logs/spokenword-combined.log',
@@ -15,9 +17,11 @@ module.exports = {
       error_file: '/home/appuser/logs/spokenword-error.log',
       env: {
         NODE_ENV: 'production',
+        UV_THREADPOOL_SIZE: '8', // Увеличиваем пул потоков для I/O операций
       },
       env_production: {
         NODE_ENV: 'production',
+        UV_THREADPOOL_SIZE: '8',
       },
     },
   ],
