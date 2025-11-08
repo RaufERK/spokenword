@@ -39,16 +39,28 @@ next-env.d.ts
 # spokenword specific
 public/live/
 public/archive/
+public/conf-archive/
 local/
 users.txt
 
 /generated/prisma
 *.db
-/public/conf-archive/*.mp4
 
 # paid content files (videos/audio)
 paid-content/packages/
 paid-content/temp/
+
+# large media files (prevent accidental commits)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.ogg
+*.webm
 
 # database exports
 database-export-*.json
