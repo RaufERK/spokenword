@@ -99,13 +99,30 @@ export async function POST(req: NextRequest) {
 
     if (shouldCompress) {
       try {
+        // Проверяем, не обрабатывается ли уже этот файл
+        const { exec } = await import('child_process')
+        const { promisify } = await import('util')
+        const execCheck = promisify(exec)
+        
+        try {
+          const { stdout } = await execCheck(`pgrep -f "ffmpeg.*${path.basename(tempFilePath)}"`)
+          if (stdout.trim()) {
+            console.log('⚠️ Файл уже обрабатывается другим процессом FFmpeg')
+            return NextResponse.json({ 
+              message: 'Этот файл уже обрабатывается. Подождите завершения.' 
+            }, { status: 409 })
+          }
+        } catch {
+          // Процесс не найден - можно продолжать
+        }
+
         // Сжимаем видео с помощью FFmpeg до 720p используя все ядра сервера
         const ffmpegCommand = `ffmpeg -y -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 26 -preset veryfast -c:a aac -b:a 128k -movflags +faststart -threads 0 "${compressedFilePath}"`
         
         // Устанавливаем лимиты для процесса FFmpeg (увеличиваем для мощного сервера)
         const options = {
-          maxBuffer: 1024 * 1024 * 50, // 50MB буфер
-          timeout: 1000 * 60 * 20, // 20 минут таймаут для больших файлов
+          maxBuffer: 1024 * 1024 * 100, // 100MB буфер
+          timeout: 1000 * 60 * 30, // 30 минут таймаут для больших файлов
         }
         
         console.log(`🎬 Начинаем сжатие видео: ${originalFileName}`)
