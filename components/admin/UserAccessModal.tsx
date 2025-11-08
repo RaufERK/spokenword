@@ -71,7 +71,7 @@ export default function UserAccessModal({ user, isOpen, onClose, onSave }: Props
       } else {
         alert('Ошибка при изменении доступа')
       }
-    } catch (error) {
+    } catch {
       alert('Произошла ошибка')
     } finally {
       setSaving(false)

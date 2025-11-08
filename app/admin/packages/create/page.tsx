@@ -35,7 +35,7 @@ export default function CreatePackagePage() {
         const error = await response.json()
         alert(`Ошибка: ${error.message}`)
       }
-    } catch (error) {
+    } catch {
       alert('Произошла ошибка при создании пакета')
     } finally {
       setIsLoading(false)

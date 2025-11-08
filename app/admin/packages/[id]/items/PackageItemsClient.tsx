@@ -18,7 +18,7 @@ interface Props {
   packageId: number
 }
 
-export default function PackageItemsClient({ items: initialItems, packageId }: Props) {
+export default function PackageItemsClient({ items: initialItems }: Props) {
   const router = useRouter()
   const [items, setItems] = useState(initialItems)
   const [deletingId, setDeletingId] = useState<number | null>(null)
@@ -63,7 +63,7 @@ export default function PackageItemsClient({ items: initialItems, packageId }: P
         const error = await response.json()
         alert(`Ошибка: ${error.message}`)
       }
-    } catch (error) {
+    } catch {
       alert('Произошла ошибка при удалении лекции')
     } finally {
       setDeletingId(null)
@@ -97,7 +97,7 @@ export default function PackageItemsClient({ items: initialItems, packageId }: P
         const error = await response.json()
         alert(`Ошибка: ${error.message}`)
       }
-    } catch (error) {
+    } catch {
       alert('Произошла ошибка при сохранении')
     }
   }
@@ -117,7 +117,7 @@ export default function PackageItemsClient({ items: initialItems, packageId }: P
 
   return (
     <div className="divide-y">
-      {items.map((item, index) => (
+      {items.map((item) => (
         <div key={item.id} className="p-6 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">

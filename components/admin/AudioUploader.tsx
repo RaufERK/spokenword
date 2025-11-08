@@ -53,7 +53,7 @@ export default function AudioUploader({ packageId }: Props) {
       
       try {
         await uploadSingleFile(file, i)
-      } catch (error) {
+      } catch {
         setUploads(prev => prev.map((upload, index) => 
           index === i 
             ? { ...upload, status: 'error', error: 'Ошибка загрузки' }

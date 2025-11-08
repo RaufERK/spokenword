@@ -58,14 +58,14 @@ export default function PackagesClient({ packages: initialPackages }: Props) {
         const error = await response.json()
         alert(`Ошибка: ${error.message}`)
       }
-    } catch (error) {
+    } catch {
       alert('Произошла ошибка при удалении пакета')
     } finally {
       setDeletingId(null)
     }
   }
 
-  const toggleActive = async (packageId: number, currentActive: boolean) => {
+  const toggleActive = async () => {
     // TODO: Реализовать переключение активности
     alert('Функция скоро будет добавлена')
   }
@@ -141,7 +141,7 @@ export default function PackagesClient({ packages: initialPackages }: Props) {
             </Link>
             
             <button
-              onClick={() => toggleActive(pkg.id, pkg.isActive)}
+              onClick={() => toggleActive()}
               className={`px-3 py-1 rounded text-sm ${
                 pkg.isActive 
                   ? 'bg-yellow-600 text-white hover:bg-yellow-700' 
