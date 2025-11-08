@@ -46,5 +46,9 @@ users.txt
 *.db
 /public/conf-archive/*.mp4
 
+# paid content files (videos/audio)
+paid-content/packages/
+paid-content/temp/
+
 # database exports
 database-export-*.json
