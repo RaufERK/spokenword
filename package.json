@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",
+    "@tailwindcss/postcss": "^4",
     "auth-jwt": "^1.0.6",
     "clsx": "^2.1.1",
     "hls.js": "^1.6.2",
@@ -46,17 +47,16 @@
     "prisma": "^6.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwindcss": "^4",
     "transliteration": "^2.3.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
-    "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   }
