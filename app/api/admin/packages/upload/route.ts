@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     if (shouldCompress) {
       try {
         // Сжимаем видео с помощью FFmpeg до 720p с максимальной скоростью
-        const ffmpegCommand = `ffmpeg -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 28 -preset ultrafast -c:a aac -b:a 96k -movflags +faststart -threads 4 "${compressedFilePath}"`
+        const ffmpegCommand = `ffmpeg -y -i "${tempFilePath}" -vf scale=1280:720 -c:v libx264 -crf 28 -preset ultrafast -c:a aac -b:a 96k -movflags +faststart -threads 4 "${compressedFilePath}"`
         
         // Устанавливаем лимиты для процесса FFmpeg
         const options = {
