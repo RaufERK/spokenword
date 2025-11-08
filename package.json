@@ -30,7 +30,9 @@
     "save": "node scripts/save-server-scripts.mjs",
     "seed": "node prisma/seed.js",
     "db:export": "node scripts/export-data.js",
-    "db:import": "node prisma/seed.js"
+    "db:import": "node prisma/seed.js",
+    "db:backup": "node scripts/backup-database.cjs",
+    "db:restore": "node scripts/restore-database.cjs"
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",
