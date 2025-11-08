@@ -77,7 +77,7 @@ export async function GET(req: NextRequest, { params }: Props) {
 
         const stream = createReadStream(filePath, { start, end })
 
-        return new NextResponse(stream as any, {
+        return new NextResponse(stream as unknown as ReadableStream, {
           status: 206,
           headers: {
             'Content-Range': `bytes ${start}-${end}/${fileSize}`,
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest, { params }: Props) {
         // Полный файл
         const stream = createReadStream(filePath)
 
-        return new NextResponse(stream as any, {
+        return new NextResponse(stream as unknown as ReadableStream, {
           status: 200,
           headers: {
             'Content-Length': fileSize.toString(),

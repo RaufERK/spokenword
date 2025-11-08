@@ -33,7 +33,6 @@ interface Props {
 }
 
 export default function PackagesClient({ packages: initialPackages }: Props) {
-  const router = useRouter()
   const [packages, setPackages] = useState(initialPackages)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
