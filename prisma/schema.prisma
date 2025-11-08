@@ -95,7 +95,7 @@ model PackageItem {
   package        ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   
   @@index([packageId, orderIndex])
-  @@unique([packageId, originalName, originalSize]) // Уникальность по пакету + имя + размер
+  @@index([packageId, originalName, originalSize]) // Индекс для быстрого поиска дубликатов
 }
 
 // Покупки пользователей (доступ к пакетам)
