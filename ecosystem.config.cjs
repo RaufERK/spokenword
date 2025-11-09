@@ -7,9 +7,9 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
-      max_memory_restart: '4G', // Увеличиваем до 4GB для обработки больших видео
-      node_args: '--max-old-space-size=4096 --expose-gc', // Node.js heap до 4GB + garbage collector
-      priority: 10, // Высокий приоритет процесса
+      max_memory_restart: '2G',
+      node_args: '--max-old-space-size=2048',
+      priority: 10,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       log_file: '/home/appuser/logs/spokenword-combined.log',
@@ -17,11 +17,39 @@ module.exports = {
       error_file: '/home/appuser/logs/spokenword-error.log',
       env: {
         NODE_ENV: 'production',
-        UV_THREADPOOL_SIZE: '8', // Увеличиваем пул потоков для I/O операций
+        REDIS_HOST: '127.0.0.1',
+        REDIS_PORT: '6379',
       },
       env_production: {
         NODE_ENV: 'production',
-        UV_THREADPOOL_SIZE: '8',
+        REDIS_HOST: '127.0.0.1',
+        REDIS_PORT: '6379',
+      },
+    },
+    {
+      name: 'video-worker',
+      script: 'node_modules/.bin/tsx',
+      args: 'workers/video-compressor.ts',
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      max_memory_restart: '6G',
+      node_args: '--max-old-space-size=6144 --expose-gc',
+      priority: 5,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      log_file: '/home/appuser/logs/video-worker-combined.log',
+      out_file: '/home/appuser/logs/video-worker-out.log',
+      error_file: '/home/appuser/logs/video-worker-error.log',
+      env: {
+        NODE_ENV: 'production',
+        REDIS_HOST: '127.0.0.1',
+        REDIS_PORT: '6379',
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        REDIS_HOST: '127.0.0.1',
+        REDIS_PORT: '6379',
       },
     },
   ],

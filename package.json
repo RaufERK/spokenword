@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:worker": "tsx watch workers/video-compressor.ts",
     "build": "next build",
     "start": "next start",
     "prod": "next start",
@@ -42,9 +43,11 @@
     "@prisma/client": "^6.10.1",
     "@tailwindcss/postcss": "^4",
     "auth-jwt": "^1.0.6",
+    "bullmq": "^5.63.0",
     "clsx": "^2.1.1",
     "hls.js": "^1.6.2",
     "imask": "^7.6.1",
+    "ioredis": "^5.8.2",
     "jose": "^6.0.10",
     "lint": "^0.8.19",
     "lucide-react": "^0.525.0",
@@ -64,6 +67,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5"
   }
 }
