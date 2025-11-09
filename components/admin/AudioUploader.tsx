@@ -24,16 +24,14 @@ export default function AudioUploader({ packageId }: Props) {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
-    // Фильтруем только видео файлы
-    const videoFiles = files.filter(file => file.type.startsWith('video/'))
+    const file = files[0]
     
-    if (videoFiles.length !== files.length) {
+    if (!file.type.startsWith('video/')) {
       alert('Можно загружать только видео файлы')
+      return
     }
 
-    if (videoFiles.length > 0) {
-      uploadFiles(videoFiles)
-    }
+    uploadFiles([file])
   }
 
   const uploadFiles = async (files: File[]) => {
@@ -130,7 +128,6 @@ export default function AudioUploader({ packageId }: Props) {
         <input
           ref={fileInputRef}
           type="file"
-          multiple
           accept="video/*"
           onChange={handleFileSelect}
           disabled={isUploading}
@@ -142,12 +139,12 @@ export default function AudioUploader({ packageId }: Props) {
           disabled={isUploading}
           className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isUploading ? 'Загрузка...' : 'Выбрать видео файлы'}
+          {isUploading ? 'Загрузка...' : 'Выбрать видео файл'}
         </button>
         
         <p className="text-sm text-gray-500 mt-2">
-          Поддерживаются форматы: MP4, AVI, MOV, MKV. 
-          Видео будет сжато до 720p для экономии места.
+          ⚠️ Загружайте по одному файлу за раз для стабильной работы.
+          Поддерживаются форматы: MP4, AVI, MOV, MKV.
         </p>
       </div>
 

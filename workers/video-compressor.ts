@@ -35,22 +35,42 @@ const worker = new Worker<VideoCompressionJob>(
 
       job.updateProgress(10)
 
-      // Запускаем FFmpeg через spawn (НЕ БУФЕРИЗУЕМ!)
-      const ffmpegArgs = [
-        '-y',
-        '-i', tempFilePath,
-        '-vf', 'scale=1280:720',
-        '-c:v', 'libx264',
-        '-crf', '28',
-        '-preset', 'ultrafast',
-        '-c:a', 'aac',
-        '-b:a', '96k',
-        '-movflags', '+faststart',
-        '-threads', '2',
-        '-bufsize', '512k',
-        '-maxrate', '2M',
-        outputPath
-      ]
+      // Проверяем кодек входного файла
+      const videoCodec = await getVideoCodec(tempFilePath)
+      console.log(`📹 Кодек видео: ${videoCodec}`)
+
+      let ffmpegArgs: string[]
+      
+      // Если уже H.264/H.265 - копируем без пересжатия
+      if (videoCodec === 'h264' || videoCodec === 'hevc') {
+        console.log(`✅ Видео уже сжато (${videoCodec}), копируем без пересжатия`)
+        ffmpegArgs = [
+          '-y',
+          '-i', tempFilePath,
+          '-c:v', 'copy',      // Копируем видео поток как есть
+          '-c:a', 'aac',       // Пересжимаем только аудио
+          '-b:a', '96k',
+          '-movflags', '+faststart',
+          outputPath
+        ]
+      } else {
+        console.log(`🔄 Сжимаем видео с ${videoCodec} в H.264`)
+        ffmpegArgs = [
+          '-y',
+          '-i', tempFilePath,
+          '-vf', 'scale=1280:720',
+          '-c:v', 'libx264',
+          '-crf', '28',
+          '-preset', 'ultrafast',
+          '-c:a', 'aac',
+          '-b:a', '96k',
+          '-movflags', '+faststart',
+          '-threads', '2',
+          '-bufsize', '512k',
+          '-maxrate', '2M',
+          outputPath
+        ]
+      }
 
       const result = await compressVideoWithSpawn(ffmpegArgs, job)
 
@@ -206,6 +226,36 @@ function getVideoDuration(filePath: string): Promise<number> {
 
     ffprobe.on('error', () => {
       resolve(0)
+    })
+  })
+}
+
+function getVideoCodec(filePath: string): Promise<string> {
+  return new Promise((resolve) => {
+    const ffprobe = spawn('ffprobe', [
+      '-v', 'quiet',
+      '-select_streams', 'v:0',
+      '-show_entries', 'stream=codec_name',
+      '-of', 'csv=p=0',
+      filePath
+    ])
+
+    let output = ''
+    ffprobe.stdout.on('data', (data) => {
+      output += data.toString()
+    })
+
+    ffprobe.on('close', (code) => {
+      if (code === 0) {
+        const codec = output.trim().toLowerCase()
+        resolve(codec || 'unknown')
+      } else {
+        resolve('unknown')
+      }
+    })
+
+    ffprobe.on('error', () => {
+      resolve('unknown')
     })
   })
 }
