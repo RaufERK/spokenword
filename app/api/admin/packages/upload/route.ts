@@ -2,8 +2,8 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
+import { mkdir } from 'fs/promises'
+import { existsSync, createWriteStream } from 'fs'
 import path from 'path'
 import { addVideoToQueue } from '@/lib/videoQueue'
 import redis from '@/lib/redis'
@@ -96,13 +96,49 @@ export async function POST(req: NextRequest) {
       await mkdir(tempDir, { recursive: true })
     }
 
-    // Сохраняем файл во временную папку
+    // Сохраняем файл во временную папку ЧЕРЕЗ STREAMING
     const tempFilePath = path.join(tempDir, `${Date.now()}_${originalFileName}`)
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(tempFilePath, buffer)
-
-    console.log(`💾 Файл сохранён: ${originalFileName} (${Math.round(file.size / 1024 / 1024)}MB)`)
+    
+    console.log(`📥 Начинаем потоковую загрузку: ${originalFileName} (${Math.round(file.size / 1024 / 1024)}MB)`)
+    
+    // Создаём поток записи
+    const writeStream = createWriteStream(tempFilePath)
+    
+    // Читаем файл кусочками (streaming)
+    const reader = file.stream().getReader()
+    let bytesWritten = 0
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        // Пишем кусочек
+        const chunk = Buffer.from(value)
+        writeStream.write(chunk)
+        bytesWritten += chunk.length
+        
+        // Логируем прогресс каждые 50MB
+        if (bytesWritten % (50 * 1024 * 1024) < chunk.length) {
+          console.log(`📊 Загружено: ${Math.round(bytesWritten / 1024 / 1024)}MB / ${Math.round(file.size / 1024 / 1024)}MB`)
+        }
+      }
+      
+      // Закрываем поток
+      await new Promise<void>((resolve, reject) => {
+        writeStream.end((err) => {
+          if (err) reject(err)
+          else resolve()
+        })
+      })
+      
+      console.log(`💾 Файл сохранён: ${originalFileName} (${Math.round(file.size / 1024 / 1024)}MB)`)
+      
+    } catch (streamError) {
+      // Закрываем поток при ошибке
+      writeStream.destroy()
+      throw streamError
+    }
 
     const nextOrderIndex = Math.max(...pkg.items.map(item => item.orderIndex), 0) + 1
     const compressedFileName = `lecture_${nextOrderIndex.toString().padStart(2, '0')}_compressed.mp4`
