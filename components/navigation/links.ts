@@ -28,8 +28,16 @@ const links: { href: string; label: string; roles?: Role[] }[] = [
     roles: ['MODERATOR', 'ADMIN', 'SUPER'],
   },
   { href: '/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },
-  { href: '/admin/packages', label: 'Управление пакетами', roles: ['ADMIN', 'SUPER'] },
-  { href: '/paid-content', label: 'Платные материалы', roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'] },
+  {
+    href: '/admin/packages',
+    label: 'Управление пакетами',
+    roles: ['ADMIN', 'SUPER'],
+  },
+  {
+    href: '/paid-content',
+    label: 'Платные материалы',
+    roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
+  },
   {
     href: '/profile',
     label: 'Профиль',
