@@ -41,12 +41,14 @@ const worker = new Worker<VideoCompressionJob>(
         '-i', tempFilePath,
         '-vf', 'scale=1280:720',
         '-c:v', 'libx264',
-        '-crf', '26',
-        '-preset', 'veryfast',
+        '-crf', '28',
+        '-preset', 'ultrafast',
         '-c:a', 'aac',
-        '-b:a', '128k',
+        '-b:a', '96k',
         '-movflags', '+faststart',
-        '-threads', '0',
+        '-threads', '2',
+        '-bufsize', '512k',
+        '-maxrate', '2M',
         outputPath
       ]
 
