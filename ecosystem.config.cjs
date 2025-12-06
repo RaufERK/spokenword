@@ -7,8 +7,8 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
-      max_memory_restart: '6G',
-      node_args: '--max-old-space-size=6144',
+      max_memory_restart: '1G', // было '6G'
+      // node_args: '--max-old-space-size=1024', // было 6144
       priority: 10,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
@@ -33,8 +33,8 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
-      max_memory_restart: '7G',
-      node_args: '--max-old-space-size=7168 --expose-gc',
+      max_memory_restart: '2G', // было '7G'
+      // node_args: '--max-old-space-size=2048 --expose-gc', // было 7168
       priority: 5,
       autorestart: true,
       max_restarts: 10,
