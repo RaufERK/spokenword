@@ -77,8 +77,8 @@ module.exports = {
         'npm run build',
         // Примечание: права доступа нужно восстанавливать вручную после деплоя
         // Запустите: ssh amster "bash /root/fix-streaming-permissions.sh"
-        'pm2 startOrReload ecosystem.config.cjs --env production',
-        'pm2 save',
+        'npx pm2 startOrReload ecosystem.config.cjs --env production',
+        'npx pm2 save',
       ].join(' && '),
 
       env: {
