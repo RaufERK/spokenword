@@ -28,15 +28,23 @@ module.exports = {
     },
     {
       name: 'spokenword-video-worker',
-      script: 'node_modules/.bin/tsx',
+      cwd: '/home/appuser/apps/spokenword/source',
+      script: '/home/appuser/apps/spokenword/source/node_modules/.bin/tsx',
       args: 'workers/video-worker.ts',
-      instances: 1,
+
+      interpreter: 'none',
       exec_mode: 'fork',
+      autorestart: true,
+
+      env: {
+        NODE_ENV: 'production',
+      },
+
+      instances: 1,
       watch: false,
       max_memory_restart: '2G', // было '7G'
       // node_args: '--max-old-space-size=2048 --expose-gc', // было 7168
       priority: 5,
-      autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
