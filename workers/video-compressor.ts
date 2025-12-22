@@ -1,8 +1,8 @@
 import { Worker, Job } from 'bullmq'
 import { spawn } from 'child_process'
 import { unlink, stat } from 'fs/promises'
-import redis from '../lib/redis'
-import prisma from '../lib/prisma'
+import redis from '../lib/redis.ts'
+import prisma from '../lib/prisma.ts'
 import type { VideoCompressionJob } from '../lib/videoQueue'
 
 const queueName = 'video-compression'
