@@ -1,4 +1,4 @@
-import { createVideoCompressionWorker } from './video-compressor'
+import { createVideoCompressionWorker } from './video-compressor.ts'
 
 const { worker, shutdown } = createVideoCompressionWorker()
 
