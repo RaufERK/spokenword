@@ -29,7 +29,7 @@ module.exports = {
     {
       name: 'spokenword-video-worker',
       script: 'node',
-      args: '--enable-source-maps --loader tsx workers/video-worker.ts',
+      args: '--enable-source-maps --import tsx workers/video-worker.ts',
       instances: 1,
       exec_mode: 'fork',
       watch: false,
