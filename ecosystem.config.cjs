@@ -28,8 +28,8 @@ module.exports = {
     },
     {
       name: 'spokenword-video-worker',
-      script: 'node',
-      args: '--enable-source-maps --import tsx workers/video-worker.ts',
+      script: 'node_modules/.bin/tsx',
+      args: 'workers/video-worker.ts',
       instances: 1,
       exec_mode: 'fork',
       watch: false,
