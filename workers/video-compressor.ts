@@ -5,165 +5,186 @@ import redis from '../lib/redis'
 import prisma from '../lib/prisma'
 import type { VideoCompressionJob } from '../lib/videoQueue'
 
-const worker = new Worker<VideoCompressionJob>(
-  'video-compression',
-  async (job: Job<VideoCompressionJob>) => {
-    const { 
-      packageId, 
-      tempFilePath, 
-      outputPath, 
-      originalFileName,
-      originalSize,
-      nextOrderIndex,
-      compressedFileName,
-      userId 
-    } = job.data
+const queueName = 'video-compression'
 
-    console.log(`\n🎬 Начинаем сжатие: ${originalFileName}`)
-    console.log(`📊 Размер: ${Math.round(originalSize / 1024 / 1024)}MB`)
+export const createVideoCompressionWorker = () => {
+  const worker = new Worker<VideoCompressionJob>(
+    queueName,
+    async (job: Job<VideoCompressionJob>) => {
+      const { 
+        packageId, 
+        tempFilePath, 
+        outputPath, 
+        originalFileName,
+        originalSize,
+        nextOrderIndex,
+        compressedFileName,
+        userId 
+      } = job.data
 
-    let tempFileDeleted = false
+      console.log(`\n🎬 Начинаем сжатие: ${originalFileName}`)
+      console.log(`📊 Размер: ${Math.round(originalSize / 1024 / 1024)}MB`)
 
-    try {
-      // Обновляем статус в Redis
-      await redis.set(
-        `upload:${packageId}:${originalFileName}`,
-        JSON.stringify({ status: 'processing', jobId: job.id, timestamp: Date.now() }),
-        'EX',
-        3600
-      )
+      let tempFileDeleted = false
 
-      job.updateProgress(10)
+      try {
+        await redis.set(
+          `upload:${packageId}:${originalFileName}`,
+          JSON.stringify({ status: 'processing', jobId: job.id, timestamp: Date.now() }),
+          'EX',
+          3600
+        )
 
-      // Проверяем кодек входного файла
-      const videoCodec = await getVideoCodec(tempFilePath)
-      console.log(`📹 Кодек видео: ${videoCodec}`)
+        job.updateProgress(10)
 
-      let ffmpegArgs: string[]
-      
-      // Если уже H.264/H.265 - копируем без пересжатия
-      if (videoCodec === 'h264' || videoCodec === 'hevc') {
-        console.log(`✅ Видео уже сжато (${videoCodec}), копируем без пересжатия`)
-        ffmpegArgs = [
-          '-y',
-          '-i', tempFilePath,
-          '-c:v', 'copy',      // Копируем видео поток как есть
-          '-c:a', 'aac',       // Пересжимаем только аудио
-          '-b:a', '96k',
-          '-movflags', '+faststart',
-          outputPath
-        ]
-      } else {
-        console.log(`🔄 Сжимаем видео с ${videoCodec} в H.264`)
-        ffmpegArgs = [
-          '-y',
-          '-i', tempFilePath,
-          '-vf', 'scale=1280:720',
-          '-c:v', 'libx264',
-          '-crf', '28',
-          '-preset', 'ultrafast',
-          '-c:a', 'aac',
-          '-b:a', '96k',
-          '-movflags', '+faststart',
-          '-threads', '2',
-          '-bufsize', '512k',
-          '-maxrate', '2M',
-          outputPath
-        ]
-      }
+        const videoCodec = await getVideoCodec(tempFilePath)
+        console.log(`📹 Кодек видео: ${videoCodec}`)
 
-      const result = await compressVideoWithSpawn(ffmpegArgs, job)
-
-      job.updateProgress(90)
-
-      // Получаем размер сжатого файла
-      const { size: compressedSize } = await stat(outputPath)
-      
-      console.log(`📉 Сжатие: ${Math.round(originalSize / 1024 / 1024)}MB → ${Math.round(compressedSize / 1024 / 1024)}MB`)
-      console.log(`🎯 Коэффициент: ${Math.round((1 - compressedSize / originalSize) * 100)}%`)
-
-      // Получаем длительность
-      const duration = await getVideoDuration(outputPath)
-
-      // Создаём запись в БД
-      const baseName = originalFileName.replace(/\.[^/.]+$/, '')
-      const newItem = await prisma.packageItem.create({
-        data: {
-          packageId,
-          title: `Лекция ${nextOrderIndex}: ${baseName}`,
-          fileName: compressedFileName,
-          originalName: originalFileName,
-          filePath: `/paid-content/packages/package_${packageId}/${compressedFileName}`,
-          duration,
-          orderIndex: nextOrderIndex,
-          originalSize,
-          compressedSize
+        let ffmpegArgs: string[]
+        
+        if (videoCodec === 'h264' || videoCodec === 'hevc') {
+          console.log(`✅ Видео уже сжато (${videoCodec}), копируем без пересжатия`)
+          ffmpegArgs = [
+            '-y',
+            '-i', tempFilePath,
+            '-c:v', 'copy',
+            '-c:a', 'aac',
+            '-b:a', '96k',
+            '-movflags', '+faststart',
+            outputPath
+          ]
+        } else {
+          console.log(`🔄 Сжимаем видео с ${videoCodec} в H.264`)
+          ffmpegArgs = [
+            '-y',
+            '-i', tempFilePath,
+            '-vf', 'scale=1280:720',
+            '-c:v', 'libx264',
+            '-crf', '28',
+            '-preset', 'ultrafast',
+            '-c:a', 'aac',
+            '-b:a', '96k',
+            '-movflags', '+faststart',
+            '-threads', '2',
+            '-bufsize', '512k',
+            '-maxrate', '2M',
+            outputPath
+          ]
         }
-      })
 
-      // Удаляем временный файл
-      await unlink(tempFilePath)
-      tempFileDeleted = true
+        await compressVideoWithSpawn(ffmpegArgs, job)
 
-      // Обновляем статус на "done"
-      await redis.set(
-        `upload:${packageId}:${originalFileName}`,
-        JSON.stringify({ 
-          status: 'done', 
-          itemId: newItem.id,
-          timestamp: Date.now() 
-        }),
-        'EX',
-        86400
-      )
+        job.updateProgress(90)
 
-      job.updateProgress(100)
+        const { size: compressedSize } = await stat(outputPath)
+        
+        console.log(`📉 Сжатие: ${Math.round(originalSize / 1024 / 1024)}MB → ${Math.round(compressedSize / 1024 / 1024)}MB`)
+        console.log(`🎯 Коэффициент: ${Math.round((1 - compressedSize / originalSize) * 100)}%`)
 
-      console.log(`✅ Готово: ${originalFileName}\n`)
+        const duration = await getVideoDuration(outputPath)
 
-      return {
-        success: true,
-        item: newItem,
-        compressionRatio: Math.round((1 - compressedSize / originalSize) * 100)
-      }
+        const baseName = originalFileName.replace(/\.[^/.]+$/, '')
+        const newItem = await prisma.packageItem.create({
+          data: {
+            packageId,
+            title: `Лекция ${nextOrderIndex}: ${baseName}`,
+            fileName: compressedFileName,
+            originalName: originalFileName,
+            filePath: `/paid-content/packages/package_${packageId}/${compressedFileName}`,
+            duration,
+            orderIndex: nextOrderIndex,
+            originalSize,
+            compressedSize
+          }
+        })
 
-    } catch (error) {
-      console.error(`❌ Ошибка обработки ${originalFileName}:`, error)
+        await unlink(tempFilePath)
+        tempFileDeleted = true
 
-      // Обновляем статус на "error"
-      await redis.set(
-        `upload:${packageId}:${originalFileName}`,
-        JSON.stringify({ 
-          status: 'error', 
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: Date.now() 
-        }),
-        'EX',
-        86400
-      )
+        await redis.set(
+          `upload:${packageId}:${originalFileName}`,
+          JSON.stringify({ 
+            status: 'done', 
+            itemId: newItem.id,
+            timestamp: Date.now() 
+          }),
+          'EX',
+          86400
+        )
 
-      // ВСЕГДА чистим временный файл
-      if (!tempFileDeleted) {
-        try {
-          await unlink(tempFilePath)
-          console.log('🧹 Временный файл удалён после ошибки')
-        } catch (cleanupError) {
-          console.warn('⚠️ Не удалось удалить временный файл:', cleanupError)
+        job.updateProgress(100)
+
+        console.log(`✅ Готово: ${originalFileName}\n`)
+
+        return {
+          success: true,
+          item: newItem,
+          compressionRatio: Math.round((1 - compressedSize / originalSize) * 100)
         }
-      }
 
-      throw error
-    }
-  },
-  {
-    connection: redis,
-    concurrency: 1, // ОДИН ФАЙЛ ЗА РАЗ!
-    limiter: {
-      max: 1,
-      duration: 1000,
+      } catch (error) {
+        console.error(`❌ Ошибка обработки ${originalFileName}:`, error)
+
+        await redis.set(
+          `upload:${packageId}:${originalFileName}`,
+          JSON.stringify({ 
+            status: 'error', 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: Date.now() 
+          }),
+          'EX',
+          86400
+        )
+
+        if (!tempFileDeleted) {
+          try {
+            await unlink(tempFilePath)
+            console.log('🧹 Временный файл удалён после ошибки')
+          } catch (cleanupError) {
+            console.warn('⚠️ Не удалось удалить временный файл:', cleanupError)
+          }
+        }
+
+        throw error
+      }
     },
+    {
+      connection: redis,
+      concurrency: 1,
+      limiter: {
+        max: 1,
+        duration: 1000,
+      },
+    }
+  )
+
+  worker.on('completed', (job) => {
+    console.log(`✅ Job ${job.id} completed`)
+  })
+
+  worker.on('failed', (job, err) => {
+    console.error(`❌ Job ${job?.id} failed:`, err.message)
+  })
+
+  worker.on('error', (err) => {
+    console.error('Worker error:', err)
+  })
+
+  const shutdown = async (reason?: string) => {
+    const label = reason ? ` (${reason})` : ''
+    console.log(`Shutting down video worker${label}...`)
+
+    await Promise.all([
+      worker.close().catch((err) => console.error('Error closing worker:', err)),
+      redis.quit().catch((err) => console.error('Error closing redis:', err)),
+      prisma.$disconnect().catch((err) => console.error('Error disconnecting prisma:', err)),
+    ])
   }
-)
+
+  console.log(`Video compression worker ready (queue: ${queueName})`)
+
+  return { worker, shutdown }
+}
 
 function compressVideoWithSpawn(args: string[], job: Job): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -259,25 +280,3 @@ function getVideoCodec(filePath: string): Promise<string> {
     })
   })
 }
-
-worker.on('completed', (job) => {
-  console.log(`✅ Job ${job.id} completed`)
-})
-
-worker.on('failed', (job, err) => {
-  console.error(`❌ Job ${job?.id} failed:`, err.message)
-})
-
-worker.on('error', (err) => {
-  console.error('Worker error:', err)
-})
-
-console.log('🔄 Video compression worker started (concurrency: 1)')
-
-process.on('SIGTERM', async () => {
-  console.log('Shutting down worker...')
-  await worker.close()
-  await redis.quit()
-  process.exit(0)
-})
-
