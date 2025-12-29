@@ -1,51 +1,55 @@
-import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import type { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import prisma from '@/lib/prisma'
 import { randomBytes } from 'crypto'
 import { mkdir } from 'fs/promises'
 import { createWriteStream } from 'fs'
 import path from 'path'
 import busboy from 'busboy'
-import { Readable } from 'stream'
 
-// Увеличиваем лимит для больших видеофайлов
-export const maxDuration = 300 // 5 минут на выполнение
-export const dynamic = 'force-dynamic'
+// КРИТИЧНО! Отключаем встроенный bodyParser Next.js
+export const config = {
+  api: {
+    bodyParser: false, // Отключаем bodyParser чтобы читать RAW stream
+    responseLimit: false,
+    sizeLimit: '5gb', // Устанавливаем лимит 5GB
+  },
+}
 
-// Папка, куда кладём файлы (на сервере!)
 const ARCHIVE_DIR = path.resolve(process.cwd(), 'public/conf-archive')
 
-export async function POST(req: NextRequest) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   try {
-    const session = await getServerSession(authOptions)
+    // Проверка авторизации
+    const session = await getServerSession(req, res, authOptions)
     const user = session?.user
 
-    // Только модератор и выше!
     if (!user || !['MODERATOR', 'ADMIN', 'SUPER'].includes(user.role)) {
-      return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
+      return res.status(403).json({ error: 'Нет доступа' })
     }
 
-    // Создаём директорию если её нет
+    // Создаём директорию
     await mkdir(ARCHIVE_DIR, { recursive: true })
 
-    // ИСПОЛЬЗУЕМ BUSBOY для обхода 10MB лимита Next.js
-    const contentType = req.headers.get('content-type')
+    const contentType = req.headers['content-type']
     if (!contentType?.includes('multipart/form-data')) {
-      return NextResponse.json({ error: 'Invalid content type' }, { status: 400 })
+      return res.status(400).json({ error: 'Invalid content type' })
     }
 
-    // Конвертируем Web ReadableStream в Node.js Readable stream
-    const nodeStream = Readable.from(req.body as any)
-
-    return new Promise<NextResponse>((resolve) => {
-      const bb = busboy({ 
-        headers: { 
-          'content-type': contentType 
-        },
+    return new Promise<void>((resolve) => {
+      const bb = busboy({
+        headers: req.headers,
         limits: {
-          fileSize: 5 * 1024 * 1024 * 1024, // 5GB максимум
-        }
+          fileSize: 5 * 1024 * 1024 * 1024, // 5GB
+        },
       })
 
       let displayName = ''
@@ -75,7 +79,8 @@ export async function POST(req: NextRequest) {
         // Проверяем расширение
         if (!fileName.endsWith('.mp4')) {
           file.resume()
-          resolve(NextResponse.json({ error: 'Только mp4' }, { status: 400 }))
+          res.status(400).json({ error: 'Только mp4' })
+          resolve()
           return
         }
 
@@ -86,7 +91,7 @@ export async function POST(req: NextRequest) {
         systemName = `${ts}_${rand}${ext}`
         filePath = path.join(ARCHIVE_DIR, systemName)
 
-        console.log(`📥 Начинаем потоковую загрузку: ${fileName}`)
+        console.log(`📥 [Pages API] Начинаем потоковую загрузку: ${fileName}`)
 
         // Сохраняем файл на диск
         const writeStream = createWriteStream(filePath)
@@ -111,17 +116,16 @@ export async function POST(req: NextRequest) {
         file.on('error', (err) => {
           console.error('❌ File stream error:', err)
           writeStream.destroy()
-          resolve(NextResponse.json({ error: 'Ошибка при загрузке файла' }, { status: 500 }))
+          res.status(500).json({ error: 'Ошибка при загрузке файла' })
+          resolve()
         })
       })
 
       // Завершение обработки
       bb.on('finish', async () => {
         if (!fileProcessed || !displayName) {
-          resolve(NextResponse.json(
-            { error: 'Файл и название обязательны' },
-            { status: 400 }
-          ))
+          res.status(400).json({ error: 'Файл и название обязательны' })
+          resolve()
           return
         }
 
@@ -137,32 +141,30 @@ export async function POST(req: NextRequest) {
             },
           })
 
-          console.log(`✅ Файл добавлен в архив конференций: ${displayName}`)
-          resolve(NextResponse.json({ ok: true, file: confFile }))
+          console.log(`✅ [Pages API] Файл добавлен в архив конференций: ${displayName}`)
+          res.status(200).json({ ok: true, file: confFile })
+          resolve()
 
         } catch (error) {
           console.error('❌ Database error:', error)
-          resolve(NextResponse.json(
-            { error: 'Ошибка при сохранении в БД' },
-            { status: 500 }
-          ))
+          res.status(500).json({ error: 'Ошибка при сохранении в БД' })
+          resolve()
         }
       })
 
       bb.on('error', (err) => {
         console.error('❌ Busboy error:', err)
-        resolve(NextResponse.json({ error: 'Ошибка парсинга формы' }, { status: 500 }))
+        res.status(500).json({ error: 'Ошибка парсинга формы' })
+        resolve()
       })
 
       // Подключаем stream к busboy
-      nodeStream.pipe(bb)
+      req.pipe(bb)
     })
 
   } catch (error) {
     console.error('❌ Conference upload error:', error)
-    return NextResponse.json(
-      { error: 'Ошибка при загрузке файла' },
-      { status: 500 }
-    )
+    return res.status(500).json({ error: 'Ошибка при загрузке файла' })
   }
 }
+

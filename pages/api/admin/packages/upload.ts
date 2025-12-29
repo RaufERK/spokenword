@@ -1,39 +1,47 @@
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { NextRequest, NextResponse } from 'next/server'
 import { mkdir } from 'fs/promises'
 import { existsSync, createWriteStream } from 'fs'
 import path from 'path'
 import { addVideoToQueue } from '@/lib/videoQueue'
 import redis from '@/lib/redis'
 import busboy from 'busboy'
-import { Readable } from 'stream'
 
-// Увеличиваем лимит
-export const maxDuration = 300 // 5 минут
-export const dynamic = 'force-dynamic'
+// КРИТИЧНО! Отключаем встроенный bodyParser Next.js
+export const config = {
+  api: {
+    bodyParser: false,
+    responseLimit: false,
+    sizeLimit: '5gb',
+  },
+}
 
-export async function POST(req: NextRequest) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' })
+  }
+
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(req, res, authOptions)
     
     if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-      return NextResponse.json({ message: 'Access denied' }, { status: 403 })
+      return res.status(403).json({ message: 'Access denied' })
     }
 
-    // ИСПОЛЬЗУЕМ BUSBOY для обхода 10MB лимита Next.js
-    const contentType = req.headers.get('content-type')
+    const contentType = req.headers['content-type']
     if (!contentType?.includes('multipart/form-data')) {
-      return NextResponse.json({ message: 'Invalid content type' }, { status: 400 })
+      return res.status(400).json({ message: 'Invalid content type' })
     }
 
-    const nodeStream = Readable.from(req.body as any)
-
-    return new Promise<NextResponse>(async (resolve) => {
-      const bb = busboy({ 
-        headers: { 'content-type': contentType },
-        limits: { fileSize: 5 * 1024 * 1024 * 1024 } // 5GB
+    return new Promise<void>(async (resolve) => {
+      const bb = busboy({
+        headers: req.headers,
+        limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5GB
       })
 
       let packageId: number = 0
@@ -67,11 +75,12 @@ export async function POST(req: NextRequest) {
 
         if (!pkg) {
           file.resume()
-          resolve(NextResponse.json({ message: 'Пакет не найден' }, { status: 404 }))
+          res.status(404).json({ message: 'Пакет не найден' })
+          resolve()
           return
         }
 
-        // ПРОВЕРКА ДУБЛИКАТОВ через Redis + БД
+        // ПРОВЕРКА ДУБЛИКАТОВ
         const redisKey = `upload:${packageId}:${originalFileName}`
         const existingStatus = await redis.get(redisKey)
         
@@ -80,25 +89,22 @@ export async function POST(req: NextRequest) {
           
           if (status.status === 'processing') {
             file.resume()
-            resolve(NextResponse.json({ 
-              message: `Файл "${originalFileName}" уже обрабатывается. Подождите завершения.`,
+            res.status(409).json({ 
+              message: `Файл "${originalFileName}" уже обрабатывается.`,
               status: 'processing'
-            }, { status: 409 }))
+            })
+            resolve()
             return
           }
           
           if (status.status === 'done') {
             file.resume()
-            resolve(NextResponse.json({ 
-              message: `Файл "${originalFileName}" уже загружен в этот пакет.`,
+            res.status(400).json({ 
+              message: `Файл "${originalFileName}" уже загружен.`,
               status: 'done'
-            }, { status: 400 }))
+            })
+            resolve()
             return
-          }
-          
-          // Если status === 'error' - можно перезагрузить (продолжаем)
-          if (status.status === 'error') {
-            console.log(`⚠️ Повторная загрузка файла после ошибки: ${originalFileName}`)
           }
         }
 
@@ -113,12 +119,10 @@ export async function POST(req: NextRequest) {
           await mkdir(tempDir, { recursive: true })
         }
 
-        // Сохраняем файл во временную папку ЧЕРЕЗ STREAMING
         tempFilePath = path.join(tempDir, `${Date.now()}_${originalFileName}`)
         
-        console.log(`📥 Начинаем потоковую загрузку: ${originalFileName}`)
+        console.log(`📥 [Pages API] Начинаем потоковую загрузку: ${originalFileName}`)
         
-        // Создаём поток записи
         const writeStream = createWriteStream(tempFilePath)
         let bytesWritten = 0
 
@@ -127,7 +131,6 @@ export async function POST(req: NextRequest) {
           bytesWritten += chunk.length
           fileSize = bytesWritten
 
-          // Логируем прогресс каждые 50MB
           if (bytesWritten % (50 * 1024 * 1024) < chunk.length) {
             console.log(`📊 Загружено: ${Math.round(bytesWritten / 1024 / 1024)}MB`)
           }
@@ -141,14 +144,16 @@ export async function POST(req: NextRequest) {
         file.on('error', (err) => {
           console.error('❌ File stream error:', err)
           writeStream.destroy()
-          resolve(NextResponse.json({ message: 'Ошибка при загрузке файла' }, { status: 500 }))
+          res.status(500).json({ message: 'Ошибка при загрузке файла' })
+          resolve()
         })
       })
 
-      // Завершение обработки
+      // Завершение
       bb.on('finish', async () => {
         if (!fileProcessed || !packageId) {
-          resolve(NextResponse.json({ message: 'Файл и ID пакета обязательны' }, { status: 400 }))
+          res.status(400).json({ message: 'Файл и ID пакета обязательны' })
+          resolve()
           return
         }
 
@@ -159,20 +164,21 @@ export async function POST(req: NextRequest) {
           })
 
           if (!pkg) {
-            resolve(NextResponse.json({ message: 'Пакет не найден' }, { status: 404 }))
+            res.status(404).json({ message: 'Пакет не найден' })
+            resolve()
             return
           }
 
-          // Проверка дубликатов в БД
           const isDuplicate = pkg.items.some(item => 
             item.originalName === originalFileName && 
             item.originalSize === fileSize
           )
 
           if (isDuplicate) {
-            resolve(NextResponse.json({ 
+            res.status(400).json({ 
               message: `Файл "${originalFileName}" уже загружен в этот пакет.` 
-            }, { status: 400 }))
+            })
+            resolve()
             return
           }
 
@@ -181,12 +187,11 @@ export async function POST(req: NextRequest) {
           const compressedFileName = `lecture_${nextOrderIndex.toString().padStart(2, '0')}_compressed.mp4`
           const outputPath = path.join(packageDir, compressedFileName)
 
-          // Проверяем среду
           const isProduction = process.env.NODE_ENV === 'production'
           const shouldCompress = isProduction || process.env.FORCE_COMPRESSION === 'true'
 
           if (!shouldCompress) {
-            // Локальная разработка - копируем без сжатия
+            // Dev: без сжатия
             const fileExtension = path.extname(originalFileName)
             const fallbackFileName = `lecture_${nextOrderIndex.toString().padStart(2, '0')}_original${fileExtension}`
             const fallbackPath = path.join(packageDir, fallbackFileName)
@@ -209,16 +214,17 @@ export async function POST(req: NextRequest) {
               }
             })
 
-            resolve(NextResponse.json({
+            res.status(200).json({
               success: true,
               item: newItem,
               warning: 'Видео загружено без сжатия (локальная разработка)',
               compressed: false
-            }))
+            })
+            resolve()
             return
           }
 
-          // ДОБАВЛЯЕМ В ОЧЕРЕДЬ Redis (для production)
+          // Production: с воркером
           const redisKey = `upload:${packageId}:${originalFileName}`
           const job = await addVideoToQueue({
             packageId,
@@ -231,7 +237,6 @@ export async function POST(req: NextRequest) {
             userId: parseInt(session.user.id)
           })
 
-          // Устанавливаем статус "pending" в Redis
           await redis.set(
             redisKey,
             JSON.stringify({ 
@@ -243,34 +248,35 @@ export async function POST(req: NextRequest) {
             3600
           )
 
-          console.log(`📋 Файл добавлен в очередь: ${originalFileName} (Job ID: ${job.id})`)
+          console.log(`📋 [Pages API] Файл добавлен в очередь: ${originalFileName} (Job ID: ${job.id})`)
 
-          resolve(NextResponse.json({
+          res.status(200).json({
             success: true,
             jobId: job.id,
             message: 'Файл добавлен в очередь на обработку',
             status: 'queued'
-          }))
+          })
+          resolve()
 
         } catch (error) {
           console.error('❌ Processing error:', error)
-          resolve(NextResponse.json({ message: 'Ошибка при обработке файла' }, { status: 500 }))
+          res.status(500).json({ message: 'Ошибка при обработке файла' })
+          resolve()
         }
       })
 
       bb.on('error', (err) => {
         console.error('❌ Busboy error:', err)
-        resolve(NextResponse.json({ message: 'Ошибка парсинга формы' }, { status: 500 }))
+        res.status(500).json({ message: 'Ошибка парсинга формы' })
+        resolve()
       })
 
-      // Подключаем stream к busboy
-      nodeStream.pipe(bb)
+      req.pipe(bb)
     })
 
   } catch (error) {
     console.error('Upload error:', error)
-    return NextResponse.json({ 
-      message: 'Ошибка при загрузке файла' 
-    }, { status: 500 })
+    return res.status(500).json({ message: 'Ошибка при загрузке файла' })
   }
 }
+
