@@ -48,8 +48,10 @@
   "dependencies": {
     "@prisma/client": "^6.10.1",
     "@tailwindcss/postcss": "^4",
+    "@types/busboy": "^1.5.4",
     "auth-jwt": "^1.0.6",
     "bullmq": "^5.63.0",
+    "busboy": "^1.6.0",
     "clsx": "^2.1.1",
     "hls.js": "^1.6.2",
     "imask": "^7.6.1",
