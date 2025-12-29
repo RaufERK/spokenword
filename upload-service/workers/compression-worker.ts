@@ -1,26 +1,14 @@
 import { Worker, Job } from 'bullmq'
 import { spawn } from 'child_process'
 import { unlink, stat, mkdir } from 'fs/promises'
-import { createClient } from 'redis'
+import redis from '../../lib/redis.js'
 import prisma from '../../lib/prisma.js'
 import type { VideoCompressionJob } from '../queue/videoQueue.js'
 import path from 'path'
 
 const queueName = 'video-compression'
 
-// Create Redis connection for worker
-const redisConnection = createClient({
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-})
-
-redisConnection.on('error', (err) => {
-  console.error('[Compression Worker] Redis connection error:', err)
-})
-
-redisConnection.connect().catch((err) => {
-  console.error('[Compression Worker] Failed to connect to Redis:', err)
-})
+// Use shared Redis connection from main project (ioredis)
 
 export function createCompressionWorker() {
   const worker = new Worker<VideoCompressionJob>(
@@ -173,7 +161,7 @@ export function createCompressionWorker() {
       }
     },
     {
-      connection: redisConnection as any,
+      connection: redis,
       concurrency: 1,
       limiter: {
         max: 1,
@@ -200,7 +188,7 @@ export function createCompressionWorker() {
 
     await Promise.all([
       worker.close().catch((err: Error) => console.error('Error closing worker:', err)),
-      redisConnection.quit().catch((err: Error) => console.error('Error closing redis:', err)),
+      // Note: Redis connection is shared, don't close it here
       prisma.$disconnect().catch((err: Error) => console.error('Error disconnecting prisma:', err)),
     ])
   }

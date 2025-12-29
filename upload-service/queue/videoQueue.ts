@@ -1,19 +1,7 @@
 import { Queue } from 'bullmq'
-import { createClient } from 'redis'
+import redis from '../../lib/redis.js'
 
-// Create Redis connection for BullMQ
-const redisConnection = createClient({
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-})
-
-redisConnection.on('error', (err) => {
-  console.error('Redis connection error:', err)
-})
-
-redisConnection.connect().catch((err) => {
-  console.error('Failed to connect to Redis:', err)
-})
+// Use shared Redis connection from main project (ioredis)
 
 export interface VideoCompressionJob {
   packageId?: number
@@ -29,7 +17,7 @@ export interface VideoCompressionJob {
 }
 
 export const videoQueue = new Queue<VideoCompressionJob>('video-compression', {
-  connection: redisConnection as any,
+  connection: redis,
   defaultJobOptions: {
     attempts: 2,
     backoff: {
