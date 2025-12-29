@@ -26,32 +26,28 @@ module.exports = {
         REDIS_PORT: '6379',
       },
     },
+    // NOTE: spokenword-video-worker removed - not used anymore
+    // Upload service now handles both upload and compression
+    // Old worker files kept in /workers/ as reference/example code
     {
-      name: 'spokenword-video-worker',
-      cwd: '/home/appuser/apps/spokenword/source',
+      name: 'spokenword-compression-worker',
+      cwd: '/home/appuser/apps/spokenword/source/upload-service',
       script: '/home/appuser/apps/spokenword/source/node_modules/.bin/tsx',
-      args: 'workers/video-worker.ts',
-
+      args: 'workers/compression-worker.ts',
       interpreter: 'none',
       exec_mode: 'fork',
       autorestart: true,
-
-      env: {
-        NODE_ENV: 'production',
-      },
-
       instances: 1,
       watch: false,
-      max_memory_restart: '2G', // было '7G'
-      // node_args: '--max-old-space-size=2048 --expose-gc', // было 7168
+      max_memory_restart: '2G',
       priority: 5,
       max_restarts: 10,
       min_uptime: '10s',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
-      log_file: '/home/appuser/logs/video-worker-combined.log',
-      out_file: '/home/appuser/logs/video-worker-out.log',
-      error_file: '/home/appuser/logs/video-worker-error.log',
+      log_file: '/home/appuser/logs/compression-worker-combined.log',
+      out_file: '/home/appuser/logs/compression-worker-out.log',
+      error_file: '/home/appuser/logs/compression-worker-error.log',
       env: {
         NODE_ENV: 'production',
         REDIS_HOST: '127.0.0.1',

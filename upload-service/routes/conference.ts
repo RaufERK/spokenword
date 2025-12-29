@@ -4,13 +4,16 @@ import { createWriteStream } from 'fs'
 import { mkdir } from 'fs/promises'
 import path from 'path'
 import { randomBytes } from 'crypto'
-// Import Prisma from main project (shared instance)
 import prisma from '../../lib/prisma.js'
+import { addVideoToQueue } from '../queue/videoQueue.js'
+import { getVideoCodec, needsCompression } from '../utils/video.js'
 
 const router = express.Router()
 
 // Conference archive directory (relative to main project root)
 const ARCHIVE_DIR = path.resolve(process.cwd(), '../public/conf-archive')
+// Temp directory for uploads before compression
+const TEMP_DIR = path.resolve(process.cwd(), '../public/conf-archive/temp')
 
 interface UploadData {
   displayName: string
@@ -43,8 +46,9 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid content type' })
     }
 
-    // Create directory if not exists
+    // Create directories
     await mkdir(ARCHIVE_DIR, { recursive: true })
+    await mkdir(TEMP_DIR, { recursive: true })
 
     const bb = busboy({
       headers: req.headers,
@@ -56,108 +60,137 @@ router.post('/', async (req, res) => {
     let uploadData: Partial<UploadData> = {}
     let fileProcessed = false
 
-    // Handle text fields (displayName, userId, etc.)
+    // Handle text fields (displayName)
     bb.on('field', (fieldname: string, val: string) => {
       if (fieldname === 'displayName') {
         uploadData.displayName = val
       }
-      // We'll get userId from Next.js proxy or JWT later
     })
 
     // Handle file upload
-    bb.on('file', async (fieldname: string, file: NodeJS.ReadableStream, info: { filename: string; encoding: string; mimeType: string }) => {
-      if (fieldname !== 'file') {
-        file.resume() // Skip non-file fields
-        return
-      }
-
-      const { filename } = info
-      uploadData.fileName = filename
-      fileProcessed = true
-
-      // Validate file extension
-      if (!filename.endsWith('.mp4')) {
-        file.resume()
-        return res.status(400).json({ error: 'Only .mp4 files allowed' })
-      }
-
-      // Generate unique system name
-      const timestamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14)
-      const random = randomBytes(3).toString('hex')
-      const systemName = `${timestamp}_${random}.mp4`
-      uploadData.systemName = systemName
-
-      const filePath = path.join(ARCHIVE_DIR, systemName)
-      uploadData.filePath = filePath
-
-      console.log(`📥 Uploading: ${filename} → ${systemName}`)
-
-      // Stream file to disk
-      const writeStream = createWriteStream(filePath)
-      let bytesWritten = 0
-
-      file.on('data', (chunk: Buffer) => {
-        writeStream.write(chunk)
-        bytesWritten += chunk.length
-
-        // Log progress every 50MB
-        if (bytesWritten % (50 * 1024 * 1024) < chunk.length) {
-          console.log(`📊 Progress: ${Math.round(bytesWritten / 1024 / 1024)}MB`)
-        }
-      })
-
-      file.on('end', () => {
-        writeStream.end()
-        uploadData.fileSize = bytesWritten
-        console.log(`💾 File saved: ${filename} (${Math.round(bytesWritten / 1024 / 1024)}MB)`)
-      })
-
-      file.on('error', (err: Error) => {
-        console.error('❌ File stream error:', err)
-        writeStream.destroy()
-        return res.status(500).json({ error: 'File upload failed' })
-      })
-    })
-
-    // Handle completion
-    bb.on('finish', async () => {
-      if (!fileProcessed || !uploadData.displayName || !uploadData.systemName) {
-        return res.status(400).json({ error: 'Missing required fields (file or displayName)' })
-      }
-
-      try {
-        // Get userId from request (set earlier from header, or use default for testing)
-        const userIdFromHeader = req.headers['x-user-id'] as string || '1'
-        const userIdNumber = parseInt(userIdFromHeader, 10)
-
-        if (!userIdNumber || isNaN(userIdNumber)) {
-          return res.status(401).json({ error: 'Invalid user ID' })
+    bb.on(
+      'file',
+      async (
+        fieldname: string,
+        file: NodeJS.ReadableStream,
+        info: { filename: string; encoding: string; mimeType: string }
+      ) => {
+        if (fieldname !== 'file') {
+          file.resume() // Skip non-file fields
+          return
         }
 
-        // Save metadata to database
-        const confFile = await prisma.conferenceFile.create({
-          data: {
-            displayName: uploadData.displayName,
-            originalName: uploadData.fileName!,
-            systemName: uploadData.systemName,
-            uploadedBy: userIdNumber,
-            size: uploadData.fileSize!,
-          },
+        const { filename } = info
+        uploadData.fileName = filename
+        fileProcessed = true
+
+        // Validate file extension
+        if (!filename.endsWith('.mp4')) {
+          file.resume()
+          return res.status(400).json({ error: 'Only .mp4 files allowed' })
+        }
+
+        // Generate unique system name
+        const timestamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14)
+        const random = randomBytes(3).toString('hex')
+        const systemName = `${timestamp}_${random}.mp4`
+        uploadData.systemName = systemName
+
+        // Save to temp directory first
+        const tempFilePath = path.join(TEMP_DIR, `temp_${systemName}`)
+        uploadData.filePath = tempFilePath
+
+        console.log(`📥 Uploading: ${filename} → temp_${systemName}`)
+
+        // Stream file to disk
+        const writeStream = createWriteStream(tempFilePath)
+        let bytesWritten = 0
+
+        file.on('data', (chunk: Buffer) => {
+          writeStream.write(chunk)
+          bytesWritten += chunk.length
+
+          // Log progress every 50MB
+          if (bytesWritten % (50 * 1024 * 1024) < chunk.length) {
+            console.log(`📊 Progress: ${Math.round(bytesWritten / 1024 / 1024)}MB`)
+          }
         })
 
-        console.log(`✅ Conference file added to DB: ${uploadData.displayName}`)
+        file.on('end', async () => {
+          writeStream.end()
+          uploadData.fileSize = bytesWritten
+          console.log(`💾 File saved: ${filename} (${Math.round(bytesWritten / 1024 / 1024)}MB)`)
 
-        return res.status(200).json({
-          ok: true,
-          file: confFile,
-          message: 'File uploaded successfully'
+          // Check codec and decide if compression is needed
+          try {
+            const codec = await getVideoCodec(tempFilePath)
+            console.log(`📹 Detected codec: ${codec}`)
+
+            const shouldCompress = needsCompression(codec)
+            const finalPath = path.join(ARCHIVE_DIR, systemName)
+            const userIdNumber = parseInt(userIdHeader || '1', 10)
+
+            // Create DB entry first
+            const confFile = await prisma.conferenceFile.create({
+              data: {
+                displayName: uploadData.displayName!,
+                originalName: filename,
+                systemName,
+                uploadedBy: userIdNumber,
+                size: bytesWritten,
+              },
+            })
+
+            console.log(`✅ Conference file added to DB: ${uploadData.displayName}`)
+
+            if (shouldCompress || codec === 'h264' || codec === 'hevc') {
+              // Add to compression queue (even for h264/hevc - they will be copied with optimization)
+              const job = await addVideoToQueue({
+                type: 'conference',
+                conferenceFileId: confFile.id,
+                tempFilePath,
+                outputPath: finalPath,
+                originalFileName: filename,
+                originalSize: bytesWritten,
+                compressedFileName: systemName,
+                userId: userIdNumber,
+              })
+
+              console.log(`🔄 Added to compression queue: ${job.id}`)
+              console.log(`   Codec: ${codec}, Will compress: ${shouldCompress ? 'Yes' : 'No (copy only)'}`)
+
+              res.status(200).json({
+                ok: true,
+                file: confFile,
+                message: 'File uploaded and queued for processing',
+                jobId: job.id,
+                willCompress: shouldCompress,
+              })
+            } else {
+              // Unknown codec or error - just move to final location without compression
+              console.log(`⚠️  Unknown codec, moving to final location without compression`)
+              const fs = await import('fs/promises')
+              await fs.rename(tempFilePath, finalPath)
+
+              res.status(200).json({
+                ok: true,
+                file: confFile,
+                message: 'File uploaded successfully (no compression)',
+              })
+            }
+          } catch (codecError) {
+            console.error('❌ Error checking codec:', codecError)
+            return res.status(500).json({ error: 'Failed to process video codec' })
+          }
         })
 
-      } catch (dbError) {
-        console.error('❌ Database error:', dbError)
-        return res.status(500).json({ error: 'Failed to save metadata to database' })
+        file.on('error', (err: Error) => {
+          console.error('❌ File stream error:', err)
+          writeStream.destroy()
+          return res.status(500).json({ error: 'File upload failed' })
+        })
       }
-    })
+    )
 
     bb.on('error', (err: Error) => {
       console.error('❌ Busboy error:', err)
@@ -166,7 +199,6 @@ router.post('/', async (req, res) => {
 
     // Pipe request to busboy
     req.pipe(bb)
-
   } catch (error) {
     console.error('❌ Conference upload error:', error)
     return res.status(500).json({ error: 'Upload failed' })
@@ -174,4 +206,3 @@ router.post('/', async (req, res) => {
 })
 
 export default router
-

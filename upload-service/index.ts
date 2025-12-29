@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import conferenceRouter from './routes/conference.js'
+import packagesRouter from './routes/packages.js'
 import testRouter from './routes/test.js'
 
 const app = express()
@@ -19,6 +20,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/upload/conference', conferenceRouter)
+app.use('/upload/packages', packagesRouter)
 app.use('/test', testRouter)
 
 // Error handler
