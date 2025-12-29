@@ -24,6 +24,17 @@ router.post('/', async (req, res) => {
   try {
     console.log('📥 [Upload Service] Conference upload request received')
 
+    // Get userId from header (set by Next.js middleware)
+    const userId = req.headers['x-user-id'] as string
+    const userRole = req.headers['x-user-role'] as string
+
+    if (!userId) {
+      console.error('❌ Missing x-user-id header')
+      return res.status(401).json({ error: 'Unauthorized - missing user info' })
+    }
+
+    console.log(`👤 Upload by user: ${userId} (role: ${userRole})`)
+
     // Validate content type
     const contentType = req.headers['content-type']
     if (!contentType?.includes('multipart/form-data')) {
@@ -113,9 +124,13 @@ router.post('/', async (req, res) => {
       }
 
       try {
-        // TODO: Get real userId from JWT token
-        // For now, use a default user ID (we'll add auth later)
-        const userId = 1 // Placeholder
+        // Get userId from request (set earlier from header)
+        const userIdFromHeader = req.headers['x-user-id'] as string
+        const userIdNumber = parseInt(userIdFromHeader, 10)
+
+        if (!userIdNumber) {
+          return res.status(401).json({ error: 'Invalid user ID' })
+        }
 
         // Save metadata to database
         const confFile = await prisma.conferenceFile.create({
@@ -123,7 +138,7 @@ router.post('/', async (req, res) => {
             displayName: uploadData.displayName,
             originalName: uploadData.fileName!,
             systemName: uploadData.systemName,
-            uploadedBy: userId,
+            uploadedBy: userIdNumber,
             size: uploadData.fileSize!,
           },
         })

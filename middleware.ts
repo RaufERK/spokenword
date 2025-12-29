@@ -57,6 +57,60 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // 5. Proxy upload requests to upload microservice
+  if (pathname === '/api/conf-archive/upload' || pathname === '/api/admin/packages/upload') {
+    // Check authorization
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check role for conference uploads
+    if (pathname === '/api/conf-archive/upload') {
+      const allowedRoles = ['MODERATOR', 'ADMIN', 'SUPER']
+      if (!allowedRoles.includes(token.role as string)) {
+        return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
+      }
+    }
+
+    // Check role for package uploads
+    if (pathname === '/api/admin/packages/upload') {
+      const allowedRoles = ['ADMIN', 'SUPER']
+      if (!allowedRoles.includes(token.role as string)) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+    }
+
+    // Proxy to upload service
+    const uploadServiceUrl = `http://localhost:3006/upload${pathname.replace('/api', '')}`
+    
+    try {
+      // Forward the request to upload service with auth info
+      const headers = new Headers(req.headers)
+      headers.set('x-user-id', String(token.sub || token.id))
+      headers.set('x-user-role', String(token.role))
+
+      const response = await fetch(uploadServiceUrl, {
+        method: req.method,
+        headers: headers,
+        body: req.body,
+        // @ts-ignore - duplex is needed for streaming
+        duplex: 'half',
+      })
+
+      // Return the response from upload service
+      return new NextResponse(response.body, {
+        status: response.status,
+        headers: response.headers,
+      })
+    } catch (error) {
+      console.error('Upload service proxy error:', error)
+      return NextResponse.json(
+        { error: 'Upload service unavailable' },
+        { status: 503 }
+      )
+    }
+  }
+
   // Публичные страницы — всегда доступны
   return NextResponse.next()
 }
