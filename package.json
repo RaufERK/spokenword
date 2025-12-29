@@ -10,7 +10,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:worker": "tsx watch workers/video-worker.ts",
+    "dev:upload": "cd upload-service && npm run dev",
     "worker": "tsx workers/video-worker.ts",
+    "upload": "cd upload-service && npm start",
     "build": "next build",
     "start": "next start",
     "prod": "next start",
