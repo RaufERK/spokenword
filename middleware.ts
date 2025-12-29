@@ -57,7 +57,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // 5. Proxy upload requests to upload microservice
+  // 5. Check authorization for upload requests (Nginx will proxy to upload service)
   if (pathname === '/api/conf-archive/upload' || pathname === '/api/admin/packages/upload') {
     // Check authorization
     if (!token) {
@@ -80,35 +80,19 @@ export async function middleware(req: NextRequest) {
       }
     }
 
-    // Proxy to upload service
-    const uploadServiceUrl = `http://localhost:3006/upload${pathname.replace('/api', '')}`
+    // Add user info to headers for upload service
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set('x-user-id', String(token.sub || token.id))
+    requestHeaders.set('x-user-role', String(token.role))
+
+    // Let Nginx proxy the request (don't return here, let it pass through)
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
     
-    try {
-      // Forward the request to upload service with auth info
-      const headers = new Headers(req.headers)
-      headers.set('x-user-id', String(token.sub || token.id))
-      headers.set('x-user-role', String(token.role))
-
-      const response = await fetch(uploadServiceUrl, {
-        method: req.method,
-        headers: headers,
-        body: req.body,
-        // @ts-ignore - duplex is needed for streaming
-        duplex: 'half',
-      })
-
-      // Return the response from upload service
-      return new NextResponse(response.body, {
-        status: response.status,
-        headers: response.headers,
-      })
-    } catch (error) {
-      console.error('Upload service proxy error:', error)
-      return NextResponse.json(
-        { error: 'Upload service unavailable' },
-        { status: 503 }
-      )
-    }
+    return response
   }
 
   // Публичные страницы — всегда доступны
