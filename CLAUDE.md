@@ -68,6 +68,7 @@ Database updated (Prisma)
      - `/upload/conference` — conference archive uploads
      - `/upload/packages` — paid content uploads
      - `/test/upload` — test endpoint (no auth)
+     - `/job-status/:jobId` — get BullMQ job status (for progress tracking)
    
 3. **spokenword-compression-worker** — `upload-service/workers/compression-worker.ts`
    - BullMQ worker for video compression
@@ -111,6 +112,38 @@ location / {
 4. **Queue** — Job added to BullMQ `video-compression` queue
 5. **Worker** — Processes job asynchronously
 6. **Result** — Updates database with compressed size
+
+### Upload Progress Tracking
+
+**Real-time status updates for users:**
+
+1. **Upload Progress (0-100%)**
+   - Uses `XMLHttpRequest.upload.onprogress` for tracking
+   - Visual progress bar on `/upload` page
+   - Shows file size and current percentage
+
+2. **Compression Status**
+   - API endpoint: `/api/job-status/:jobId`
+   - Polls BullMQ job status every 2 seconds
+   - States: `waiting` → `active` → `completed` / `failed`
+   - Shows compression progress (0-100%)
+
+3. **Status Flow:**
+   ```
+   Uploading... (0-100%) → Processing... → Compressing... (0-100%) → Done!
+   ```
+
+4. **Parallel Uploads:**
+   - ✅ Multiple files can be uploaded simultaneously
+   - ✅ Upload service handles requests in parallel
+   - ✅ Compression worker processes 1 job at a time (queue)
+   - ✅ User can upload next file while previous is compressing
+
+**Benefits:**
+- ✅ Users see exact progress
+- ✅ No confusion during long operations
+- ✅ Better UX for large files
+- ✅ Clear feedback on each stage
 
 ---
 
