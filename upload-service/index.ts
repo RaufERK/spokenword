@@ -3,6 +3,7 @@ import cors from 'cors'
 import conferenceRouter from './routes/conference.js'
 import packagesRouter from './routes/packages.js'
 import testRouter from './routes/test.js'
+import jobStatusRouter from './routes/job-status.js'
 
 const app = express()
 const PORT = process.env.UPLOAD_SERVICE_PORT || 3006
@@ -22,6 +23,7 @@ app.get('/health', (req, res) => {
 app.use('/upload/conference', conferenceRouter)
 app.use('/upload/packages', packagesRouter)
 app.use('/test', testRouter)
+app.use('/job-status', jobStatusRouter)
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
