@@ -27,14 +27,6 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  if (!role || !['MODERATOR', 'ADMIN', 'SUPER'].includes(role)) {
-    return (
-      <div className='p-10 text-red-600'>
-        Нет доступа. Только для модераторов и выше.
-      </div>
-    )
-  }
-
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
@@ -181,6 +173,15 @@ export default function UploadPage() {
   }
 
   const isProcessing = ['uploading', 'processing', 'compressing'].includes(status)
+
+  // Check access after all hooks
+  if (!role || !['MODERATOR', 'ADMIN', 'SUPER'].includes(role)) {
+    return (
+      <div className='p-10 text-red-600'>
+        Нет доступа. Только для модераторов и выше.
+      </div>
+    )
+  }
 
   return (
     <div className='p-10 max-w-2xl mx-auto bg-indigo-800 rounded-2xl shadow'>
