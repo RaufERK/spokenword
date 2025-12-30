@@ -11,9 +11,20 @@ export default function ConferencePlayer({
   systemName: string
 }) {
   useEffect(() => {
+    console.log('[ConferencePlayer] Incrementing view for:', systemName)
     fetch(`/api/conf-archive/${encodeURIComponent(systemName)}/view`, {
       method: 'POST',
-    }).catch(() => {})
+    })
+      .then((res) => {
+        if (res.ok) {
+          console.log('[ConferencePlayer] ✅ View counted')
+        } else {
+          console.error('[ConferencePlayer] ❌ Failed to count view:', res.status)
+        }
+      })
+      .catch((err) => {
+        console.error('[ConferencePlayer] ❌ Error counting view:', err)
+      })
   }, [systemName])
 
   return (

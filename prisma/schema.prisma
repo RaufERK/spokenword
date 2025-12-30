@@ -50,6 +50,7 @@ model ConferenceFile {
   uploadedBy   Int
   size         Int
   views        Int      @default(0)
+  duration     Int?     // Длительность в секундах
 }
 
 model StreamLink {

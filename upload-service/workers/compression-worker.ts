@@ -127,10 +127,10 @@ export function createCompressionWorker() {
             where: { id: conferenceFileId },
             data: {
               size: compressedSize,
-              // You can add duration field to ConferenceFile model if needed
+              duration,
             },
           })
-          console.log(`✅ [Conference #${conferenceFileId}] Updated with compressed size`)
+          console.log(`✅ [Conference #${conferenceFileId}] Updated with compressed size and duration`)
         }
 
         // Delete temp file
