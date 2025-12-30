@@ -51,7 +51,13 @@ export default function UploadPage() {
       if (state === 'active') {
         setStatus('compressing')
         setCompressionProgress(progress)
+        
+        // If progress reaches 100% while still active, prepare for completion
+        if (progress >= 100) {
+          console.log('[Job] Progress reached 100%, waiting for completion...')
+        }
       } else if (state === 'completed') {
+        console.log('[Job] ✅ Completed!')
         setStatus('done')
         setCompressionProgress(100)
         if (pollIntervalRef.current) {
@@ -116,7 +122,7 @@ export default function UploadPage() {
           setJobId(data.jobId)
           pollIntervalRef.current = setInterval(() => {
             pollJobStatus(data.jobId)
-          }, 2000) // Poll every 2 seconds
+          }, 1000) // Poll every 1 second for faster updates
         } else {
           // No compression job (e.g., file moved directly)
           setStatus('done')

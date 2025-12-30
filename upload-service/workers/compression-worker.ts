@@ -137,7 +137,11 @@ export function createCompressionWorker() {
         await unlink(tempFilePath)
         tempFileDeleted = true
 
-        job.updateProgress(100)
+        // Update progress to 100% and wait to ensure client receives it
+        await job.updateProgress(100)
+        
+        // Small delay to ensure progress update is visible to client before job completes
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         console.log(`✅ Done: ${originalFileName}\n`)
 
