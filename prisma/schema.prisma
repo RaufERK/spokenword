@@ -54,11 +54,12 @@ model ConferenceFile {
 }
 
 model StreamLink {
-  id        Int      @id @default(autoincrement())
-  url       String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  youtubeUrl String?  // Ссылка на YouTube
+  rutubeUrl  String?  // Ссылка на Rutube
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 // Платные материалы - пакеты лекций

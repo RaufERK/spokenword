@@ -2,7 +2,14 @@
 
 import { Role } from '@/lib/roles'
 
-const links: { href: string; label: string; roles?: Role[] }[] = [
+export type NavLink = {
+  href: string
+  label: string
+  roles?: Role[]
+  isAdmin?: boolean
+}
+
+const links: NavLink[] = [
   { href: '/', label: 'Главная' },
   // { href: '/live', label: 'Стрим' },  // Временно скрыто
   // { href: '/audio', label: 'Аудио' },  // Временно скрыто
@@ -18,22 +25,6 @@ const links: { href: string; label: string; roles?: Role[] }[] = [
     roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
   },
   {
-    href: '/upload',
-    label: 'Загрузка файлов',
-    roles: ['MODERATOR', 'ADMIN', 'SUPER'],
-  },
-  {
-    href: '/links',
-    label: 'Ссылки',
-    roles: ['MODERATOR', 'ADMIN', 'SUPER'],
-  },
-  { href: '/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },
-  {
-    href: '/admin/packages',
-    label: 'Управление пакетами',
-    roles: ['ADMIN', 'SUPER'],
-  },
-  {
     href: '/paid-content',
     label: 'Платные материалы',
     roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
@@ -42,6 +33,30 @@ const links: { href: string; label: string; roles?: Role[] }[] = [
     href: '/profile',
     label: 'Профиль',
     roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
+  },
+  {
+    href: '/links',
+    label: 'Ссылки',
+    roles: ['MODERATOR', 'ADMIN', 'SUPER'],
+    isAdmin: true,
+  },
+  {
+    href: '/upload',
+    label: 'Загрузка файлов',
+    roles: ['MODERATOR', 'ADMIN', 'SUPER'],
+    isAdmin: true,
+  },
+  {
+    href: '/users',
+    label: 'Пользователи',
+    roles: ['ADMIN', 'SUPER'],
+    isAdmin: true,
+  },
+  {
+    href: '/admin/packages',
+    label: 'Управление пакетами',
+    roles: ['ADMIN', 'SUPER'],
+    isAdmin: true,
   },
 ]
 

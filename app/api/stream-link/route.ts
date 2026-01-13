@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/prisma'
 
-// GET - получить активную ссылку
+// GET - получить активные ссылки
 export async function GET() {
   try {
     const activeLink = await prisma.streamLink.findFirst({
@@ -12,7 +12,10 @@ export async function GET() {
 
     return NextResponse.json({ 
       success: true, 
-      data: activeLink?.url || null 
+      data: {
+        youtubeUrl: activeLink?.youtubeUrl || null,
+        rutubeUrl: activeLink?.rutubeUrl || null,
+      }
     })
   } catch (error) {
     console.error('Error fetching stream link:', error)
@@ -23,7 +26,7 @@ export async function GET() {
   }
 }
 
-// POST - создать/обновить ссылку (только для MODERATOR+)
+// POST - создать/обновить ссылки (только для MODERATOR+)
 export async function POST(req: NextRequest) {
   try {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
@@ -35,14 +38,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { url } = await req.json()
-
-    if (!url || typeof url !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'URL is required' },
-        { status: 400 }
-      )
-    }
+    const { youtubeUrl, rutubeUrl } = await req.json()
 
     // Деактивировать все предыдущие ссылки
     await prisma.streamLink.updateMany({
@@ -50,10 +46,11 @@ export async function POST(req: NextRequest) {
       data: { isActive: false }
     })
 
-    // Создать новую активную ссылку
+    // Создать новую активную запись
     const newLink = await prisma.streamLink.create({
       data: {
-        url: url.trim(),
+        youtubeUrl: youtubeUrl?.trim() || null,
+        rutubeUrl: rutubeUrl?.trim() || null,
         isActive: true
       }
     })
