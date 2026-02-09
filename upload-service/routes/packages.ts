@@ -115,8 +115,8 @@ router.post('/', async (req, res) => {
 
         console.log(`🔍 [PACKAGES] Looking for package #${uploadData.packageId}...`)
 
-        // Verify package exists
-        const pkg = await prisma.package.findUnique({
+        // Verify package exists (model is ContentPackage in Prisma schema)
+        const pkg = await prisma.contentPackage.findUnique({
           where: { id: uploadData.packageId },
           include: {
             items: {
