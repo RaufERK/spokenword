@@ -20,6 +20,8 @@
     "db:backup": "node scripts/backup-database.cjs",
     "db:restore": "node scripts/restore-database.cjs",
     "conf:restore": "node scripts/restore-conference-archive.cjs",
+    "cleanup": "node scripts/cleanup-orphan-files.cjs",
+    "cleanup:dry": "node scripts/cleanup-orphan-files.cjs --dry-run --verbose",
     "logs": "ssh amster_app 'bash /home/appuser/apps/spokenword/source/scripts/watch-logs.sh'",
     "logs:errors": "ssh amster_app 'tail -f /home/appuser/logs/spokenword-error.log'",
     "logs:output": "ssh amster_app 'tail -f /home/appuser/logs/spokenword-out.log'",
