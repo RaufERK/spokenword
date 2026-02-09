@@ -138,11 +138,17 @@ location / {
    - ✅ Compression worker processes 1 job at a time (queue)
    - ✅ User can upload next file while previous is compressing
 
+5. **Auto-refresh:**
+   - Page automatically refreshes when upload completes
+   - New items appear in the list without manual reload
+   - Implemented via `useEffect` watching upload status
+
 **Benefits:**
 - ✅ Users see exact progress
 - ✅ No confusion during long operations
 - ✅ Better UX for large files
 - ✅ Clear feedback on each stage
+- ✅ Auto-refresh shows new items immediately
 
 ---
 
@@ -157,12 +163,13 @@ model ConferenceFile {
   id           Int      @id @default(autoincrement())
   displayName  String   // User-provided title
   originalName String   // Original filename
-  systemName   String   // Unique filename on disk
+  systemName   String   @unique // Unique filename on disk
+  uploadedAt   DateTime @default(now())
   uploadedBy   Int      // User ID
-  size         Int      // File size in bytes
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [uploadedBy], references: [id])
+  size         BigInt   // File size in bytes (BigInt for >2GB)
+  views        Int      @default(0)
+  duration     Int?     // Duration in seconds
+  isPublic     Boolean  @default(false) // Visibility for regular users
 }
 ```
 
@@ -172,19 +179,36 @@ Paid content items (uploaded via `/admin/packages/[id]/items`).
 
 ```prisma
 model PackageItem {
-  id             Int      @id @default(autoincrement())
+  id             Int            @id @default(autoincrement())
   packageId      Int
   title          String
-  fileName       String   // Compressed filename
-  originalName   String   // Original filename
+  fileName       String         // Compressed filename
+  originalName   String         // Original filename
   filePath       String
-  duration       Int      // Video duration in seconds
+  duration       Int?           // Duration in seconds
   orderIndex     Int
-  originalSize   Int      // Original file size
-  compressedSize Int      // Compressed file size
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  package        Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  originalSize   BigInt         // Original file size (BigInt for >2GB)
+  compressedSize BigInt         // Compressed file size (BigInt for >2GB)
+  createdAt      DateTime       @default(now())
+  package        ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+}
+```
+
+### ContentPackage
+
+Paid content packages (collections of items).
+
+```prisma
+model ContentPackage {
+  id          Int      @id @default(autoincrement())
+  title       String   // "Meditation Course - 13 lectures"
+  description String?
+  price       Decimal
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  uploadedBy  Int      // Admin ID
+  items       PackageItem[]
 }
 ```
 
@@ -266,7 +290,7 @@ curl -X POST https://www.spoken-word.ru/api/conf-archive/upload \
 npm run dev
 
 # Terminal 2: Upload service
-npm run upload-service:dev
+npm run dev:upload
 
 # Terminal 3: Compression worker (optional)
 cd upload-service
@@ -462,18 +486,20 @@ ffmpeg -version
 
 ### Main Project
 
-- `next@16.0.10` — React framework
-- `@prisma/client` — Database ORM
-- `next-auth` — Authentication
-- `bullmq` — Job queue (unused in main app, only in upload-service)
+- `next@^16` — React framework (App Router)
+- `react@^19` — UI library
+- `@prisma/client@^6` — Database ORM
+- `next-auth@^4` — Authentication
+- `bullmq@^5` — Job queue (used in upload-service)
+- `ioredis@^5` — Redis client
+- `tailwindcss@^4` — CSS framework
 
 ### Upload Service
 
-- `express@^4.18.2` — Web framework
-- `busboy@^1.6.0` — Multipart/form-data parser
-- `bullmq@^5.0.0` — Job queue client
-- `redis@^4.6.0` — Redis client
-- `tsx@^4.20.6` — TypeScript executor
+- `express@^4` — Web framework
+- `busboy@^1` — Multipart/form-data parser
+- `bullmq@^5` — Job queue client
+- `tsx@^4` — TypeScript executor
 
 ### System Dependencies
 
@@ -481,6 +507,21 @@ ffmpeg -version
 - `ffprobe` — Video metadata extraction
 - `redis-server` — Job queue backend
 - `nginx` — Reverse proxy
+- `node@>=24` — JavaScript runtime
+
+## 📜 NPM Scripts
+
+```bash
+npm run dev          # Next.js dev server (Turbopack)
+npm run dev:upload   # Upload service dev
+npm run build        # Production build
+npm run deploy       # Deploy to production (PM2)
+npm run dblist       # Open Prisma Studio
+npm run logs         # Watch server logs
+npm run logs:errors  # Watch error logs only
+npm run db:backup    # Backup database
+npm run db:restore   # Restore database
+```
 
 ---
 
