@@ -135,8 +135,9 @@ export default function AudioUploader({ packageId }: Props) {
   const uploadSingleFile = async (file: File, index: number): Promise<void> => {
     return new Promise((resolve, reject) => {
       const formData = new FormData()
-      formData.append('file', file)
+      // IMPORTANT: packageId must come BEFORE file for busboy to parse it first
       formData.append('packageId', packageId.toString())
+      formData.append('file', file)
 
       // Use XMLHttpRequest for real upload progress tracking
       const xhr = new XMLHttpRequest()
