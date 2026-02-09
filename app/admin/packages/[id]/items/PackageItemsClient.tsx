@@ -130,7 +130,7 @@ export default function PackageItemsClient({ items: initialItems }: Props) {
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleSaveEdit(item.id)
                       if (e.key === 'Escape') handleCancelEdit()
