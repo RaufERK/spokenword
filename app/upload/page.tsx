@@ -13,6 +13,15 @@ type UploadStatus =
 
 type JobState = 'waiting' | 'active' | 'completed' | 'failed' | 'unknown'
 
+type ConfFile = {
+  id: number
+  displayName: string
+  systemName: string
+  size: number
+  uploadedAt: string
+  views: number
+}
+
 export default function UploadPage() {
   const { data } = useSession()
   const role = data?.user?.role
@@ -26,6 +35,9 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  const [files, setFiles] = useState<ConfFile[]>([])
+  const [refreshList, setRefreshList] = useState(0)
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -35,6 +47,43 @@ export default function UploadPage() {
       }
     }
   }, [])
+
+  // Load files list
+  useEffect(() => {
+    fetchFilesList()
+  }, [refreshList])
+
+  const fetchFilesList = async () => {
+    try {
+      const res = await fetch('/api/conf-archive/list')
+      if (res.ok) {
+        const data = await res.json()
+        setFiles(data)
+      }
+    } catch (err) {
+      console.error('Error fetching files list:', err)
+    }
+  }
+
+  const handleDelete = async (systemName: string, displayName: string) => {
+    if (!confirm(`Удалить файл "${displayName}"?`)) return
+
+    try {
+      const res = await fetch(`/api/conf-archive/${encodeURIComponent(systemName)}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        setFiles(prev => prev.filter(f => f.systemName !== systemName))
+        alert('✅ Файл успешно удален')
+      } else {
+        alert('❌ Ошибка удаления файла')
+      }
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert('❌ Ошибка удаления файла')
+    }
+  }
 
   // Poll job status
   const pollJobStatus = async (jobId: string) => {
@@ -64,6 +113,8 @@ export default function UploadPage() {
           clearInterval(pollIntervalRef.current)
           pollIntervalRef.current = null
         }
+        // Refresh files list
+        setRefreshList(prev => prev + 1)
       } else if (state === 'failed') {
         setStatus('error')
         setError(data.error || 'Ошибка компрессии')
@@ -190,11 +241,13 @@ export default function UploadPage() {
   }
 
   return (
-    <div className='p-10 max-w-2xl mx-auto bg-indigo-800 rounded-2xl shadow'>
-      <h1 className='text-2xl mb-6 font-bold text-center text-blue-500'>
-        Загрузка файла в архив конференции
-      </h1>
-      <form onSubmit={handleSubmit} className='space-y-4'>
+    <div className='p-6 max-w-6xl mx-auto space-y-8'>
+      {/* Upload Form */}
+      <div className='bg-indigo-800 rounded-2xl shadow p-8'>
+        <h1 className='text-2xl mb-6 font-bold text-center text-blue-500'>
+          Загрузка файла в архив конференции
+        </h1>
+        <form onSubmit={handleSubmit} className='space-y-4'>
         <div>
           <label className='block text-blue-300 mb-1'>
             Название файла для архива:
@@ -306,6 +359,55 @@ export default function UploadPage() {
           </div>
         )}
       </form>
+      </div>
+
+      {/* Files List */}
+      <div className='bg-white rounded-2xl shadow p-8'>
+        <h2 className='text-2xl font-bold mb-6 text-gray-800'>
+          Управление архивом конференций
+        </h2>
+
+        {files.length === 0 ? (
+          <p className='text-gray-500 text-center py-8'>
+            Архив пуст. Загрузите первый файл выше.
+          </p>
+        ) : (
+          <div className='space-y-3'>
+            {files.map((f) => (
+              <div
+                key={f.id}
+                className='flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:bg-gray-100 transition'
+              >
+                <div className='flex-1'>
+                  <h3 className='font-semibold text-gray-900'>{f.displayName}</h3>
+                  <div className='text-sm text-gray-600 mt-1 space-x-4'>
+                    <span>📊 {(f.size / 1024 / 1024).toFixed(1)} МБ</span>
+                    <span>📅 {new Date(f.uploadedAt).toLocaleString('ru-RU')}</span>
+                    <span>👁️ {f.views} просмотров</span>
+                  </div>
+                </div>
+
+                <div className='flex items-center gap-3'>
+                  <a
+                    href={`/watch-conf/${encodeURIComponent(f.systemName)}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition'
+                  >
+                    Смотреть
+                  </a>
+                  <button
+                    onClick={() => handleDelete(f.systemName, f.displayName)}
+                    className='px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition'
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

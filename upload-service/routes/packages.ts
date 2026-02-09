@@ -24,7 +24,12 @@ interface UploadData {
 
 router.post('/', async (req, res) => {
   try {
-    console.log('📥 [Upload Service] Package upload request received')
+    console.log('📥 [PACKAGES] Upload request received')
+    console.log('📋 [PACKAGES] Headers:', {
+      'content-type': req.headers['content-type'],
+      'x-user-id': req.headers['x-user-id'],
+      'x-user-role': req.headers['x-user-role']
+    })
 
     // Get user info from headers (set by Next.js middleware via Nginx)
     const userIdHeader = req.headers['x-user-id'] as string
@@ -35,20 +40,24 @@ router.post('/', async (req, res) => {
     const userId = userIdHeader ? parseInt(userIdHeader, 10) : 1
 
     if (userIdHeader) {
-      console.log(`👤 Upload by user: ${userId} (role: ${userRole})`)
+      console.log(`👤 [PACKAGES] Upload by user: ${userId} (role: ${userRole})`)
       // Still validate role if headers present
       if (!['ADMIN', 'SUPER'].includes(userRole)) {
+        console.log(`❌ [PACKAGES] Access denied for role: ${userRole}`)
         return res.status(403).json({ error: 'Access denied. Only ADMIN or SUPER can upload packages.' })
       }
     } else {
-      console.log(`⚠️  Package upload without auth headers - using default user (Nginx direct proxy)`)
+      console.log(`⚠️  [PACKAGES] Upload without auth headers - using default user (Nginx direct proxy)`)
     }
 
     // Validate content type
     const contentType = req.headers['content-type']
     if (!contentType?.includes('multipart/form-data')) {
+      console.log(`❌ [PACKAGES] Invalid content type: ${contentType}`)
       return res.status(400).json({ error: 'Invalid content type' })
     }
+
+    console.log('✅ [PACKAGES] Starting busboy parsing...')
 
     const bb = busboy({
       headers: req.headers,
@@ -62,8 +71,10 @@ router.post('/', async (req, res) => {
 
     // Handle text fields (packageId, displayName)
     bb.on('field', (fieldname: string, val: string) => {
+      console.log(`📝 [PACKAGES] Field received: ${fieldname} = ${val}`)
       if (fieldname === 'packageId') {
         uploadData.packageId = parseInt(val, 10)
+        console.log(`📦 [PACKAGES] Package ID set to: ${uploadData.packageId}`)
       } else if (fieldname === 'displayName') {
         uploadData.displayName = val
       }
@@ -86,17 +97,23 @@ router.post('/', async (req, res) => {
         uploadData.fileName = filename
         fileProcessed = true
 
+        console.log(`📁 [PACKAGES] File received: ${filename}`)
+
         // Validate file extension
         if (!filename.endsWith('.mp4')) {
+          console.log(`❌ [PACKAGES] Invalid file extension: ${filename}`)
           file.resume()
           return res.status(400).json({ error: 'Only .mp4 files allowed' })
         }
 
         // Validate packageId
         if (!uploadData.packageId) {
+          console.log(`❌ [PACKAGES] Missing packageId`)
           file.resume()
           return res.status(400).json({ error: 'packageId is required' })
         }
+
+        console.log(`🔍 [PACKAGES] Looking for package #${uploadData.packageId}...`)
 
         // Verify package exists
         const pkg = await prisma.package.findUnique({
@@ -110,9 +127,12 @@ router.post('/', async (req, res) => {
         })
 
         if (!pkg) {
+          console.log(`❌ [PACKAGES] Package #${uploadData.packageId} not found in DB`)
           file.resume()
           return res.status(404).json({ error: `Package #${uploadData.packageId} not found` })
         }
+
+        console.log(`✅ [PACKAGES] Package found: ${pkg.title}`)
 
         // Determine next order index
         const nextOrderIndex = pkg.items.length > 0 ? pkg.items[0].orderIndex + 1 : 1
@@ -153,12 +173,19 @@ router.post('/', async (req, res) => {
 
           // Check codec and add to compression queue
           try {
+            console.log(`📹 [PACKAGES] Getting video codec for: ${tempFilePath}`)
             const codec = await getVideoCodec(tempFilePath)
-            console.log(`📹 Detected codec: ${codec}`)
+            console.log(`✅ [PACKAGES] Detected codec: ${codec}`)
 
             const shouldCompress = needsCompression(codec)
             const compressedFileName = `${timestamp}_${random}_compressed.mp4`
             const outputPath = path.join(packageDir, compressedFileName)
+
+            console.log(`🎬 [PACKAGES] Adding to BullMQ queue...`)
+            console.log(`   Package ID: ${uploadData.packageId}`)
+            console.log(`   Temp file: ${tempFilePath}`)
+            console.log(`   Output: ${outputPath}`)
+            console.log(`   Will compress: ${shouldCompress ? 'Yes' : 'No (copy only)'}`)
 
             // Add to compression queue
             const job = await addVideoToQueue({
@@ -173,8 +200,9 @@ router.post('/', async (req, res) => {
               userId,
             })
 
-            console.log(`🔄 Added to compression queue: ${job.id}`)
-            console.log(`   Codec: ${codec}, Will compress: ${shouldCompress ? 'Yes' : 'No (copy only)'}`)
+            console.log(`✅ [PACKAGES] Added to compression queue successfully!`)
+            console.log(`   Job ID: ${job.id}`)
+            console.log(`   Codec: ${codec}`)
 
             // Return success response
             res.status(200).json({
@@ -187,25 +215,37 @@ router.post('/', async (req, res) => {
               willCompress: shouldCompress,
             })
           } catch (queueError) {
-            console.error('❌ Error adding to queue:', queueError)
+            console.error('❌ [PACKAGES] Error adding to queue:', queueError)
             return res.status(500).json({ error: 'Failed to queue compression job' })
           }
         })
 
         file.on('error', (err: Error) => {
-          console.error('❌ File stream error:', err)
+          console.error('❌ [PACKAGES] File stream error:', err)
           writeStream.destroy()
           return res.status(500).json({ error: 'File upload failed' })
         })
       }
     )
 
+    bb.on('close', () => {
+      console.log(`🏁 [PACKAGES] Busboy closed. File processed: ${fileProcessed}`)
+      if (!fileProcessed) {
+        console.log(`⚠️  [PACKAGES] No file was processed!`)
+      }
+    })
+
     bb.on('error', (err: Error) => {
-      console.error('❌ Busboy error:', err)
+      console.error('❌ [PACKAGES] Busboy error:', err)
       return res.status(500).json({ error: 'Upload parsing failed' })
     })
 
+    bb.on('finish', () => {
+      console.log(`✅ [PACKAGES] Busboy finished parsing`)
+    })
+
     // Pipe request to busboy
+    console.log(`🔄 [PACKAGES] Piping request to busboy...`)
     req.pipe(bb)
   } catch (error) {
     console.error('❌ Package upload error:', error)
