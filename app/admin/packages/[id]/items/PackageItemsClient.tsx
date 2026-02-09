@@ -117,11 +117,11 @@ export default function PackageItemsClient({ items: initialItems }: Props) {
 
   return (
     <div className="divide-y">
-      {items.map((item) => (
+      {items.map((item, index) => (
         <div key={item.id} className="p-6 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
-              {item.orderIndex}
+              {index + 1}
             </div>
             <div className="flex-1">
               {editingId === item.id ? (
