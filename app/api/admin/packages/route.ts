@@ -103,7 +103,16 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     })
 
-    return NextResponse.json(packages)
+    // Convert BigInt to Number for JSON serialization
+    const packagesWithConvertedSizes = packages.map(pkg => ({
+      ...pkg,
+      items: pkg.items.map(item => ({
+        ...item,
+        compressedSize: Number(item.compressedSize)
+      }))
+    }))
+
+    return NextResponse.json(packagesWithConvertedSizes)
   } catch (error) {
     console.error('Error fetching packages:', error)
     return NextResponse.json({ 

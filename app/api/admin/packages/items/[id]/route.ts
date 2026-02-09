@@ -91,9 +91,16 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       data: { title: title.trim() }
     })
 
+    // Convert BigInt to Number for JSON serialization
+    const itemWithConvertedSizes = {
+      ...updatedItem,
+      originalSize: Number(updatedItem.originalSize),
+      compressedSize: Number(updatedItem.compressedSize)
+    }
+
     return NextResponse.json({
       success: true,
-      item: updatedItem
+      item: itemWithConvertedSizes
     })
 
   } catch (error) {

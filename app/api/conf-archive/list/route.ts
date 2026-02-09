@@ -15,5 +15,12 @@ export async function GET() {
       views: true,
     },
   })
-  return NextResponse.json(files)
+  
+  // Convert BigInt to Number for JSON serialization
+  const filesWithConvertedSize = files.map(file => ({
+    ...file,
+    size: Number(file.size),
+  }))
+  
+  return NextResponse.json(filesWithConvertedSize)
 }
