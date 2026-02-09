@@ -119,11 +119,11 @@ export default function PaidContentClient({
                 {expandedPackages.has(pkg.id) && (
                   <div className="border-t border-green-200 p-4 bg-white">
                     <div className="space-y-3">
-                      {pkg.items.map(item => (
+                      {pkg.items.map((item, index) => (
                         <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                           <div className="flex items-center space-x-3">
                             <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
-                              {item.orderIndex}
+                              {index + 1}
                             </div>
                             <div>
                               <h4 className="font-medium">{item.title}</h4>

@@ -42,7 +42,7 @@ const links: NavLink[] = [
   },
   {
     href: '/upload',
-    label: 'Загрузка файлов',
+    label: 'Загрузка конф.',
     roles: ['MODERATOR', 'ADMIN', 'SUPER'],
     isAdmin: true,
   },
@@ -54,7 +54,7 @@ const links: NavLink[] = [
   },
   {
     href: '/admin/packages',
-    label: 'Управление пакетами',
+    label: 'Загрузка пакетов',
     roles: ['ADMIN', 'SUPER'],
     isAdmin: true,
   },
