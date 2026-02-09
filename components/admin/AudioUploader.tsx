@@ -36,6 +36,18 @@ export default function AudioUploader({ packageId }: Props) {
     }
   }, [])
 
+  // Auto-refresh page when upload completes
+  useEffect(() => {
+    const hasCompleted = uploads.some(u => u.status === 'completed')
+    if (hasCompleted && !isUploading) {
+      // Small delay to ensure DB is updated
+      const timer = setTimeout(() => {
+        router.refresh()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [uploads, isUploading, router])
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
@@ -183,10 +195,6 @@ export default function AudioUploader({ packageId }: Props) {
                   clearInterval(checkCompletion)
                   
                   if (upload.status === 'completed') {
-                    // Refresh page after successful upload
-                    setTimeout(() => {
-                      router.refresh()
-                    }, 1500)
                     resolve()
                   } else {
                     reject(new Error(upload.error))
@@ -200,9 +208,6 @@ export default function AudioUploader({ packageId }: Props) {
             setUploads(prev => prev.map((upload, i) => 
               i === index ? { ...upload, status: 'completed' } : upload
             ))
-            setTimeout(() => {
-              router.refresh()
-            }, 1500)
             resolve()
           }
         } else {
