@@ -143,6 +143,12 @@ router.post('/', async (req, res) => {
 
             console.log(`✅ Conference file added to DB: ${uploadData.displayName}`)
 
+            // Convert BigInt to Number for JSON serialization
+            const confFileJson = {
+              ...confFile,
+              size: Number(confFile.size),
+            }
+
             if (shouldCompress || codec === 'h264' || codec === 'hevc') {
               // Add to compression queue (even for h264/hevc - they will be copied with optimization)
               const job = await addVideoToQueue({
@@ -161,7 +167,7 @@ router.post('/', async (req, res) => {
 
               res.status(200).json({
                 ok: true,
-                file: confFile,
+                file: confFileJson,
                 message: 'File uploaded and queued for processing',
                 jobId: job.id,
                 willCompress: shouldCompress,
@@ -174,7 +180,7 @@ router.post('/', async (req, res) => {
 
               res.status(200).json({
                 ok: true,
-                file: confFile,
+                file: confFileJson,
                 message: 'File uploaded successfully (no compression)',
               })
             }
