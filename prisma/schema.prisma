@@ -48,7 +48,7 @@ model ConferenceFile {
   systemName   String   @unique
   uploadedAt   DateTime @default(now())
   uploadedBy   Int
-  size         Int
+  size         BigInt   // Changed to BigInt for files > 2GB
   views        Int      @default(0)
   duration     Int?     // Длительность в секундах
 }
@@ -89,8 +89,8 @@ model PackageItem {
   filePath       String   // Путь к файлу
   duration       Int?     // Длительность в секундах
   orderIndex     Int      // Порядок в пакете (1, 2, 3...)
-  originalSize   Int      // Размер до сжатия
-  compressedSize Int      // Размер после сжатия
+  originalSize   BigInt   // Changed to BigInt for files > 2GB
+  compressedSize BigInt   // Changed to BigInt for files > 2GB
   createdAt      DateTime @default(now())
   
   // Связи
