@@ -88,9 +88,9 @@ export default function PackagesClient({ packages: initialPackages }: Props) {
         <div key={pkg.id} className="border rounded-lg p-6 bg-white shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-xl font-semibold">{pkg.title}</h2>
+              <h2 className="text-xl font-semibold text-gray-900">{pkg.title}</h2>
               {pkg.description && (
-                <p className="text-gray-600 mt-1">{pkg.description}</p>
+                <p className="text-gray-700 mt-1">{pkg.description}</p>
               )}
             </div>
             <div className="text-right">
@@ -110,11 +110,11 @@ export default function PackagesClient({ packages: initialPackages }: Props) {
             
             {pkg.items.length > 0 && (
               <div className="bg-gray-50 p-3 rounded">
-                <p className="text-sm font-medium mb-2">Содержание:</p>
+                <p className="text-sm font-medium text-gray-900 mb-2">Содержание:</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-sm">
                   {pkg.items.slice(0, 6).map(item => (
                     <div key={item.id} className="flex justify-between">
-                      <span>{item.title}</span>
+                      <span className="text-gray-800">{item.title}</span>
                       <span className="text-gray-500">
                         {item.duration ? `${Math.floor(item.duration / 60)}:${(item.duration % 60).toString().padStart(2, '0')}` : ''}
                       </span>

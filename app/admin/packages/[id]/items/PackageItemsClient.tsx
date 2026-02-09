@@ -152,8 +152,8 @@ export default function PackageItemsClient({ items: initialItems }: Props) {
                 </div>
               ) : (
                 <>
-                  <h3 className="font-medium">{item.title}</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="font-medium text-gray-900">{item.title}</h3>
+                  <p className="text-sm text-gray-600">
                     {formatFileSize(item.compressedSize)} • 
                     {item.duration ? formatDuration(item.duration) : 'Длительность неизвестна'} • 
                     Загружено: {new Date(item.createdAt).toLocaleDateString()}

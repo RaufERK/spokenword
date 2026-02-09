@@ -126,9 +126,9 @@ export default function PaidContentClient({
                               {index + 1}
                             </div>
                             <div>
-                              <h4 className="font-medium">{item.title}</h4>
+                              <h4 className="font-medium text-gray-900">{item.title}</h4>
                               {item.duration && (
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-gray-600">
                                   Длительность: {formatDuration(item.duration)}
                                 </p>
                               )}
