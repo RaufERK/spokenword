@@ -1,17 +1,22 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Props {
   packageId: number
 }
 
+type UploadStatus = 'idle' | 'uploading' | 'processing' | 'compressing' | 'completed' | 'error'
+type JobState = 'waiting' | 'active' | 'completed' | 'failed' | 'unknown'
+
 interface UploadProgress {
   fileName: string
-  progress: number
-  status: 'uploading' | 'compressing' | 'completed' | 'error'
+  uploadProgress: number
+  compressionProgress: number
+  status: UploadStatus
   error?: string
+  jobId?: string
 }
 
 export default function AudioUploader({ packageId }: Props) {
@@ -19,6 +24,17 @@ export default function AudioUploader({ packageId }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploads, setUploads] = useState<UploadProgress[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
+    }
+  }, [])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -34,13 +50,65 @@ export default function AudioUploader({ packageId }: Props) {
     uploadFiles([file])
   }
 
+  // Poll job status for compression progress
+  const pollJobStatus = async (jobId: string, fileIndex: number) => {
+    try {
+      const res = await fetch(`/api/job-status/${jobId}`)
+      if (!res.ok) return
+
+      const data = await res.json()
+      const state: JobState = data.state || 'unknown'
+      const progress = data.progress || 0
+
+      console.log(`[Package Upload Job ${jobId}] State: ${state}, Progress: ${progress}`)
+
+      setUploads(prev => prev.map((upload, i) => {
+        if (i !== fileIndex) return upload
+        
+        if (state === 'active') {
+          return {
+            ...upload,
+            status: 'compressing',
+            compressionProgress: progress
+          }
+        } else if (state === 'completed') {
+          console.log('[Package Upload Job] ✅ Completed!')
+          // Stop polling
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current)
+            pollIntervalRef.current = null
+          }
+          return {
+            ...upload,
+            status: 'completed',
+            compressionProgress: 100
+          }
+        } else if (state === 'failed') {
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current)
+            pollIntervalRef.current = null
+          }
+          return {
+            ...upload,
+            status: 'error',
+            error: data.error || 'Ошибка компрессии'
+          }
+        }
+        return upload
+      }))
+    } catch (err) {
+      console.error('Error polling job status:', err)
+    }
+  }
+
   const uploadFiles = async (files: File[]) => {
     setIsUploading(true)
     
     // Инициализируем прогресс для каждого файла
     const initialProgress: UploadProgress[] = files.map(file => ({
       fileName: file.name,
-      progress: 0,
+      uploadProgress: 0,
+      compressionProgress: 0,
       status: 'uploading'
     }))
     setUploads(initialProgress)
@@ -51,7 +119,8 @@ export default function AudioUploader({ packageId }: Props) {
       
       try {
         await uploadSingleFile(file, i)
-      } catch {
+      } catch (err) {
+        console.error('Upload error:', err)
         setUploads(prev => prev.map((upload, index) => 
           index === i 
             ? { ...upload, status: 'error', error: 'Ошибка загрузки' }
@@ -61,62 +130,156 @@ export default function AudioUploader({ packageId }: Props) {
     }
 
     setIsUploading(false)
-    
-    // Обновляем страницу через 2 секунды
-    setTimeout(() => {
-      router.refresh()
-    }, 2000)
   }
 
-  const uploadSingleFile = async (file: File, index: number) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('packageId', packageId.toString())
+  const uploadSingleFile = async (file: File, index: number): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('packageId', packageId.toString())
 
-    // Симулируем прогресс загрузки
-    setUploads(prev => prev.map((upload, i) => 
-      i === index ? { ...upload, progress: 30 } : upload
-    ))
+      // Use XMLHttpRequest for real upload progress tracking
+      const xhr = new XMLHttpRequest()
 
-    const response = await fetch('/api/admin/packages/upload', {
-      method: 'POST',
-      body: formData
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100)
+          setUploads(prev => prev.map((upload, i) => 
+            i === index ? { ...upload, uploadProgress: percent } : upload
+          ))
+          console.log(`[Package Upload] Upload progress: ${percent}%`)
+        }
+      })
+
+      xhr.addEventListener('load', async () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const data = JSON.parse(xhr.responseText)
+          console.log('Package upload response:', data)
+
+          setUploads(prev => prev.map((upload, i) => 
+            i === index ? { 
+              ...upload, 
+              uploadProgress: 100, 
+              status: 'processing' 
+            } : upload
+          ))
+
+          // Start polling for compression status
+          if (data.jobId) {
+            setUploads(prev => prev.map((upload, i) => 
+              i === index ? { ...upload, jobId: data.jobId } : upload
+            ))
+            
+            pollIntervalRef.current = setInterval(() => {
+              pollJobStatus(data.jobId, index)
+            }, 1000) // Poll every 1 second
+
+            // Wait for completion before resolving
+            const checkCompletion = setInterval(() => {
+              setUploads(current => {
+                const upload = current[index]
+                if (upload.status === 'completed' || upload.status === 'error') {
+                  clearInterval(checkCompletion)
+                  
+                  if (upload.status === 'completed') {
+                    // Refresh page after successful upload
+                    setTimeout(() => {
+                      router.refresh()
+                    }, 1500)
+                    resolve()
+                  } else {
+                    reject(new Error(upload.error))
+                  }
+                }
+                return current
+              })
+            }, 500)
+          } else {
+            // No compression job
+            setUploads(prev => prev.map((upload, i) => 
+              i === index ? { ...upload, status: 'completed' } : upload
+            ))
+            setTimeout(() => {
+              router.refresh()
+            }, 1500)
+            resolve()
+          }
+        } else {
+          const data = JSON.parse(xhr.responseText || '{}')
+          setUploads(prev => prev.map((upload, i) => 
+            i === index ? { 
+              ...upload, 
+              status: 'error', 
+              error: data.error || 'Ошибка загрузки' 
+            } : upload
+          ))
+          reject(new Error(data.error || 'Upload failed'))
+        }
+      })
+
+      xhr.addEventListener('error', () => {
+        setUploads(prev => prev.map((upload, i) => 
+          i === index ? { 
+            ...upload, 
+            status: 'error', 
+            error: 'Ошибка сети' 
+          } : upload
+        ))
+        reject(new Error('Network error'))
+      })
+
+      xhr.open('POST', '/api/admin/packages/upload')
+      xhr.send(formData)
     })
-
-    if (!response.ok) {
-      throw new Error('Upload failed')
-    }
-
-    // Симулируем прогресс сжатия
-    setUploads(prev => prev.map((upload, i) => 
-      i === index ? { ...upload, progress: 60, status: 'compressing' } : upload
-    ))
-
-    // Ждем ответ (в реальности здесь будет WebSocket или polling)
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    setUploads(prev => prev.map((upload, i) => 
-      i === index ? { ...upload, progress: 100, status: 'completed' } : upload
-    ))
   }
 
-  const getStatusText = (status: UploadProgress['status']) => {
-    switch (status) {
-      case 'uploading': return 'Загрузка...'
-      case 'compressing': return 'Сжатие...'
-      case 'completed': return 'Готово!'
-      case 'error': return 'Ошибка'
-      default: return ''
+  const getStatusText = (upload: UploadProgress) => {
+    switch (upload.status) {
+      case 'uploading': 
+        return `Загрузка... ${upload.uploadProgress}%`
+      case 'processing':
+        return 'Обработка файла...'
+      case 'compressing': 
+        return `Сжатие... ${upload.compressionProgress}%`
+      case 'completed': 
+        return '✅ Готово!'
+      case 'error': 
+        return '❌ Ошибка'
+      default: 
+        return ''
     }
   }
 
-  const getStatusColor = (status: UploadProgress['status']) => {
+  const getStatusColor = (status: UploadStatus) => {
     switch (status) {
       case 'uploading': return 'text-blue-600'
-      case 'compressing': return 'text-yellow-600'
+      case 'processing': return 'text-yellow-600'
+      case 'compressing': return 'text-purple-600'
       case 'completed': return 'text-green-600'
       case 'error': return 'text-red-600'
       default: return 'text-gray-600'
+    }
+  }
+
+  const getProgressValue = (upload: UploadProgress) => {
+    if (upload.status === 'uploading') {
+      return upload.uploadProgress
+    } else if (upload.status === 'compressing') {
+      return upload.compressionProgress
+    } else if (upload.status === 'completed') {
+      return 100
+    }
+    return 0
+  }
+
+  const getProgressColor = (status: UploadStatus) => {
+    switch (status) {
+      case 'uploading': return 'bg-blue-500'
+      case 'processing': return 'bg-yellow-500'
+      case 'compressing': return 'bg-purple-500'
+      case 'completed': return 'bg-green-500'
+      case 'error': return 'bg-red-500'
+      default: return 'bg-gray-500'
     }
   }
 
@@ -152,26 +315,41 @@ export default function AudioUploader({ packageId }: Props) {
         <div className="space-y-3">
           <h3 className="font-medium">Прогресс загрузки:</h3>
           {uploads.map((upload, index) => (
-            <div key={index} className="border rounded-lg p-3">
+            <div key={index} className="border rounded-lg p-4 bg-gray-50">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium truncate">{upload.fileName}</span>
-                <span className={`text-sm ${getStatusColor(upload.status)}`}>
-                  {getStatusText(upload.status)}
+                <span className="text-sm font-medium truncate max-w-[70%]">{upload.fileName}</span>
+                <span className={`text-sm font-semibold ${getStatusColor(upload.status)}`}>
+                  {getStatusText(upload)}
                 </span>
               </div>
               
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden mb-2">
                 <div 
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    upload.status === 'error' ? 'bg-red-500' : 
-                    upload.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'
-                  }`}
-                  style={{ width: `${upload.progress}%` }}
+                  className={`h-3 rounded-full transition-all duration-300 ${getProgressColor(upload.status)}`}
+                  style={{ width: `${getProgressValue(upload)}%` }}
                 />
+              </div>
+
+              <div className="text-xs text-gray-600 space-y-1">
+                {upload.status === 'uploading' && (
+                  <div>📤 Загрузка на сервер: {upload.uploadProgress}%</div>
+                )}
+                {upload.status === 'processing' && (
+                  <div className="animate-pulse">⚙️ Проверка кодека и подготовка к сжатию...</div>
+                )}
+                {upload.status === 'compressing' && (
+                  <div>🎬 Сжатие видео до 720p: {upload.compressionProgress}%</div>
+                )}
+                {upload.status === 'completed' && (
+                  <div className="text-green-700">✓ Видео успешно добавлено в пакет</div>
+                )}
+                {upload.jobId && upload.status !== 'completed' && (
+                  <div className="text-gray-400">Job ID: {upload.jobId}</div>
+                )}
               </div>
               
               {upload.error && (
-                <p className="text-red-600 text-sm mt-1">{upload.error}</p>
+                <p className="text-red-600 text-sm mt-2 p-2 bg-red-50 rounded">{upload.error}</p>
               )}
             </div>
           ))}
