@@ -40,7 +40,7 @@ export default async function PackageItemsPage({ params }: Props) {
   }
 
   // Подсчитываем общую статистику
-  const totalSize = pkg.items.reduce((sum, item) => sum + item.compressedSize, 0)
+  const totalSize = pkg.items.reduce((sum, item) => sum + Number(item.compressedSize), 0)
   const totalDuration = pkg.items.reduce((sum, item) => sum + (item.duration || 0), 0)
 
   const formatFileSize = (bytes: number) => {
@@ -108,6 +108,8 @@ export default async function PackageItemsPage({ params }: Props) {
         <PackageItemsClient 
           items={pkg.items.map(item => ({
             ...item,
+            originalSize: Number(item.originalSize),
+            compressedSize: Number(item.compressedSize),
             createdAt: item.createdAt.toISOString()
           }))}
           packageId={packageId}
