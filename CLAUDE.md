@@ -12,17 +12,16 @@ Next.js application with Express.js microservice for large file uploads and Bull
 - Express.js microservice for file uploads
 
 ## Important Directories
-- `app/` — Next.js pages and API
-- `components/` — UI components
-- `lib/` — Prisma, Redis, video queue
-- `upload-service/` — 🆕 Express.js microservice for file uploads
-  - `routes/` — conference.ts (archive), packages.ts (paid content)
+- `app/` — Next.js pages and API routes
+- `components/` — React UI components
+- `lib/` — Prisma, Redis, auth utilities
+- `upload-service/` — Express.js microservice for file uploads
+  - `routes/` — conference.ts, packages.ts, job-status.ts
   - `workers/` — compression-worker.ts (BullMQ worker)
   - `queue/` — videoQueue.ts (BullMQ queue)
   - `utils/` — video.ts (FFprobe utilities)
-- `workers/` — 🗄️ OLD video-worker (deprecated, kept as reference)
-- `scripts/` — deployment/support scripts
-- `prisma/` — schema, migrations, data
+- `scripts/` — database backup/restore scripts
+- `prisma/` — schema, migrations, seed
 
 ## Codebase Rules
 - Functional components only, no classes or service layers
@@ -309,9 +308,6 @@ pm2 logs spokenword-compression-worker
 # Restart specific process
 pm2 restart spokenword-upload
 
-# Stop old worker (if needed)
-pm2 delete spokenword-video-worker
-
 # Save PM2 state
 pm2 save
 ```
@@ -403,13 +399,13 @@ ffmpeg -version
 - [x] Integrate Nginx proxy
 - [x] Add video compression for conference archive
 - [x] Add video compression for paid content
-- [x] Remove old video-worker from PM2
-- [ ] Add progress tracking for uploads (WebSocket or polling)
-- [ ] Add compression status UI (show job progress)
+- [x] Add progress tracking for uploads (polling)
+- [x] Add compression status UI (show job progress)
+- [x] Remove deprecated workers/ and lib/videoQueue.ts
+- [x] Clean up unused streaming code and scripts
 - [ ] Add retry mechanism for failed compressions
 - [ ] Add automatic cleanup of temp files (cron job)
 - [ ] Add video thumbnail generation
-- [ ] Add HLS streaming for large videos
 
 ---
 
@@ -501,4 +497,4 @@ ffmpeg -version
 
 ---
 
-_Last updated: 2025-12-29_
+_Last updated: 2026-02-09_
