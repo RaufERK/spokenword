@@ -12,20 +12,27 @@ type ConfFile = {
   size: number
   uploadedAt: string
   views: number
+  isPublic: boolean
 }
 
 export default function ArchiveConfList({
   canDelete = false,
+  showAll = false,
 }: {
   canDelete?: boolean
+  showAll?: boolean
 }) {
   const [files, setFiles] = useState<ConfFile[]>([])
 
   useEffect(() => {
     fetch('/api/conf-archive/list')
       .then((res) => res.json())
-      .then(setFiles)
-  }, [])
+      .then((data: ConfFile[]) => {
+        // Фильтруем файлы: админы видят все, обычные пользователи - только публичные
+        const filtered = showAll ? data : data.filter(f => f.isPublic)
+        setFiles(filtered)
+      })
+  }, [showAll])
 
   if (!files.length)
     return <p className='text-gray-500'>Архив конференций пуст</p>

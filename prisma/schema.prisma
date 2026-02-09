@@ -51,6 +51,7 @@ model ConferenceFile {
   size         BigInt   // Changed to BigInt for files > 2GB
   views        Int      @default(0)
   duration     Int?     // Длительность в секундах
+  isPublic     Boolean  @default(false) // Видимость для обычных пользователей
 }
 
 model StreamLink {

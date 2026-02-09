@@ -91,6 +91,31 @@ export async function GET(req: NextRequest, { params }: Props) {
   }
 }
 
+export async function PATCH(req: NextRequest, { params }: Props) {
+  const { systemName } = await params
+
+  // Авторизация
+  const session = await getServerSession(authOptions)
+  const role = session?.user?.role
+  if (!role || !['MODERATOR', 'ADMIN', 'SUPER'].includes(role)) {
+    return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
+  }
+
+  const { isPublic } = await req.json()
+
+  if (typeof isPublic !== 'boolean') {
+    return NextResponse.json({ error: 'isPublic должен быть boolean' }, { status: 400 })
+  }
+
+  // Обновляем видимость
+  const file = await prisma.conferenceFile.update({
+    where: { systemName },
+    data: { isPublic },
+  })
+
+  return NextResponse.json({ ok: true, isPublic: file.isPublic })
+}
+
 export async function DELETE(req: NextRequest) {
   // Получаем systemName из url (а не из params!)
   const url = new URL(req.url)

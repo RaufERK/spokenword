@@ -13,6 +13,7 @@ export async function GET() {
       size: true,
       uploadedAt: true,
       views: true,
+      isPublic: true,
     },
   })
   

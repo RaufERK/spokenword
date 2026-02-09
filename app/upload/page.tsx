@@ -20,6 +20,7 @@ type ConfFile = {
   size: number
   uploadedAt: string
   views: number
+  isPublic: boolean
 }
 
 export default function UploadPage() {
@@ -82,6 +83,31 @@ export default function UploadPage() {
     } catch (err) {
       console.error('Delete error:', err)
       alert('❌ Ошибка удаления файла')
+    }
+  }
+
+  const toggleVisibility = async (systemName: string, currentIsPublic: boolean) => {
+    try {
+      const res = await fetch(`/api/conf-archive/${encodeURIComponent(systemName)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublic: !currentIsPublic })
+      })
+
+      if (res.ok) {
+        setFiles(prev => 
+          prev.map(f => 
+            f.systemName === systemName 
+              ? { ...f, isPublic: !currentIsPublic }
+              : f
+          )
+        )
+      } else {
+        alert('❌ Ошибка изменения видимости')
+      }
+    } catch (err) {
+      console.error('Toggle visibility error:', err)
+      alert('❌ Ошибка изменения видимости')
     }
   }
 
@@ -379,8 +405,20 @@ export default function UploadPage() {
                 className='flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:bg-gray-100 transition'
               >
                 <div className='flex-1'>
-                  <h3 className='font-semibold text-gray-900'>{f.displayName}</h3>
-                  <div className='text-sm text-gray-600 mt-1 space-x-4'>
+                  <div className='flex items-center gap-3 mb-2'>
+                    <h3 className='font-semibold text-gray-900'>{f.displayName}</h3>
+                    <button
+                      onClick={() => toggleVisibility(f.systemName, f.isPublic)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                        f.isPublic
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                          : 'bg-red-100 text-red-800 hover:bg-red-200'
+                      }`}
+                    >
+                      {f.isPublic ? '✅ ПОКАЗЫВАЕТСЯ ВСЕМ' : '❌ НЕ ВИДНО ВСЕМ'}
+                    </button>
+                  </div>
+                  <div className='text-sm text-gray-600 space-x-4'>
                     <span>📊 {(f.size / 1024 / 1024).toFixed(1)} МБ</span>
                     <span>📅 {new Date(f.uploadedAt).toLocaleString('ru-RU')}</span>
                     <span>👁️ {f.views} просмотров</span>
