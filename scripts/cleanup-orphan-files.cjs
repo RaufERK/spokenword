@@ -43,10 +43,12 @@ async function cleanupConferenceArchive() {
   let totalSize = 0
   
   for (const file of diskFiles) {
+    // systemName в базе хранится БЕЗ расширения, файл на диске С расширением
     const systemName = file.replace('.mp4', '')
     const filePath = path.join(archiveDir, file)
     
-    if (!dbSystemNames.has(systemName)) {
+    // Проверяем оба варианта: с .mp4 и без (на случай разных форматов в базе)
+    if (!dbSystemNames.has(systemName) && !dbSystemNames.has(file)) {
       const stats = fs.statSync(filePath)
       const sizeMB = (stats.size / 1024 / 1024).toFixed(2)
       totalSize += stats.size
