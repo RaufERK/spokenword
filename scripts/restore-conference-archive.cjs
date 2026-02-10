@@ -8,7 +8,10 @@ async function restoreConferenceArchive() {
   try {
     console.log('🔄 Восстанавливаем архив конференций...')
     
-    const archiveDir = './storage/conf-archive'
+    // В production используем абсолютный путь к shared папке
+    const archiveDir = process.env.NODE_ENV === 'production'
+      ? '/home/appuser/apps/spokenword/shared/public/conf-archive'
+      : './public/conf-archive'
     
     if (!fs.existsSync(archiveDir)) {
       console.log('❌ Папка архива не найдена:', archiveDir)

@@ -7,7 +7,10 @@ import fs from 'fs/promises'
 import { createReadStream, statSync } from 'fs'
 import path from 'path'
 
-const CONF_ARCHIVE_DIR = path.resolve(process.cwd(), 'storage/conf-archive')
+// В production используем абсолютный путь к shared папке (избегаем symlinks из-за Turbopack)
+const CONF_ARCHIVE_DIR = process.env.NODE_ENV === 'production'
+  ? '/home/appuser/apps/spokenword/shared/public/conf-archive'
+  : path.resolve(process.cwd(), 'public/conf-archive')
 
 interface Props {
   params: Promise<{ systemName: string }>

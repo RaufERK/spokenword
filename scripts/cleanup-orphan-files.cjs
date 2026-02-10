@@ -13,7 +13,10 @@ const VERBOSE = process.argv.includes('--verbose') || DRY_RUN
 async function cleanupConferenceArchive() {
   console.log('\n=== Conference Archive Cleanup ===')
   
-  const archiveDir = path.join(process.cwd(), 'storage/conf-archive')
+  // В production используем абсолютный путь к shared папке
+  const archiveDir = process.env.NODE_ENV === 'production'
+    ? '/home/appuser/apps/spokenword/shared/public/conf-archive'
+    : path.join(process.cwd(), 'public/conf-archive')
   const tempDir = path.join(archiveDir, 'temp')
   
   // Get all files from database

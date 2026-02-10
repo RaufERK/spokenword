@@ -40,7 +40,7 @@ next-env.d.ts
 # spokenword specific
 public/live/
 public/archive/
-storage/
+public/conf-archive/
 local/
 users.txt
 

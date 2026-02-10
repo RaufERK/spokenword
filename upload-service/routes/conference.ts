@@ -11,9 +11,14 @@ import { getVideoCodec, needsCompression } from '../utils/video.js'
 const router = express.Router()
 
 // Conference archive directory (relative to main project root)
-const ARCHIVE_DIR = path.resolve(process.cwd(), '../storage/conf-archive')
+// В production используем абсолютный путь к shared папке (избегаем symlinks из-за Turbopack)
+const ARCHIVE_DIR = process.env.NODE_ENV === 'production'
+  ? '/home/appuser/apps/spokenword/shared/public/conf-archive'
+  : path.resolve(process.cwd(), '../public/conf-archive')
 // Temp directory for uploads before compression
-const TEMP_DIR = path.resolve(process.cwd(), '../storage/conf-archive/temp')
+const TEMP_DIR = process.env.NODE_ENV === 'production'
+  ? '/home/appuser/apps/spokenword/shared/public/conf-archive/temp'
+  : path.resolve(process.cwd(), '../public/conf-archive/temp')
 
 interface UploadData {
   displayName: string
