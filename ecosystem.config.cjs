@@ -103,13 +103,15 @@ module.exports = {
         // симлинки создаём в КОРНЕ проекта (текущая cwd = /home/appuser/apps/spokenword/source)
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env',
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env.production',
-        // симлинки для хранения файлов между деплоями (paid-content - symlink, conf-archive - абсолютный путь в коде)
-        'rm -rf ./paid-content && ln -sfn /home/appuser/apps/spokenword/shared/paid-content ./paid-content',
         'npm ci --include=dev',
         'cd upload-service && npm ci && cd ..',
         'npx prisma generate',
         'npx prisma migrate deploy',
+        // Удаляем symlinks перед билдом (Turbopack не поддерживает внешние symlinks)
+        'rm -rf ./paid-content',
         'npm run build',
+        // Восстанавливаем symlinks после билда
+        'ln -sfn /home/appuser/apps/spokenword/shared/paid-content ./paid-content',
         // Примечание: права доступа нужно восстанавливать вручную после деплоя
         // Запустите: ssh amster "bash /root/fix-streaming-permissions.sh"
         'npx pm2 startOrReload ecosystem.config.cjs --env production',
