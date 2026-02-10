@@ -8,7 +8,7 @@ async function restoreConferenceArchive() {
   try {
     console.log('🔄 Восстанавливаем архив конференций...')
     
-    const archiveDir = './public/conf-archive'
+    const archiveDir = './storage/conf-archive'
     
     if (!fs.existsSync(archiveDir)) {
       console.log('❌ Папка архива не найдена:', archiveDir)

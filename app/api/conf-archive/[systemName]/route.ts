@@ -7,7 +7,7 @@ import fs from 'fs/promises'
 import { createReadStream, statSync } from 'fs'
 import path from 'path'
 
-const CONF_ARCHIVE_DIR = path.resolve(process.cwd(), 'public/conf-archive')
+const CONF_ARCHIVE_DIR = path.resolve(process.cwd(), 'storage/conf-archive')
 
 interface Props {
   params: Promise<{ systemName: string }>
