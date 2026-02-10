@@ -103,6 +103,9 @@ module.exports = {
         // симлинки создаём в КОРНЕ проекта (текущая cwd = /home/appuser/apps/spokenword/source)
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env',
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env.production',
+        // симлинки для хранения файлов между деплоями
+        'rm -rf ./public/conf-archive && ln -sfn /home/appuser/apps/spokenword/shared/public/conf-archive ./public/conf-archive',
+        'rm -rf ./paid-content && ln -sfn /home/appuser/apps/spokenword/shared/paid-content ./paid-content',
         'npm ci --include=dev',
         'cd upload-service && npm ci && cd ..',
         'npx prisma generate',
