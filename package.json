@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:upload": "cd upload-service && npm run dev",
-    "build": "next build",
+    "build": "NEXT_DISABLE_TURBO=1 next build",
     "start": "next start",
     "lint": "next lint",
     "dblist": "npx prisma studio",
