@@ -1,5 +1,3 @@
-// app/layout.tsx
-
 import Providers from '@/components/Providers'
 import SideNav from '@/components/navigation/SideNav'
 import '@/styles/globals.css'
@@ -13,10 +11,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang='ru'>
-      <body className='flex flex-col min-h-screen'>
+      <body className='min-h-screen'>
         <Providers>
           <SideNav />
-          <main className='flex-grow p-6'>{children}</main>
+          {children}
         </Providers>
       </body>
     </html>

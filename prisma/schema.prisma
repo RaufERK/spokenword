@@ -101,6 +101,30 @@ model PackageItem {
   @@index([packageId, originalName, originalSize]) // Индекс для быстрого поиска дубликатов
 }
 
+// Записи учебного класса
+model ClassFile {
+  id           Int      @id @default(autoincrement())
+  displayName  String
+  originalName String
+  systemName   String   @unique
+  uploadedAt   DateTime @default(now())
+  uploadedBy   Int
+  size         BigInt
+  views        Int      @default(0)
+  duration     Int?
+  isPublic     Boolean  @default(false)
+}
+
+// Ссылки на трансляцию учебного класса (отдельно от Служб)
+model ClassStreamLink {
+  id         Int      @id @default(autoincrement())
+  youtubeUrl String?
+  rutubeUrl  String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 // Покупки пользователей (доступ к пакетам)
 model UserPackageAccess {
   id           Int      @id @default(autoincrement())

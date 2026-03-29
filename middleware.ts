@@ -3,18 +3,27 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { isSubscriptionActive } from '@/lib/subscription'
 
-const paidRoutes = ['/conf', '/conf-arch']
+const paidRoutes = ['/conf', '/conf-arch', '/class', '/watch-class']
 const protectedRoutes = ['/cabinet', '/paid-content', ...paidRoutes]
-const adminOnlyRoutes = ['/users', '/admin']
+const moderatorRoutes = ['/admin', '/admin/class', '/admin/upload']
+const adminOnlyRoutes = ['/admin/users', '/admin/packages']
 const paidContentApiRoutes = ['/api/paid-content']
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const { pathname } = req.nextUrl
 
-  // 1. Админ-маршруты (нужно быть залогиненным и роль ADMIN/SUPER)
+  // 1a. Админ-маршруты только для ADMIN/SUPER
   if (adminOnlyRoutes.some((route) => pathname.startsWith(route))) {
-    if (!token || (token.role !== 'ADMIN' && token.role !== 'SUPER')) {
+    if (!token || !['ADMIN', 'SUPER'].includes(token.role as string)) {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+  }
+
+  // 1b. Маршруты для модераторов (MODERATOR/ADMIN/SUPER)
+  const isAdminOnlyRoute = adminOnlyRoutes.some((route) => pathname.startsWith(route))
+  if (!isAdminOnlyRoute && moderatorRoutes.some((route) => pathname.startsWith(route))) {
+    if (!token || !['MODERATOR', 'ADMIN', 'SUPER'].includes(token.role as string)) {
       return NextResponse.redirect(new URL('/', req.url))
     }
   }
@@ -58,21 +67,23 @@ export async function middleware(req: NextRequest) {
   }
 
   // 5. Check authorization for upload requests (Nginx will proxy to upload service)
-  if (pathname === '/api/conf-archive/upload' || pathname === '/api/admin/packages/upload') {
-    // Check authorization
+  const uploadRoutes = [
+    '/api/conf-archive/upload',
+    '/api/admin/packages/upload',
+    '/api/class/upload',
+  ]
+  if (uploadRoutes.includes(pathname)) {
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check role for conference uploads
-    if (pathname === '/api/conf-archive/upload') {
+    if (pathname === '/api/conf-archive/upload' || pathname === '/api/class/upload') {
       const allowedRoles = ['MODERATOR', 'ADMIN', 'SUPER']
       if (!allowedRoles.includes(token.role as string)) {
         return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
       }
     }
 
-    // Check role for package uploads
     if (pathname === '/api/admin/packages/upload') {
       const allowedRoles = ['ADMIN', 'SUPER']
       if (!allowedRoles.includes(token.role as string)) {
@@ -80,19 +91,11 @@ export async function middleware(req: NextRequest) {
       }
     }
 
-    // Add user info to headers for upload service
     const requestHeaders = new Headers(req.headers)
     requestHeaders.set('x-user-id', String(token.sub || token.id))
     requestHeaders.set('x-user-role', String(token.role))
 
-    // Let Nginx proxy the request (don't return here, let it pass through)
-    const response = NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    })
-    
-    return response
+    return NextResponse.next({ request: { headers: requestHeaders } })
   }
 
   // Публичные страницы — всегда доступны

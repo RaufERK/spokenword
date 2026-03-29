@@ -2,93 +2,93 @@
 
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Role } from '@/lib/roles'
-import { Menu, X } from 'lucide-react'
+import { isSubscriptionActive } from '@/lib/subscription'
+import { Menu, X, ShieldAlert, LogOut } from 'lucide-react'
 import links from './links'
 
 export default function SideNavMobile() {
   const { data } = useSession()
+  const pathname = usePathname()
   const role: Role | undefined = data?.user?.role
+  const paymentDate = data?.user?.paymentDate ?? null
+  const isAdmin = role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER'
+  const hasActiveSub = isSubscriptionActive(paymentDate)
   const [open, setOpen] = useState(false)
 
-  const regularLinks = links.filter(
-    (l) => !l.isAdmin && (!l.roles || (role && l.roles.includes(role)))
-  )
-  const adminLinks = links.filter(
-    (l) => l.isAdmin && (!l.roles || (role && l.roles.includes(role)))
-  )
+  const regularLinks = links.filter((l) => {
+    if (l.isAdmin) return false
+    if (!l.roles || (role && l.roles.includes(role))) {
+      if (l.isPaid && role === 'USER' && !hasActiveSub) return false
+      return true
+    }
+    return false
+  })
 
   return (
-    <nav className='w-full bg-blue-700 border-b-4 border-green-600 p-3 flex items-center justify-between'>
-      <button
-        onClick={() => setOpen(!open)}
-        aria-label='Меню'
-        className='text-white'
-      >
-        {open ? <X size={28} /> : <Menu size={28} />}
-      </button>
-      <span className='text-white font-bold text-xl'>Меню</span>
-      <div />
-      {/* Выпадающее меню */}
+    <nav className='w-full bg-gradient-to-r from-[#1565c0] to-[#0d47a1] shadow-lg'>
+      <div className='flex items-center justify-between px-4 h-14'>
+        <button
+          onClick={() => setOpen(!open)}
+          aria-label='Меню'
+          className='text-white p-1'
+        >
+          {open ? <X size={26} /> : <Menu size={26} />}
+        </button>
+        <span className='text-white font-semibold'>spoken-word.ru</span>
+        {role ? (
+          <Link href='/logout' className='text-[#4ade80]'>
+            <LogOut size={20} />
+          </Link>
+        ) : (
+          <Link href='/login' className='text-[#4ade80] text-sm'>
+            Войти
+          </Link>
+        )}
+      </div>
+
       {open && (
-        <div className='absolute top-16 left-0 w-full bg-blue-800 z-50 flex flex-col gap-3 p-4 shadow-2xl animate-fade-in'>
+        <div className='absolute top-14 left-0 w-full bg-[#0d47a1] z-50 flex flex-col shadow-2xl border-t border-blue-600'>
           {regularLinks.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className='block text-lg text-white py-2 px-3 rounded hover:bg-blue-900 transition'
+              className={`text-white py-3 px-5 transition-colors ${
+                pathname === l.href ? 'bg-white/20' : 'hover:bg-white/10'
+              }`}
               onClick={() => setOpen(false)}
             >
               {l.label}
             </Link>
           ))}
-          {adminLinks.length > 0 && (
+
+          {isAdmin && (
             <>
-              <div className='border-t border-purple-400 my-2' />
-              <div className='text-sm text-purple-300 font-semibold px-3'>
-                АДМИН ПАНЕЛЬ
-              </div>
-              {adminLinks.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className='block text-lg text-white py-2 px-3 rounded bg-purple-600 hover:bg-purple-700 transition'
-                  onClick={() => setOpen(false)}
-                >
-                  {l.label}
-                </Link>
-              ))}
-            </>
-          )}
-          <div className='flex gap-2 mt-3'>
-            {role ? (
+              <div className='border-t border-red-500 mx-4 my-1' />
               <Link
-                href='/logout'
-                className='text-green-400 hover:underline'
+                href='/admin'
+                className='text-white py-3 px-5 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 flex items-center gap-2 transition-colors'
                 onClick={() => setOpen(false)}
               >
-                Выйти
+                <ShieldAlert className='w-4 h-4' />
+                АДМИН
               </Link>
-            ) : (
-              <>
-                <Link
-                  href='/login'
-                  className='text-green-400 hover:underline mr-3'
-                  onClick={() => setOpen(false)}
-                >
-                  Войти
-                </Link>
-                <Link
-                  href='/register'
-                  className='text-green-400 hover:underline'
-                  onClick={() => setOpen(false)}
-                >
-                  Регистрация
-                </Link>
-              </>
-            )}
-          </div>
+            </>
+          )}
+
+          {!role && (
+            <div className='flex gap-3 p-4 border-t border-blue-600'>
+              <Link
+                href='/register'
+                className='flex-1 text-center py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition'
+                onClick={() => setOpen(false)}
+              >
+                Регистрация
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </nav>

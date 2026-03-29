@@ -64,7 +64,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
         token.role = user.role
@@ -74,6 +74,16 @@ export const authOptions: NextAuthOptions = {
         token.login = user.login
         token.email = user.email
         token.paymentDate = user.paymentDate ?? null
+      } else if (token.id) {
+        // Обновляем роль и paymentDate из БД при каждом обновлении токена
+        const dbUser = await prisma.user.findUnique({
+          where: { id: Number(token.id) },
+          select: { role: true, paymentDate: true },
+        })
+        if (dbUser) {
+          token.role = dbUser.role
+          token.paymentDate = dbUser.paymentDate ? dbUser.paymentDate.toISOString() : null
+        }
       }
       return token
     },

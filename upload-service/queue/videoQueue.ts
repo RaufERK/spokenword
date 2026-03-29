@@ -6,6 +6,7 @@ import redis from '../../lib/redis.js'
 export interface VideoCompressionJob {
   packageId?: number
   conferenceFileId?: number
+  classFileId?: number
   tempFilePath: string
   outputPath: string
   originalFileName: string
@@ -13,7 +14,7 @@ export interface VideoCompressionJob {
   nextOrderIndex?: number
   compressedFileName: string
   userId: number
-  type: 'package' | 'conference'
+  type: 'package' | 'conference' | 'class'
 }
 
 export const videoQueue = new Queue<VideoCompressionJob>('video-compression', {
@@ -36,12 +37,16 @@ export const videoQueue = new Queue<VideoCompressionJob>('video-compression', {
 })
 
 export async function addVideoToQueue(data: VideoCompressionJob) {
-  const prefix = data.type === 'package' ? `pkg_${data.packageId}` : `conf_${data.conferenceFileId}`
+  let prefix: string
+  if (data.type === 'package') prefix = `pkg_${data.packageId}`
+  else if (data.type === 'class') prefix = `class_${data.classFileId}`
+  else prefix = `conf_${data.conferenceFileId}`
+
   const jobId = `${prefix}_${Date.now()}_${data.originalFileName}`
 
   const job = await videoQueue.add('compress', data, {
     jobId,
-    priority: data.type === 'package' ? 1 : 2, // Conference has higher priority
+    priority: data.type === 'package' ? 1 : 2,
   })
 
   console.log(`📋 [VideoQueue] Added to queue: ${job.id}`)

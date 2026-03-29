@@ -18,6 +18,7 @@ export function createCompressionWorker() {
         type,
         packageId,
         conferenceFileId,
+        classFileId,
         tempFilePath,
         outputPath,
         originalFileName,
@@ -27,7 +28,10 @@ export function createCompressionWorker() {
         userId,
       } = job.data
 
-      const label = type === 'package' ? `Package #${packageId}` : `Conference #${conferenceFileId}`
+      let label: string
+      if (type === 'package') label = `Package #${packageId}`
+      else if (type === 'class') label = `Class #${classFileId}`
+      else label = `Conference #${conferenceFileId}`
       console.log(`\n🎬 [${label}] Starting compression: ${originalFileName}`)
       console.log(`📊 Size: ${Math.round(originalSize / 1024 / 1024)}MB`)
 
@@ -122,7 +126,6 @@ export function createCompressionWorker() {
           })
           console.log(`✅ [Package #${packageId}] Created item: ${newItem.title}`)
         } else if (type === 'conference' && conferenceFileId) {
-          // Update conference file with compressed size and duration
           await prisma.conferenceFile.update({
             where: { id: conferenceFileId },
             data: {
@@ -131,6 +134,15 @@ export function createCompressionWorker() {
             },
           })
           console.log(`✅ [Conference #${conferenceFileId}] Updated with compressed size and duration`)
+        } else if (type === 'class' && classFileId) {
+          await prisma.classFile.update({
+            where: { id: classFileId },
+            data: {
+              size: compressedSize,
+              duration,
+            },
+          })
+          console.log(`✅ [Class #${classFileId}] Updated with compressed size and duration`)
         }
 
         // Delete temp file

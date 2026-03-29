@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import conferenceRouter from './routes/conference.js'
 import packagesRouter from './routes/packages.js'
+import classRouter from './routes/class.js'
 import testRouter from './routes/test.js'
 import jobStatusRouter from './routes/job-status.js'
 
@@ -22,6 +23,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/upload/conference', conferenceRouter)
 app.use('/upload/packages', packagesRouter)
+app.use('/upload/class', classRouter)
 app.use('/test', testRouter)
 app.use('/job-status', jobStatusRouter)
 
