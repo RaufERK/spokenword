@@ -65,3 +65,6 @@ paid-content/temp/
 
 # database exports
 database-export-*.json
+
+# local design dump
+FigmaNew26/

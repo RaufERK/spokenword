@@ -48,7 +48,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.0.10",
-    "pm2": "^6.0.14",
     "tsx": "^4.20.6",
     "typescript": "^5"
   }

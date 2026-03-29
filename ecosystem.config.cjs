@@ -114,8 +114,8 @@ module.exports = {
         'ln -sfn /home/appuser/apps/spokenword/shared/paid-content ./paid-content',
         // Примечание: права доступа нужно восстанавливать вручную после деплоя
         // Запустите: ssh amster "bash /root/fix-streaming-permissions.sh"
-        'npx pm2 startOrReload ecosystem.config.cjs --env production',
-        'npx pm2 save',
+        'pm2 startOrReload ecosystem.config.cjs --env production',
+        'pm2 save',
       ].join(' && '),
 
       env: {
