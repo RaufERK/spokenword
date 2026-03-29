@@ -11,7 +11,7 @@ type UserDTO = Omit<PrismaUser, 'paymentDate'> & {
 
 export default async function AdminUsersPage() {
   const session = await getServerSession(authOptions)
-  if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
+  if (!session?.user || !['MODERATOR', 'ADMIN', 'SUPER'].includes(session.user.role)) {
     redirect('/')
   }
 

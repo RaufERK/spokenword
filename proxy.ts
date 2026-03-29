@@ -5,26 +5,24 @@ import { isSubscriptionActive } from '@/lib/subscription'
 
 const paidRoutes = ['/conf', '/conf-arch', '/class', '/watch-class']
 const protectedRoutes = ['/cabinet', '/paid-content', ...paidRoutes]
-const moderatorRoutes = ['/admin', '/admin/class', '/admin/upload']
-const adminOnlyRoutes = ['/admin/users', '/admin/packages']
+// Только для ADMIN/SUPER (управление пакетами — финансы)
+const adminOnlyRoutes = ['/admin/packages']
 const paidContentApiRoutes = ['/api/paid-content']
 
 export async function proxy(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const { pathname } = req.nextUrl
 
-  // 1a. Админ-маршруты только для ADMIN/SUPER
-  if (adminOnlyRoutes.some((route) => pathname.startsWith(route))) {
-    if (!token || !['ADMIN', 'SUPER'].includes(token.role as string)) {
-      return NextResponse.redirect(new URL('/', req.url))
-    }
-  }
-
-  // 1b. Маршруты для модераторов (MODERATOR/ADMIN/SUPER)
-  const isAdminOnlyRoute = adminOnlyRoutes.some((route) => pathname.startsWith(route))
-  if (!isAdminOnlyRoute && moderatorRoutes.some((route) => pathname.startsWith(route))) {
+  // 1. Все /admin/* — только для MODERATOR/ADMIN/SUPER
+  if (pathname.startsWith('/admin')) {
     if (!token || !['MODERATOR', 'ADMIN', 'SUPER'].includes(token.role as string)) {
       return NextResponse.redirect(new URL('/', req.url))
+    }
+    // Подразделы /admin/users и /admin/packages — только ADMIN/SUPER
+    if (adminOnlyRoutes.some((route) => pathname.startsWith(route))) {
+      if (!['ADMIN', 'SUPER'].includes(token.role as string)) {
+        return NextResponse.redirect(new URL('/admin', req.url))
+      }
     }
   }
 

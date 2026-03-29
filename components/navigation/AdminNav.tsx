@@ -18,7 +18,7 @@ const adminLinks: AdminLink[] = [
   { href: '/admin', label: 'Ссылки (Службы)', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
   { href: '/admin/upload', label: 'Загрузка конф.', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
   { href: '/admin/packages', label: 'Загрузка пакетов', roles: ['ADMIN', 'SUPER'] },
-  { href: '/admin/users', label: 'Пользователи', roles: ['ADMIN', 'SUPER'] },
+  { href: '/admin/users', label: 'Пользователи', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
 ]
 
 export default function AdminNav() {
