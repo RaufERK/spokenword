@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import prisma from '@/lib/prisma'
+import { isSubscriptionActive } from '@/lib/subscription'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+
+  if (!token) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const role = token.role as string
+  const hasClassAccess =
+    ['MODERATOR', 'ADMIN', 'SUPER'].includes(role) ||
+    isSubscriptionActive(token.paymentDate as string | null)
+
+  if (!hasClassAccess) {
+    return NextResponse.json({ success: false, error: 'Нет доступа' }, { status: 403 })
+  }
+
   try {
     const activeLink = await prisma.classStreamLink.findFirst({
       where: { isActive: true },
