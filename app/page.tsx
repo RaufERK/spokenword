@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { isSubscriptionActive } from '@/lib/subscription'
 import prisma from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 export default async function HomePage() {
   const session = await getServerSession(authOptions)
   const role = session?.user?.role

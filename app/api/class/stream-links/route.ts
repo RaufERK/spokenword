@@ -3,6 +3,8 @@ import { getToken } from 'next-auth/jwt'
 import prisma from '@/lib/prisma'
 import { isSubscriptionActive } from '@/lib/subscription'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
 
