@@ -52,10 +52,9 @@ paid-content/packages/
 paid-content/temp/
 /paid-content
 
-# server-side directories created during deploy
+# server-side directories created during deploy (contain media/runtime data, not tracked)
 /storage/
-/public/test-uploads/
-/public/conf-archive/
+/public/
 
 # local design dump
 FIgmaV6/
