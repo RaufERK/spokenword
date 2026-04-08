@@ -17,7 +17,7 @@ export default async function ArchivePage() {
   const [confFiles, classFiles, streamLinks, classStreamLinks] = await Promise.all([
     prisma.conferenceFile.findMany({
       where: isAdmin ? {} : { isPublic: true },
-      orderBy: { uploadedAt: 'desc' },
+      orderBy: [{ orderIndex: 'asc' }, { uploadedAt: 'desc' }],
       select: {
         id: true,
         displayName: true,
@@ -27,11 +27,12 @@ export default async function ArchivePage() {
         views: true,
         isPublic: true,
         duration: true,
+        orderIndex: true,
       },
     }),
     prisma.classFile.findMany({
       where: isAdmin ? {} : { isPublic: true },
-      orderBy: { uploadedAt: 'desc' },
+      orderBy: [{ orderIndex: 'asc' }, { uploadedAt: 'desc' }],
       select: {
         id: true,
         displayName: true,
@@ -41,6 +42,7 @@ export default async function ArchivePage() {
         views: true,
         isPublic: true,
         duration: true,
+        orderIndex: true,
       },
     }),
     prisma.streamLink.findFirst({
@@ -128,6 +130,7 @@ export default async function ArchivePage() {
         }))}
         isAdmin={isAdmin}
       />
+
     </main>
   )
 }

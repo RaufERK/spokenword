@@ -28,6 +28,7 @@
     "logs:nginx": "ssh amster 'sudo tail -f /var/log/nginx/spoken_word_access.log'"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@prisma/client": "^6.10.1",
     "@tailwindcss/postcss": "^4",
     "hls.js": "^1.6.2",

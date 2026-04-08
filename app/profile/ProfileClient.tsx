@@ -33,7 +33,7 @@ const FIELDS: FieldDef[] = [
     label: 'Пароль',
     icon: Shield,
     value: (p) => p.password,
-    show: (p, hasToken) => hasToken && !!p.password,
+    show: (p) => !!p.password,
   },
   { label: 'Роль', icon: Shield, value: (p) => p.role },
 ]

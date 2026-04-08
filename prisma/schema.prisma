@@ -53,6 +53,7 @@ model ConferenceFile {
   views        Int      @default(0)
   duration     Int?     // Длительность в секундах
   isPublic     Boolean  @default(false) // Видимость для обычных пользователей
+  orderIndex   Int      @default(0)    // Кастомный порядок сортировки
 }
 
 model StreamLink {
@@ -114,6 +115,7 @@ model ClassFile {
   views        Int      @default(0)
   duration     Int?
   isPublic     Boolean  @default(false)
+  orderIndex   Int      @default(0)    // Кастомный порядок сортировки
 }
 
 // Ссылки на трансляцию учебного класса (отдельно от Служб)

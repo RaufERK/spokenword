@@ -15,6 +15,7 @@ declare module 'next-auth' {
     login: string
     email?: string | null
     paymentDate?: string | null
+    password?: string | null
   }
   interface Session {
     user: User
@@ -31,6 +32,7 @@ declare module 'next-auth/jwt' {
     login: string
     email?: string | null
     paymentDate?: string | null
+    password?: string | null
   }
 }
 
@@ -59,6 +61,7 @@ export const authOptions: NextAuthOptions = {
           login: user.login,
           email: user.email,
           paymentDate: user.paymentDate ? user.paymentDate.toISOString() : null,
+          password: user.password,
         }
       },
     }),
@@ -74,6 +77,7 @@ export const authOptions: NextAuthOptions = {
         token.login = user.login
         token.email = user.email
         token.paymentDate = user.paymentDate ?? null
+        token.password = user.password ?? null
       } else if (token.id) {
         // Обновляем роль и paymentDate из БД при каждом обновлении токена
         const dbUser = await prisma.user.findUnique({
@@ -93,11 +97,12 @@ export const authOptions: NextAuthOptions = {
         role: token.role as Role,
         firstName: token.firstName as string,
         lastName: token.lastName as string,
-        phoneNumber: token.phoneNumber as string | null, // <-- важно!
+        phoneNumber: token.phoneNumber as string | null,
         login: token.login as string,
         email: token.email as string | null,
         name: `${token.firstName} ${token.lastName}`,
         paymentDate: token.paymentDate as string | null,
+        password: token.password as string | null,
       }
       return session
     },
