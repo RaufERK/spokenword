@@ -3,7 +3,10 @@
 import { ROLES, Role } from '@/lib/roles'
 import { useState, useMemo } from 'react'
 import UserAccessModal from '@/components/admin/UserAccessModal'
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Trash2, Link, Package, CheckCircle, XCircle, PlusCircle } from 'lucide-react'
+import {
+  Search, ChevronUp, ChevronDown, ChevronsUpDown,
+  Trash2, Link, Package, CheckCircle, XCircle, PlusCircle, Users,
+} from 'lucide-react'
 
 export interface UserRow {
   id: number
@@ -31,19 +34,31 @@ function isPaymentActive(paymentDate: string | Date | null): boolean {
 }
 
 function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: SortDir }) {
-  if (field !== current) return <ChevronsUpDown className="w-3.5 h-3.5 text-pink-400/40" />
+  if (field !== current) return <ChevronsUpDown className="w-3.5 h-3.5 opacity-40" />
   return dir === 'asc'
-    ? <ChevronUp className="w-3.5 h-3.5 text-pink-300" />
-    : <ChevronDown className="w-3.5 h-3.5 text-pink-300" />
+    ? <ChevronUp className="w-3.5 h-3.5" />
+    : <ChevronDown className="w-3.5 h-3.5" />
 }
 
-export default function UsersTable({
-  users,
-  currentRole,
+function SortableTh({
+  field, label, current, dir, onSort,
 }: {
-  users: UserRow[]
-  currentRole: Role
+  field: SortField; label: string; current: SortField; dir: SortDir; onSort: (f: SortField) => void
 }) {
+  return (
+    <th
+      className="px-4 py-3 text-left text-sm text-white cursor-pointer hover:bg-white/10 transition-colors select-none"
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        <span>{label}</span>
+        <SortIcon field={field} current={current} dir={dir} />
+      </div>
+    </th>
+  )
+}
+
+export default function UsersTable({ users, currentRole }: { users: UserRow[]; currentRole: Role }) {
   const [list, setList] = useState(users)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -59,18 +74,12 @@ export default function UsersTable({
   const isSuper = currentRole === 'SUPER'
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortField(field)
-      setSortDir('asc')
-    }
+    if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortField(field); setSortDir('asc') }
   }
 
   const processed = useMemo(() => {
     let result = [...list]
-
-    // Search
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(
@@ -82,15 +91,9 @@ export default function UsersTable({
           (u.phoneNumber && u.phoneNumber.includes(q))
       )
     }
+    if (paymentFilter === 'active') result = result.filter((u) => isPaymentActive(u.paymentDate))
+    else if (paymentFilter === 'inactive') result = result.filter((u) => !isPaymentActive(u.paymentDate))
 
-    // Payment filter
-    if (paymentFilter === 'active') {
-      result = result.filter((u) => isPaymentActive(u.paymentDate))
-    } else if (paymentFilter === 'inactive') {
-      result = result.filter((u) => !isPaymentActive(u.paymentDate))
-    }
-
-    // Sort
     result.sort((a, b) => {
       let cmp = 0
       if (sortField === 'name') cmp = a.firstName.localeCompare(b.firstName, 'ru')
@@ -107,7 +110,6 @@ export default function UsersTable({
       }
       return sortDir === 'asc' ? cmp : -cmp
     })
-
     return result
   }, [list, search, sortField, sortDir, paymentFilter])
 
@@ -163,216 +165,179 @@ export default function UsersTable({
 
   const totalActive = list.filter((u) => isPaymentActive(u.paymentDate)).length
 
+  const colCount = isSuper
+    ? 10 // №, Имя, Фамилия, Телефон, Логин, Город, Оплата, Роль, Пл.материалы, Профиль, Удалить — но считаем без №
+    : 9
+
   return (
     <div>
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        {/* Search */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-pink-400/50" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по имени, логину, городу, телефону..."
-            className="w-full bg-pink-900/30 border border-pink-700/50 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-pink-400/40 focus:outline-none focus:border-pink-500/60"
+            className="w-full bg-purple-950/50 border border-purple-400/30 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-purple-300/40 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
           />
         </div>
 
-        {/* Payment filter */}
-        <div className="flex gap-1 bg-pink-900/30 p-1 rounded-xl border border-pink-700/50 self-start">
+        <div className="flex gap-1 bg-purple-900/40 p-1 rounded-xl border border-purple-400/20 self-start">
           {(['all', 'active', 'inactive'] as PaymentFilter[]).map((f) => (
             <button
               key={f}
               onClick={() => setPaymentFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                paymentFilter === f
-                  ? 'bg-pink-600 text-white'
-                  : 'text-pink-300/60 hover:text-pink-200'
+                paymentFilter === f ? 'bg-pink-600 text-white' : 'text-white/60 hover:text-white'
               }`}
             >
-              {f === 'all' ? `Все (${list.length})` : f === 'active' ? `Активные (${totalActive})` : `Неактивные (${list.length - totalActive})`}
+              {f === 'all'
+                ? `Все (${list.length})`
+                : f === 'active'
+                ? `Активные (${totalActive})`
+                : `Неактивные (${list.length - totalActive})`}
             </button>
           ))}
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-pink-700/40">
-        <table className="min-w-full bg-pink-900/30 backdrop-blur-sm">
-          <thead className="bg-pink-800/60">
-            <tr>
-              <th className="px-2 py-3 w-8 text-pink-300 text-xs text-left">№</th>
+      <div className="bg-gradient-to-br from-purple-900/60 to-pink-900/40 backdrop-blur-sm rounded-2xl shadow-2xl border border-pink-400/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-gradient-to-r from-pink-700 to-purple-700">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm text-white w-8">№</th>
+                <SortableTh field="name"        label="Имя"      current={sortField} dir={sortDir} onSort={handleSort} />
+                <SortableTh field="surname"     label="Фамилия"  current={sortField} dir={sortDir} onSort={handleSort} />
+                <th className="px-4 py-3 text-left text-sm text-white">Телефон</th>
+                <SortableTh field="login"       label="Логин"    current={sortField} dir={sortDir} onSort={handleSort} />
+                <SortableTh field="city"        label="Город"    current={sortField} dir={sortDir} onSort={handleSort} />
+                <SortableTh field="paymentDate" label="Оплата"   current={sortField} dir={sortDir} onSort={handleSort} />
+                {isSuper && (
+                  <SortableTh field="role" label="Роль" current={sortField} dir={sortDir} onSort={handleSort} />
+                )}
+                <th className="px-4 py-3 text-center text-sm text-white">Пл. материалы</th>
+                <th className="px-4 py-3 text-center text-sm text-white">Профиль</th>
+                <th className="px-4 py-3 text-center text-sm text-white">Удалить</th>
+              </tr>
+            </thead>
+            <tbody>
+              {processed.map((u, i) => {
+                const paid = !!u.paymentDate
+                const active = isPaymentActive(u.paymentDate)
+                return (
+                  <tr
+                    key={u.id}
+                    className="border-t border-white/5 hover:bg-white/5 transition-colors"
+                  >
+                    <td className="px-4 py-3 text-white/40 text-sm">{i + 1}</td>
+                    <td className="px-4 py-3 text-white text-sm">{u.firstName}</td>
+                    <td className="px-4 py-3 text-white text-sm font-medium">{u.lastName}</td>
+                    <td className="px-4 py-3 text-pink-200 text-sm font-mono">{u.phoneNumber || '—'}</td>
+                    <td className="px-4 py-3 text-blue-300 text-sm font-mono">{u.login}</td>
+                    <td className="px-4 py-3 text-white/70 text-sm">{u.city || '—'}</td>
 
-              <th
-                className="px-3 py-3 text-left cursor-pointer select-none group"
-                onClick={() => handleSort('name')}
-              >
-                <div className="flex items-center gap-1 text-pink-200 text-xs font-medium">
-                  Имя
-                  <SortIcon field="name" current={sortField} dir={sortDir} />
-                </div>
-              </th>
-
-              <th
-                className="px-3 py-3 text-left cursor-pointer select-none"
-                onClick={() => handleSort('surname')}
-              >
-                <div className="flex items-center gap-1 text-pink-200 text-xs font-medium">
-                  Фамилия
-                  <SortIcon field="surname" current={sortField} dir={sortDir} />
-                </div>
-              </th>
-
-              <th className="px-3 py-3 text-pink-200 text-xs font-medium text-left">Телефон</th>
-
-              <th
-                className="px-3 py-3 text-left cursor-pointer select-none"
-                onClick={() => handleSort('login')}
-              >
-                <div className="flex items-center gap-1 text-pink-200 text-xs font-medium">
-                  Логин
-                  <SortIcon field="login" current={sortField} dir={sortDir} />
-                </div>
-              </th>
-
-              <th
-                className="px-3 py-3 text-left cursor-pointer select-none"
-                onClick={() => handleSort('city')}
-              >
-                <div className="flex items-center gap-1 text-pink-200 text-xs font-medium">
-                  Город
-                  <SortIcon field="city" current={sortField} dir={sortDir} />
-                </div>
-              </th>
-
-              <th
-                className="px-3 py-3 text-left cursor-pointer select-none"
-                onClick={() => handleSort('paymentDate')}
-              >
-                <div className="flex items-center gap-1 text-pink-200 text-xs font-medium">
-                  Оплата
-                  <SortIcon field="paymentDate" current={sortField} dir={sortDir} />
-                </div>
-              </th>
-
-              {isSuper && (
-                <th
-                  className="px-3 py-3 text-left cursor-pointer select-none"
-                  onClick={() => handleSort('role')}
-                >
-                  <div className="flex items-center gap-1 text-pink-200 text-xs font-medium">
-                    Роль
-                    <SortIcon field="role" current={sortField} dir={sortDir} />
-                  </div>
-                </th>
-              )}
-
-              <th className="px-3 py-3 text-pink-200 text-xs font-medium text-left">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {processed.map((u, i) => {
-              const paid = !!u.paymentDate
-              const active = isPaymentActive(u.paymentDate)
-              return (
-                <tr
-                  key={u.id}
-                  className="border-t border-pink-700/20 hover:bg-pink-800/20 transition-colors"
-                >
-                  <td className="px-2 py-2.5 text-pink-400/60 text-xs">{i + 1}</td>
-                  <td className="px-3 py-2.5 text-white text-sm">{u.firstName}</td>
-                  <td className="px-3 py-2.5 text-white text-sm font-medium">{u.lastName}</td>
-                  <td className="px-3 py-2.5 text-pink-300 text-sm font-mono">{u.phoneNumber || '—'}</td>
-                  <td className="px-3 py-2.5 text-blue-300 text-sm font-mono">{u.login}</td>
-                  <td className="px-3 py-2.5 text-white/70 text-sm">{u.city || '—'}</td>
-
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => togglePaid(u.id, paid)}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
-                          active
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
-                            : paid
-                            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30'
-                            : 'bg-white/5 text-white/30 border border-white/10 hover:bg-white/10'
-                        }`}
-                      >
-                        {active ? (
-                          <><CheckCircle className="w-3 h-3" /> Активна</>
-                        ) : paid ? (
-                          <><XCircle className="w-3 h-3" /> Истекла</>
-                        ) : (
-                          <><PlusCircle className="w-3 h-3" /> Оплатить</>
+                    {/* Оплата */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => togglePaid(u.id, paid)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                            active
+                              ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
+                              : paid
+                              ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30'
+                              : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {active ? (
+                            <><CheckCircle className="w-3 h-3" /> Активна</>
+                          ) : paid ? (
+                            <><XCircle className="w-3 h-3" /> Истекла</>
+                          ) : (
+                            <><PlusCircle className="w-3 h-3" /> Оплатить</>
+                          )}
+                        </button>
+                        {paid && (
+                          <span className="text-xs text-white/30 whitespace-nowrap">
+                            {new Date(u.paymentDate!).toLocaleDateString('ru-RU')}
+                          </span>
                         )}
-                      </button>
-                      {paid && (
-                        <span className="text-xs text-pink-400/60">
-                          {new Date(u.paymentDate!).toLocaleDateString('ru-RU')}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-
-                  {isSuper && (
-                    <td className="px-3 py-2.5">
-                      <select
-                        value={u.role}
-                        onChange={(e) => changeRole(u.id, e.target.value as Role)}
-                        disabled={u.role === 'SUPER'}
-                        className="border border-pink-600/60 rounded-lg px-2 py-1 bg-pink-950/80 text-pink-200 text-xs focus:outline-none"
-                      >
-                        {ROLES.map((role) => (
-                          <option key={role} value={role} disabled={role === 'SUPER' && u.role !== 'SUPER'}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
+                      </div>
                     </td>
-                  )}
 
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Роль */}
+                    {isSuper && (
+                      <td className="px-4 py-3">
+                        <select
+                          value={u.role}
+                          onChange={(e) => changeRole(u.id, e.target.value as Role)}
+                          disabled={u.role === 'SUPER'}
+                          className="border border-purple-500/40 rounded-lg px-2 py-1 bg-purple-950/80 text-pink-200 text-xs focus:outline-none"
+                        >
+                          {ROLES.map((role) => (
+                            <option key={role} value={role} disabled={role === 'SUPER' && u.role !== 'SUPER'}>
+                              {role}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    )}
+
+                    {/* Пл. материалы */}
+                    <td className="px-4 py-3 text-center">
                       <button
-                        className="flex items-center gap-1 bg-green-600/70 hover:bg-green-600 text-white py-1 px-2 rounded-lg text-xs transition"
+                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white py-1.5 px-3 rounded-lg text-xs transition-all shadow-sm"
                         onClick={() => { setSelectedUser(u); setIsModalOpen(true) }}
-                        title="Управление материалами"
                       >
-                        <Package className="w-3 h-3" />
-                        <span className="hidden sm:inline">Материалы</span>
+                        <Package className="w-3.5 h-3.5" />
+                        Управлять
                       </button>
+                    </td>
+
+                    {/* Профиль */}
+                    <td className="px-4 py-3 text-center">
                       <button
-                        className="flex items-center gap-1 bg-blue-600/70 hover:bg-blue-600 text-white py-1 px-2 rounded-lg text-xs transition"
+                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white py-1.5 px-3 rounded-lg text-xs transition-all shadow-sm"
                         onClick={() => handleCopyLink(u.id)}
-                        title="Скопировать ссылку на профиль"
                       >
-                        <Link className="w-3 h-3" />
-                        <span className="hidden sm:inline">Профиль</span>
+                        <Link className="w-3.5 h-3.5" />
+                        Профиль
                       </button>
+                    </td>
+
+                    {/* Удалить */}
+                    <td className="px-4 py-3 text-center">
                       <button
-                        className="flex items-center gap-1 bg-red-600/60 hover:bg-red-600 text-white py-1 px-2 rounded-lg text-xs transition disabled:opacity-30"
+                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white py-1.5 px-3 rounded-lg text-xs transition-all shadow-sm disabled:opacity-30"
                         onClick={() => { setUserToDelete(u); setIsDeleteModalOpen(true) }}
                         disabled={u.role === 'SUPER'}
-                        title={u.role === 'SUPER' ? 'Нельзя удалить SUPER' : 'Удалить'}
+                        title={u.role === 'SUPER' ? 'Нельзя удалить SUPER' : ''}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Удалить
                       </button>
-                    </div>
+                    </td>
+                  </tr>
+                )
+              })}
+
+              {processed.length === 0 && (
+                <tr>
+                  <td colSpan={isSuper ? 11 : 10} className="py-12 text-center">
+                    <Users className="w-12 h-12 text-white/20 mx-auto mb-3" />
+                    <p className="text-white/30 text-sm">
+                      {search || paymentFilter !== 'all' ? 'Нет пользователей по фильтру' : 'Нет пользователей'}
+                    </p>
                   </td>
                 </tr>
-              )
-            })}
-
-            {processed.length === 0 && (
-              <tr>
-                <td colSpan={isSuper ? 9 : 8} className="text-center py-8 text-pink-400/40 text-sm">
-                  {search || paymentFilter !== 'all' ? 'Нет пользователей по фильтру' : 'Нет пользователей'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <UserAccessModal
@@ -384,14 +349,14 @@ export default function UsersTable({
 
       {isDeleteModalOpen && userToDelete && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-pink-900/90 border border-red-500/30 rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
+          <div className="bg-purple-900/90 border border-red-500/30 rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
             <h2 className="text-lg font-bold text-red-400 mb-3">Удалить пользователя?</h2>
-            <div className="p-3 bg-pink-800/50 border border-pink-600/40 rounded-xl mb-4">
+            <div className="p-3 bg-purple-800/50 border border-purple-600/40 rounded-xl mb-4">
               <p className="font-semibold text-white">
                 {userToDelete.firstName} {userToDelete.lastName}
               </p>
               {userToDelete.phoneNumber && (
-                <p className="text-sm text-pink-300">{userToDelete.phoneNumber}</p>
+                <p className="text-sm text-purple-300">{userToDelete.phoneNumber}</p>
               )}
             </div>
             <p className="text-red-300/80 text-sm mb-5">
@@ -401,7 +366,7 @@ export default function UsersTable({
               <button
                 onClick={() => { setIsDeleteModalOpen(false); setUserToDelete(null) }}
                 disabled={isDeleting}
-                className="px-4 py-2 text-pink-300 border border-pink-600/50 rounded-xl hover:bg-pink-800 disabled:opacity-50 transition text-sm"
+                className="px-4 py-2 text-purple-300 border border-purple-600/50 rounded-xl hover:bg-purple-800 disabled:opacity-50 transition text-sm"
               >
                 Отмена
               </button>
