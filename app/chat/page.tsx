@@ -168,7 +168,7 @@ export default function ChatPage() {
           )}
 
           {messages.map((msg) => {
-            const isAdmin = ['ADMIN', 'SUPER'].includes(msg.user.role)
+            const isAdmin = msg.user.role === 'ADMIN'
             const isMod = msg.user.role === 'MODERATOR'
             const reactions = parseReactions(msg.reactions)
             const myReaction = userId !== undefined

@@ -11,21 +11,21 @@ export type NavLink = {
 const links: NavLink[] = [
   { href: '/', label: 'Стрим' },
   {
-    href: '/class',
-    label: 'Класс',
+    href: '/chat',
+    label: 'Чат',
     roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
-    isPaid: true,
   },
   {
     href: '/conf-arch',
     label: 'Архив',
     roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
   },
-  {
-    href: '/chat',
-    label: 'Чат',
-    roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
-  },
+  // {
+  //   href: '/class',
+  //   label: 'Класс',
+  //   roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
+  //   isPaid: true,
+  // },
   {
     href: '/paid-content',
     label: 'Платные материалы',

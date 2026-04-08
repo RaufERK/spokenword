@@ -145,14 +145,6 @@ export default function ProfileClient() {
             })}
           </div>
 
-          <div className="pt-6 mt-2 border-t border-white/10">
-            <button
-              className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white py-3 px-8 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg font-medium"
-              onClick={() => alert('Редактирование профиля — в разработке')}
-            >
-              Редактировать профиль
-            </button>
-          </div>
         </div>
       </div>
     </div>
