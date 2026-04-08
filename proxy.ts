@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { isSubscriptionActive } from '@/lib/subscription'
 
-const paidRoutes = ['/conf', '/conf-arch', '/class', '/watch-class']
-const protectedRoutes = ['/cabinet', '/paid-content', '/chat', ...paidRoutes]
+const paidRoutes = ['/conf', '/class', '/watch-class', '/watch-conf']
+const protectedRoutes = ['/cabinet', '/paid-content', '/chat', '/conf-arch', ...paidRoutes]
 // Только для ADMIN/SUPER (управление пакетами — финансы)
 const adminOnlyRoutes = ['/admin/packages']
 const paidContentApiRoutes = ['/api/paid-content']
