@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   const files = await prisma.conferenceFile.findMany({
-    orderBy: { uploadedAt: 'desc' },
+    orderBy: [{ orderIndex: 'asc' }, { uploadedAt: 'desc' }],
     select: {
       id: true,
       displayName: true,
@@ -14,14 +14,9 @@ export async function GET() {
       uploadedAt: true,
       views: true,
       isPublic: true,
+      orderIndex: true,
     },
   })
-  
-  // Convert BigInt to Number for JSON serialization
-  const filesWithConvertedSize = files.map(file => ({
-    ...file,
-    size: Number(file.size),
-  }))
-  
-  return NextResponse.json(filesWithConvertedSize)
+
+  return NextResponse.json(files.map(f => ({ ...f, size: Number(f.size) })))
 }

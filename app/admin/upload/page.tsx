@@ -2,6 +2,8 @@
 
 import { useSession } from 'next-auth/react'
 import { useState, useRef, useEffect } from 'react'
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import { GripVertical } from 'lucide-react'
 
 type UploadStatus = 'idle' | 'uploading' | 'processing' | 'compressing' | 'done' | 'error'
 type JobState = 'waiting' | 'active' | 'completed' | 'failed' | 'unknown'
@@ -14,6 +16,7 @@ type ConfFile = {
   uploadedAt: string
   views: number
   isPublic: boolean
+  orderIndex: number
 }
 
 export default function AdminUploadPage() {
@@ -31,6 +34,7 @@ export default function AdminUploadPage() {
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [files, setFiles] = useState<ConfFile[]>([])
   const [refreshList, setRefreshList] = useState(0)
+  const [reorderSaving, setReorderSaving] = useState(false)
 
   useEffect(() => {
     return () => {
@@ -63,6 +67,27 @@ export default function AdminUploadPage() {
       }
     } catch {
       alert('❌ Ошибка удаления файла')
+    }
+  }
+
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination || result.destination.index === result.source.index) return
+    const reordered = Array.from(files)
+    const [moved] = reordered.splice(result.source.index, 1)
+    reordered.splice(result.destination.index, 0, moved)
+    const withNewIndex = reordered.map((f, idx) => ({ ...f, orderIndex: idx + 1 }))
+    setFiles(withNewIndex)
+    setReorderSaving(true)
+    try {
+      await fetch('/api/archive/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: withNewIndex.map(({ id, orderIndex }) => ({ id, type: 'conf', orderIndex })),
+        }),
+      })
+    } finally {
+      setReorderSaving(false)
     }
   }
 
@@ -297,56 +322,81 @@ export default function AdminUploadPage() {
 
       {/* Files List */}
       <div className='bg-gradient-to-br from-purple-900/60 to-pink-900/40 backdrop-blur-sm border border-pink-400/20 rounded-2xl shadow-2xl p-8'>
-        <h2 className='text-xl font-bold mb-6 text-white'>Управление архивом</h2>
+        <div className='flex items-center justify-between mb-6'>
+          <h2 className='text-xl font-bold text-white'>Управление архивом</h2>
+          {reorderSaving && <span className='text-xs text-white/40'>Сохраняю порядок...</span>}
+        </div>
 
         {files.length === 0 ? (
           <p className='text-purple-300 text-center py-8'>Архив пуст. Загрузите первый файл выше.</p>
         ) : (
-          <div className='space-y-3'>
-            {files.map((f) => (
-              <div
-                key={f.id}
-                className='flex items-center justify-between bg-purple-950/50 border border-purple-700/50 hover:border-purple-400/40 p-4 rounded-xl transition'
-              >
-                <div className='flex-1'>
-                  <div className='flex items-center gap-3 mb-1.5'>
-                    <h3 className='font-semibold text-white'>{f.displayName}</h3>
-                    <button
-                      onClick={() => toggleVisibility(f.systemName, f.isPublic)}
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition ${
-                        f.isPublic
-                          ? 'bg-green-900/50 text-green-400 border border-green-500/40 hover:bg-green-900/70'
-                          : 'bg-red-900/50 text-red-400 border border-red-500/40 hover:bg-red-900/70'
-                      }`}
-                    >
-                      {f.isPublic ? '✅ Публичное' : '❌ Скрыто'}
-                    </button>
-                  </div>
-                  <div className='text-xs text-purple-300 flex gap-4'>
-                    <span>{(f.size / 1024 / 1024).toFixed(1)} МБ</span>
-                    <span>{new Date(f.uploadedAt).toLocaleString('ru-RU')}</span>
-                    <span>👁️ {f.views}</span>
-                  </div>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId='upload-list'>
+              {(provided) => (
+                <div
+                  className='space-y-3'
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                >
+                  {files.map((f, index) => (
+                    <Draggable key={f.id} draggableId={String(f.id)} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`flex items-center justify-between bg-purple-950/50 border border-purple-700/50 hover:border-purple-400/40 p-4 rounded-xl transition ${snapshot.isDragging ? 'opacity-80 scale-[1.01]' : ''}`}
+                        >
+                          <div
+                            {...provided.dragHandleProps}
+                            className='mr-3 text-white/20 hover:text-white/60 cursor-grab active:cursor-grabbing shrink-0'
+                          >
+                            <GripVertical className='w-5 h-5' />
+                          </div>
+                          <div className='flex-1'>
+                            <div className='flex items-center gap-3 mb-1.5'>
+                              <h3 className='font-semibold text-white'>{f.displayName}</h3>
+                              <button
+                                onClick={() => toggleVisibility(f.systemName, f.isPublic)}
+                                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition ${
+                                  f.isPublic
+                                    ? 'bg-green-900/50 text-green-400 border border-green-500/40 hover:bg-green-900/70'
+                                    : 'bg-red-900/50 text-red-400 border border-red-500/40 hover:bg-red-900/70'
+                                }`}
+                              >
+                                {f.isPublic ? '✅ Публичное' : '❌ Скрыто'}
+                              </button>
+                            </div>
+                            <div className='text-xs text-purple-300 flex gap-4'>
+                              <span>{(f.size / 1024 / 1024).toFixed(1)} МБ</span>
+                              <span>{new Date(f.uploadedAt).toLocaleString('ru-RU')}</span>
+                              <span>👁️ {f.views}</span>
+                            </div>
+                          </div>
+                          <div className='flex items-center gap-2 ml-4'>
+                            <a
+                              href={`/watch-conf/${encodeURIComponent(f.systemName)}`}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              className='px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition'
+                            >
+                              Смотреть
+                            </a>
+                            <button
+                              onClick={() => handleDelete(f.systemName, f.displayName)}
+                              className='px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm transition'
+                            >
+                              Удалить
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
                 </div>
-                <div className='flex items-center gap-2 ml-4'>
-                  <a
-                    href={`/watch-conf/${encodeURIComponent(f.systemName)}`}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition'
-                  >
-                    Смотреть
-                  </a>
-                  <button
-                    onClick={() => handleDelete(f.systemName, f.displayName)}
-                    className='px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm transition'
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         )}
       </div>
     </div>
