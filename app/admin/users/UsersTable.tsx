@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react'
 import UserAccessModal from '@/components/admin/UserAccessModal'
 import {
   Search, ChevronUp, ChevronDown, ChevronsUpDown,
-  Trash2, Link, Package, CheckCircle, XCircle, PlusCircle, Users,
+  Trash2, Link, Package, CheckCircle, XCircle, PlusCircle, Users, X,
 } from 'lucide-react'
 
 export interface UserRow {
@@ -179,8 +179,16 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по имени, логину, городу, телефону..."
-            className="w-full bg-purple-950/50 border border-purple-400/30 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-purple-300/40 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            className="w-full bg-purple-950/50 border border-purple-400/30 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-purple-300/40 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         <div className="flex gap-1 bg-purple-900/40 p-1 rounded-xl border border-purple-400/20 self-start">
@@ -249,7 +257,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                               ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
                               : paid
                               ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30'
-                              : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
+                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/40 hover:text-white'
                           }`}
                         >
                           {active ? (
@@ -257,7 +265,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                           ) : paid ? (
                             <><XCircle className="w-3 h-3" /> Истекла</>
                           ) : (
-                            <><PlusCircle className="w-3 h-3" /> Оплатить</>
+                            <><PlusCircle className="w-3 h-3" /> Поступила оплата</>
                           )}
                         </button>
                         {paid && (
