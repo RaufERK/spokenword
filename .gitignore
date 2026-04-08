@@ -50,6 +50,15 @@ users.txt
 # paid content files (videos/audio)
 paid-content/packages/
 paid-content/temp/
+/paid-content
+
+# server-side directories created during deploy
+/storage/
+/public/test-uploads/
+/public/conf-archive/
+
+# local design dump
+FIgmaV6/
 
 # large media files (prevent accidental commits)
 *.mp4
@@ -66,5 +75,5 @@ paid-content/temp/
 # database exports
 database-export-*.json
 
-# local design dump
+# local design dumps
 FigmaNew26/
