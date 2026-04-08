@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -17,11 +17,25 @@ export default function SideNavMobile() {
   const isAdmin = role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER'
   const hasActiveSub = isSubscriptionActive(paymentDate)
   const [open, setOpen] = useState(false)
+  const [hasClassLinks, setHasClassLinks] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/class/stream-links')
+      .then((r) => r.json())
+      .then((result) => {
+        const d = result?.data
+        setHasClassLinks(!!(d?.youtubeUrl || d?.rutubeUrl))
+      })
+      .catch(() => {})
+  }, [])
 
   const regularLinks = links.filter((l) => {
     if (l.isAdmin) return false
     if (!l.roles || (role && l.roles.includes(role))) {
-      if (l.isPaid && role === 'USER' && !hasActiveSub) return false
+      if (l.isPaid) {
+        if (!isAdmin && (role === 'USER' && (!hasActiveSub || !hasClassLinks))) return false
+        if (!isAdmin && !role) return false
+      }
       return true
     }
     return false

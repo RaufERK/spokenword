@@ -20,12 +20,12 @@ const links: NavLink[] = [
     label: 'Архив',
     roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
   },
-  // {
-  //   href: '/class',
-  //   label: 'Класс',
-  //   roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
-  //   isPaid: true,
-  // },
+  {
+    href: '/class',
+    label: 'Конференция',
+    roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
+    isPaid: true,
+  },
   {
     href: '/paid-content',
     label: 'Платные материалы',

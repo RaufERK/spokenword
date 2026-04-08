@@ -207,33 +207,33 @@ export default function AdminUploadPage() {
   return (
     <div className='max-w-6xl mx-auto space-y-8'>
       {/* Upload Form */}
-      <div className='bg-pink-900/40 backdrop-blur-sm border border-pink-600/30 rounded-2xl shadow p-8'>
+      <div className='bg-gradient-to-br from-blue-900/60 to-purple-900/50 backdrop-blur-sm border border-blue-400/30 rounded-2xl shadow-2xl p-8'>
         <h1 className='text-2xl mb-6 font-bold text-center text-white'>
-          Загрузка файла в архив конференции
+          Загрузка в Архив
         </h1>
         <form onSubmit={handleSubmit} className='space-y-4'>
           <div>
-            <label className='block text-pink-200 mb-1'>Название файла для архива:</label>
+            <label className='block text-purple-200 mb-1'>Название файла для архива:</label>
             <input
               type='text'
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className='w-full rounded-lg p-2 text-white bg-pink-950/60 border border-pink-600/50 focus:outline-none focus:ring-2 focus:ring-pink-400'
+              className='w-full rounded-lg p-2 text-white bg-purple-950/50 border border-purple-400/30 focus:outline-none focus:ring-2 focus:ring-blue-400'
               disabled={isProcessing}
             />
           </div>
           <div>
-            <label className='block text-pink-200 mb-1'>Файл (только .mp4):</label>
+            <label className='block text-purple-200 mb-1'>Файл (только .mp4):</label>
             <input
               type='file'
               accept='video/mp4'
               ref={fileInputRef}
               onChange={handleFileChange}
-              className='w-full rounded-lg p-2 text-white bg-pink-950/60 border border-pink-600/50'
+              className='w-full rounded-lg p-2 text-white bg-purple-950/50 border border-purple-400/30'
               disabled={isProcessing}
             />
             {file && (
-              <div className='text-xs text-pink-300 mt-1'>
+              <div className='text-xs text-purple-300 mt-1'>
                 {file.name} ({(file.size / 1024 / 1024).toFixed(1)} МБ)
               </div>
             )}
@@ -243,9 +243,9 @@ export default function AdminUploadPage() {
 
           {status === 'uploading' && (
             <div className='space-y-2'>
-              <div className='text-pink-200 text-sm'>{getStatusText()}</div>
-              <div className='w-full bg-pink-950 rounded-full h-4 overflow-hidden'>
-                <div className='bg-pink-500 h-full transition-all duration-300' style={{ width: `${uploadProgress}%` }} />
+              <div className='text-blue-200 text-sm'>{getStatusText()}</div>
+              <div className='w-full bg-purple-950 rounded-full h-4 overflow-hidden'>
+                <div className='bg-blue-500 h-full transition-all duration-300' style={{ width: `${uploadProgress}%` }} />
               </div>
             </div>
           )}
@@ -253,24 +253,24 @@ export default function AdminUploadPage() {
           {status === 'processing' && (
             <div className='space-y-2'>
               <div className='text-yellow-300 text-sm animate-pulse'>{getStatusText()}</div>
-              <div className='text-xs text-pink-300'>Проверка кодека и подготовка к сжатию...</div>
+              <div className='text-xs text-purple-300'>Проверка кодека и подготовка к сжатию...</div>
             </div>
           )}
 
           {status === 'compressing' && (
             <div className='space-y-2'>
-              <div className='text-pink-200 text-sm'>{getStatusText()}</div>
-              <div className='w-full bg-pink-950 rounded-full h-4 overflow-hidden'>
-                <div className='bg-pink-400 h-full transition-all duration-300' style={{ width: `${compressionProgress}%` }} />
+              <div className='text-blue-200 text-sm'>{getStatusText()}</div>
+              <div className='w-full bg-purple-950 rounded-full h-4 overflow-hidden'>
+                <div className='bg-blue-400 h-full transition-all duration-300' style={{ width: `${compressionProgress}%` }} />
               </div>
-              {jobId && <div className='text-xs text-pink-400'>Job ID: {jobId}</div>}
+              {jobId && <div className='text-xs text-purple-400'>Job ID: {jobId}</div>}
             </div>
           )}
 
           {status === 'done' && (
             <div className='p-4 bg-green-900/30 rounded-lg border border-green-500'>
               <div className='text-green-400 font-semibold mb-2'>✅ Файл успешно загружен и обработан!</div>
-              <div className='text-sm text-pink-200 mb-3'>Видео добавлено в архив конференций</div>
+              <div className='text-sm text-purple-200 mb-3'>Видео добавлено в архив</div>
               <button onClick={resetForm} className='bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg w-full'>
                 Загрузить ещё один файл
               </button>
@@ -280,7 +280,7 @@ export default function AdminUploadPage() {
           {status !== 'done' && (
             <button
               type='submit'
-              className='bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 disabled:opacity-60 disabled:cursor-not-allowed w-full font-semibold'
+              className='bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed w-full font-semibold transition-all'
               disabled={isProcessing || !file || !displayName.trim()}
             >
               {isProcessing ? getStatusText() : 'Загрузить'}
@@ -288,7 +288,7 @@ export default function AdminUploadPage() {
           )}
 
           {status === 'idle' && (
-            <div className='text-xs text-pink-300 bg-pink-950/50 p-3 rounded-lg'>
+            <div className='text-xs text-purple-300 bg-purple-950/50 p-3 rounded-lg'>
               💡 <b>Важно:</b> Во время сжатия вы можете загрузить следующий файл. Файлы обрабатываются в очереди.
             </div>
           )}
@@ -296,17 +296,17 @@ export default function AdminUploadPage() {
       </div>
 
       {/* Files List */}
-      <div className='bg-pink-900/40 backdrop-blur-sm border border-pink-600/30 rounded-2xl shadow p-8'>
-        <h2 className='text-xl font-bold mb-6 text-white'>Управление архивом конференций</h2>
+      <div className='bg-gradient-to-br from-purple-900/60 to-pink-900/40 backdrop-blur-sm border border-pink-400/20 rounded-2xl shadow-2xl p-8'>
+        <h2 className='text-xl font-bold mb-6 text-white'>Управление архивом</h2>
 
         {files.length === 0 ? (
-          <p className='text-pink-300 text-center py-8'>Архив пуст. Загрузите первый файл выше.</p>
+          <p className='text-purple-300 text-center py-8'>Архив пуст. Загрузите первый файл выше.</p>
         ) : (
           <div className='space-y-3'>
             {files.map((f) => (
               <div
                 key={f.id}
-                className='flex items-center justify-between bg-pink-950/50 border border-pink-700/50 hover:border-pink-400/40 p-4 rounded-xl transition'
+                className='flex items-center justify-between bg-purple-950/50 border border-purple-700/50 hover:border-purple-400/40 p-4 rounded-xl transition'
               >
                 <div className='flex-1'>
                   <div className='flex items-center gap-3 mb-1.5'>
@@ -322,7 +322,7 @@ export default function AdminUploadPage() {
                       {f.isPublic ? '✅ Публичное' : '❌ Скрыто'}
                     </button>
                   </div>
-                  <div className='text-xs text-pink-300 flex gap-4'>
+                  <div className='text-xs text-purple-300 flex gap-4'>
                     <span>{(f.size / 1024 / 1024).toFixed(1)} МБ</span>
                     <span>{new Date(f.uploadedAt).toLocaleString('ru-RU')}</span>
                     <span>👁️ {f.views}</span>

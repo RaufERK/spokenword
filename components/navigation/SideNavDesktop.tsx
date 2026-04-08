@@ -7,6 +7,7 @@ import { Role } from '@/lib/roles'
 import { isSubscriptionActive } from '@/lib/subscription'
 import { ShieldAlert, LogOut } from 'lucide-react'
 import links from './links'
+import { useEffect, useState } from 'react'
 
 export default function SideNavDesktop() {
   const { data } = useSession()
@@ -15,11 +16,26 @@ export default function SideNavDesktop() {
   const paymentDate = data?.user?.paymentDate ?? null
   const isAdmin = role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER'
   const hasActiveSub = isSubscriptionActive(paymentDate)
+  const [hasClassLinks, setHasClassLinks] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/class/stream-links')
+      .then((r) => r.json())
+      .then((result) => {
+        const d = result?.data
+        setHasClassLinks(!!(d?.youtubeUrl || d?.rutubeUrl))
+      })
+      .catch(() => {})
+  }, [])
 
   const regularLinks = links.filter((l) => {
     if (l.isAdmin) return false
     if (!l.roles || (role && l.roles.includes(role))) {
-      if (l.isPaid && role === 'USER' && !hasActiveSub) return false
+      if (l.isPaid) {
+        // Admins/mods always see it; users — only if paid AND there are links
+        if (!isAdmin && (role === 'USER' && (!hasActiveSub || !hasClassLinks))) return false
+        if (!isAdmin && !role) return false
+      }
       return true
     }
     return false
