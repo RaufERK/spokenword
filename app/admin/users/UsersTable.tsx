@@ -118,7 +118,6 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
     const data = await res.json()
     if (!res.ok) return alert('Ошибка при создании ссылки')
     await navigator.clipboard.writeText(data.url)
-    alert('Ссылка скопирована!')
   }
 
   const togglePaid = async (id: number, current: boolean) => {
