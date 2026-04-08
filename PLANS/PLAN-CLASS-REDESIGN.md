@@ -235,3 +235,7 @@ components/
 - `components/navigation/AdminNav.tsx` — рубиновая навигация (desktop + mobile)
 - `components/navigation/SideNav.tsx` — не рендерится для `/admin/*`
 - `styles/globals.css` — фиолетовый градиент по умолчанию для body
+
+
+Логин: test_111f
+Пароль: 160367
