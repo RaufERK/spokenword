@@ -193,11 +193,6 @@ export default function ChatPage() {
                       {msg.user.firstName} {msg.user.lastName}
                     </span>
 
-                    {msg.user.role === 'SUPER' && (
-                      <span className="bg-gradient-to-r from-red-600 to-pink-600 text-white px-1.5 py-0.5 rounded text-xs border border-pink-400/50 font-medium">
-                        SUPER
-                      </span>
-                    )}
                     {msg.user.role === 'ADMIN' && (
                       <span className="bg-gradient-to-r from-pink-600 to-rose-600 text-white px-1.5 py-0.5 rounded text-xs border border-rose-400/50 font-medium">
                         ADMIN
