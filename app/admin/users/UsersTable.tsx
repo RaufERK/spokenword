@@ -220,6 +220,7 @@ export default function UsersTable({
               </th>
 
               <th className="px-3 py-3 text-pink-200 text-xs font-medium text-left">Телефон</th>
+              <th className="px-3 py-3 text-pink-200 text-xs font-medium text-left">Логин</th>
 
               <th
                 className="px-3 py-3 text-left cursor-pointer select-none"
@@ -259,6 +260,7 @@ export default function UsersTable({
                   <td className="px-3 py-2.5 text-white text-sm">{u.firstName}</td>
                   <td className="px-3 py-2.5 text-white text-sm font-medium">{u.lastName}</td>
                   <td className="px-3 py-2.5 text-pink-300 text-sm font-mono">{u.phoneNumber || '—'}</td>
+                  <td className="px-3 py-2.5 text-blue-300 text-sm font-mono">{u.login}</td>
 
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
@@ -339,7 +341,7 @@ export default function UsersTable({
 
             {processed.length === 0 && (
               <tr>
-                <td colSpan={isSuper ? 7 : 6} className="text-center py-8 text-pink-400/40 text-sm">
+                <td colSpan={isSuper ? 8 : 7} className="text-center py-8 text-pink-400/40 text-sm">
                   {search || paymentFilter !== 'all' ? 'Нет пользователей по фильтру' : 'Нет пользователей'}
                 </td>
               </tr>
