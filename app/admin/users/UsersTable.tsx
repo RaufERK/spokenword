@@ -12,11 +12,12 @@ export interface UserRow {
   login: string
   password: string
   phoneNumber: string | null
+  city: string | null
   paymentDate: string | Date | null
   role: Role
 }
 
-type SortField = 'name' | 'surname' | 'paymentDate' | 'role'
+type SortField = 'name' | 'surname' | 'login' | 'city' | 'paymentDate' | 'role'
 type SortDir = 'asc' | 'desc'
 type PaymentFilter = 'all' | 'active' | 'inactive'
 
@@ -76,6 +77,8 @@ export default function UsersTable({
         (u) =>
           u.firstName.toLowerCase().includes(q) ||
           u.lastName.toLowerCase().includes(q) ||
+          u.login.toLowerCase().includes(q) ||
+          (u.city && u.city.toLowerCase().includes(q)) ||
           (u.phoneNumber && u.phoneNumber.includes(q))
       )
     }
@@ -92,6 +95,8 @@ export default function UsersTable({
       let cmp = 0
       if (sortField === 'name') cmp = a.firstName.localeCompare(b.firstName, 'ru')
       else if (sortField === 'surname') cmp = a.lastName.localeCompare(b.lastName, 'ru')
+      else if (sortField === 'login') cmp = a.login.localeCompare(b.login, 'ru')
+      else if (sortField === 'city') cmp = (a.city || '').localeCompare(b.city || '', 'ru')
       else if (sortField === 'paymentDate') {
         const da = a.paymentDate ? new Date(a.paymentDate).getTime() : 0
         const db = b.paymentDate ? new Date(b.paymentDate).getTime() : 0
@@ -169,7 +174,7 @@ export default function UsersTable({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по имени, телефону..."
+            placeholder="Поиск по имени, логину, городу, телефону..."
             className="w-full bg-pink-900/30 border border-pink-700/50 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-pink-400/40 focus:outline-none focus:border-pink-500/60"
           />
         </div>
@@ -220,7 +225,26 @@ export default function UsersTable({
               </th>
 
               <th className="px-3 py-3 text-pink-200 text-xs font-medium text-left">Телефон</th>
-              <th className="px-3 py-3 text-pink-200 text-xs font-medium text-left">Логин</th>
+
+              <th
+                className="px-3 py-3 text-left cursor-pointer select-none"
+                onClick={() => handleSort('login')}
+              >
+                <div className="flex items-center gap-1 text-pink-200 text-xs font-medium">
+                  Логин
+                  <SortIcon field="login" current={sortField} dir={sortDir} />
+                </div>
+              </th>
+
+              <th
+                className="px-3 py-3 text-left cursor-pointer select-none"
+                onClick={() => handleSort('city')}
+              >
+                <div className="flex items-center gap-1 text-pink-200 text-xs font-medium">
+                  Город
+                  <SortIcon field="city" current={sortField} dir={sortDir} />
+                </div>
+              </th>
 
               <th
                 className="px-3 py-3 text-left cursor-pointer select-none"
@@ -261,6 +285,7 @@ export default function UsersTable({
                   <td className="px-3 py-2.5 text-white text-sm font-medium">{u.lastName}</td>
                   <td className="px-3 py-2.5 text-pink-300 text-sm font-mono">{u.phoneNumber || '—'}</td>
                   <td className="px-3 py-2.5 text-blue-300 text-sm font-mono">{u.login}</td>
+                  <td className="px-3 py-2.5 text-white/70 text-sm">{u.city || '—'}</td>
 
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
@@ -341,7 +366,7 @@ export default function UsersTable({
 
             {processed.length === 0 && (
               <tr>
-                <td colSpan={isSuper ? 8 : 7} className="text-center py-8 text-pink-400/40 text-sm">
+                <td colSpan={isSuper ? 9 : 8} className="text-center py-8 text-pink-400/40 text-sm">
                   {search || paymentFilter !== 'all' ? 'Нет пользователей по фильтру' : 'Нет пользователей'}
                 </td>
               </tr>

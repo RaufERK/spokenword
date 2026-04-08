@@ -20,6 +20,7 @@ export default async function AdminUsersPage() {
         login: true,
         password: true,
         phoneNumber: true,
+        city: true,
         paymentDate: true,
         role: true,
       },
