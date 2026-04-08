@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { UserRow } from '@/app/users/UsersTable'
+import { UserRow } from '@/app/admin/users/UsersTable'
 
 interface Package {
   id: number

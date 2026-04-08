@@ -18,7 +18,12 @@ const links: NavLink[] = [
   },
   {
     href: '/conf-arch',
-    label: 'Архив конф.',
+    label: 'Архив',
+    roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
+  },
+  {
+    href: '/chat',
+    label: 'Чат',
     roles: ['USER', 'MODERATOR', 'ADMIN', 'SUPER'],
   },
   {

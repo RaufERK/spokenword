@@ -29,6 +29,7 @@ model User {
   uploadedPackages     ContentPackage[]    @relation("UploadedPackages")
   packageAccess        UserPackageAccess[]
   grantedPackageAccess UserPackageAccess[] @relation("GrantedPackageAccess")
+  chatMessages         ChatMessage[]
   
   @@index([paymentDate])
 }
@@ -123,6 +124,19 @@ model ClassStreamLink {
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+// Сообщения чата
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  text      String
+  link      String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
 }
 
 // Покупки пользователей (доступ к пакетам)

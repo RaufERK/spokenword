@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 import { isSubscriptionActive } from '@/lib/subscription'
 
 const paidRoutes = ['/conf', '/conf-arch', '/class', '/watch-class']
-const protectedRoutes = ['/cabinet', '/paid-content', ...paidRoutes]
+const protectedRoutes = ['/cabinet', '/paid-content', '/chat', ...paidRoutes]
 // Только для ADMIN/SUPER (управление пакетами — финансы)
 const adminOnlyRoutes = ['/admin/packages']
 const paidContentApiRoutes = ['/api/paid-content']

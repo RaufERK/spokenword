@@ -1,13 +1,8 @@
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import type { User as PrismaUser } from '@prisma/client'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
-import UsersTable from './UsersTable'
-
-type UserDTO = Omit<PrismaUser, 'paymentDate'> & {
-  paymentDate: string | null
-}
+import UsersTable, { UserRow } from './UsersTable'
 
 export default async function AdminUsersPage() {
   const session = await getServerSession(authOptions)
@@ -15,18 +10,33 @@ export default async function AdminUsersPage() {
     redirect('/')
   }
 
-  const users: UserDTO[] = (
-    await prisma.user.findMany({ orderBy: [{ lastName: 'asc' }] })
-  ).map(
-    (u: PrismaUser): UserDTO => ({
-      ...u,
-      paymentDate: u.paymentDate ? u.paymentDate.toISOString() : null,
+  const users: UserRow[] = (
+    await prisma.user.findMany({
+      orderBy: [{ lastName: 'asc' }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        login: true,
+        password: true,
+        phoneNumber: true,
+        paymentDate: true,
+        role: true,
+      },
     })
-  )
+  ).map((u) => ({
+    ...u,
+    paymentDate: u.paymentDate ? u.paymentDate.toISOString() : null,
+  }))
 
   return (
-    <div className='max-w-7xl mx-auto'>
-      <h1 className='text-2xl font-bold mb-6 text-white'>Пользователи</h1>
+    <div className="max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Пользователи</h1>
+          <p className="text-pink-300/60 text-sm mt-1">Всего: {users.length}</p>
+        </div>
+      </div>
       <UsersTable users={users} currentRole={session.user.role} />
     </div>
   )
