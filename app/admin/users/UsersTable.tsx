@@ -257,7 +257,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                               ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
                               : paid
                               ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30'
-                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/40 hover:text-white'
+                              : 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/50 hover:bg-yellow-400/40 hover:text-white'
                           }`}
                         >
                           {active ? (
