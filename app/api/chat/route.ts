@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       id: true,
       text: true,
       link: true,
+      reactions: true,
       createdAt: true,
       user: {
         select: {
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
       id: true,
       text: true,
       link: true,
+      reactions: true,
       createdAt: true,
       user: {
         select: {

@@ -9,7 +9,7 @@ export type NavLink = {
 }
 
 const links: NavLink[] = [
-  { href: '/', label: 'Главная' },
+  { href: '/', label: 'Стрим' },
   {
     href: '/class',
     label: 'Класс',

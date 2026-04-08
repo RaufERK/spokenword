@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isSubscriptionActive } from '@/lib/subscription'
 import prisma from '@/lib/prisma'
+import { Youtube, Play, Music } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,6 @@ export default async function HomePage() {
     role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER' ||
     isSubscriptionActive(paymentDate)
 
-  // Ссылки показываем только тем у кого есть доступ
   let youtubeUrl: string | null = null
   let rutubeUrl: string | null = null
 
@@ -27,64 +27,126 @@ export default async function HomePage() {
     rutubeUrl = link?.rutubeUrl ?? null
   }
 
+  const platforms = [
+    {
+      id: 'youtube',
+      label: 'YouTube',
+      icon: Youtube,
+      gradient: 'from-purple-600 to-purple-800',
+      hoverGradient: 'hover:from-purple-500 hover:to-purple-700',
+      url: youtubeUrl,
+    },
+    {
+      id: 'rutube',
+      label: 'Rutube',
+      icon: Play,
+      gradient: 'from-blue-600 to-blue-800',
+      hoverGradient: 'hover:from-blue-500 hover:to-blue-700',
+      url: rutubeUrl,
+    },
+    {
+      id: 'audio',
+      label: 'Аудио',
+      icon: Music,
+      gradient: 'from-green-600 to-green-800',
+      hoverGradient: 'hover:from-green-500 hover:to-green-700',
+      url: '/audio',
+    },
+  ]
+
   return (
-    <main className='flex flex-col items-center gap-6 p-4 pt-10'>
-      {hasClassAccess && (youtubeUrl || rutubeUrl) ? (
-        <div className='w-full max-w-3xl bg-purple-900/60 backdrop-blur-sm border border-blue-600/40 rounded-2xl p-6'>
-          <h2 className='text-xl font-semibold text-green-400 mb-2 text-center'>
-            🎓 Класс — прямая трансляция
-          </h2>
-          <p className='text-purple-300 text-sm text-center mb-5'>
-            Выберите платформу для подключения
-          </p>
-          <div className='flex flex-col sm:flex-row gap-4 justify-center items-stretch'>
-            {youtubeUrl && (
-              <a
-                href={youtubeUrl}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-105'
-              >
-                <svg className='w-7 h-7' fill='currentColor' viewBox='0 0 24 24'>
-                  <path d='M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z' />
-                </svg>
-                <span>YouTube</span>
-              </a>
-            )}
-            {rutubeUrl && (
-              <a
-                href={rutubeUrl}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-105'
-              >
-                <svg className='w-7 h-7' fill='currentColor' viewBox='0 0 24 24'>
-                  <path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z' />
-                </svg>
-                <span>Rutube</span>
-              </a>
-            )}
+    <main className="max-w-4xl mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[70vh]">
+      <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 md:p-12 w-full border border-white/10">
+
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 mb-4 shadow-lg shadow-purple-500/30">
+            <Play className="w-8 h-8 text-white" />
           </div>
-        </div>
-      ) : hasClassAccess ? (
-        <div className='w-full max-w-3xl bg-purple-900/40 backdrop-blur-sm border border-purple-700/40 rounded-2xl p-8 text-center'>
-          <div className='text-4xl mb-4'>🎓</div>
-          <h2 className='text-xl font-semibold text-white mb-2'>Трансляция Класса</h2>
-          <p className='text-purple-300'>В данный момент трансляция не ведётся</p>
-        </div>
-      ) : (
-        <div className='w-full max-w-3xl bg-purple-900/40 backdrop-blur-sm border border-purple-700/40 rounded-2xl p-8 text-center'>
-          <div className='text-4xl mb-4'>👋</div>
-          <h2 className='text-xl font-semibold text-white mb-2'>
-            {session ? 'Добро пожаловать!' : 'Добро пожаловать!'}
-          </h2>
-          <p className='text-purple-300 text-sm'>
-            {session
-              ? 'Для доступа к трансляции Класса необходима активная подписка.'
-              : 'Войдите в аккаунт для просмотра трансляций.'}
+          <h1 className="text-3xl md:text-4xl text-white mb-3">
+            {hasClassAccess ? 'Подключение к трансляции класса' : 'Подключение к трансляции'}
+          </h1>
+          <p className="text-purple-200/80">
+            {hasClassAccess
+              ? 'Выберите платформу для просмотра текущего учебного класса'
+              : 'Выберите платформу для просмотра текущего мероприятия'}
           </p>
         </div>
-      )}
+
+        {/* 3 stream buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {platforms.map(({ id, label, icon: Icon, gradient, hoverGradient, url }) => {
+            const isAvailable = !!url && (hasClassAccess || id === 'audio')
+            const isAudio = id === 'audio'
+
+            if (isAvailable) {
+              return (
+                <a
+                  key={id}
+                  href={url!}
+                  target={isAudio ? '_self' : '_blank'}
+                  rel={isAudio ? undefined : 'noopener noreferrer'}
+                  className={`bg-gradient-to-br ${gradient} ${hoverGradient} rounded-xl p-6 flex flex-col items-center justify-center gap-3 hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer`}
+                >
+                  <Icon className="w-12 h-12 text-white" />
+                  <span className="text-white text-lg font-medium">{label}</span>
+                </a>
+              )
+            }
+
+            // Недоступная кнопка (нет ссылки или нет доступа)
+            return (
+              <div
+                key={id}
+                className={`bg-gradient-to-br ${gradient} rounded-xl p-6 flex flex-col items-center justify-center gap-3 opacity-40 cursor-not-allowed select-none`}
+              >
+                <Icon className="w-12 h-12 text-white" />
+                <span className="text-white text-lg font-medium">{label}</span>
+                <span className="text-white/70 text-xs">
+                  {hasClassAccess ? 'Ссылка не добавлена' : 'Нет доступа'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Info bar */}
+        <div className="mt-8 p-4 bg-blue-900/30 rounded-xl border border-blue-400/20">
+          <p className="text-blue-200 text-sm text-center">
+            📅 {hasClassAccess
+              ? 'Текущая трансляция: Учебный класс'
+              : 'Текущая трансляция: Открытое мероприятие'}
+          </p>
+        </div>
+
+        {/* No access warning */}
+        {!session && (
+          <div className="mt-4 p-4 bg-yellow-900/20 rounded-xl border border-yellow-400/20">
+            <p className="text-yellow-200 text-sm text-center">
+              Войдите в аккаунт для просмотра трансляций.{' '}
+              <a href="/login" className="text-yellow-300 underline hover:text-yellow-200">Войти</a>
+            </p>
+          </div>
+        )}
+
+        {session && !hasClassAccess && (
+          <div className="mt-4 p-4 bg-yellow-900/20 rounded-xl border border-yellow-400/20">
+            <p className="text-yellow-200 text-sm text-center">
+              ⚠️ У вас пока нет доступа к учебному классу. Свяжитесь с администратором для получения доступа.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Archive link */}
+      <div className="mt-8 text-center">
+        <p className="text-purple-200/70 text-sm">
+          Пропустили занятие?{' '}
+          <a href="/conf-arch" className="text-green-400 hover:text-green-300 underline transition-colors">
+            Смотрите записи в архиве
+          </a>
+        </p>
+      </div>
     </main>
   )
 }

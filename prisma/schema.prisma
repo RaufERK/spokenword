@@ -132,6 +132,7 @@ model ChatMessage {
   userId    Int
   text      String
   link      String?
+  reactions String   @default("{}") // JSON: { "like": [userId, ...], "heart": [...], ... }
   createdAt DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
