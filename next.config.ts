@@ -4,19 +4,33 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   typescript: {
-    ignoreBuildErrors: true, // Игнорируем TypeScript ошибки в продакшне
+    ignoreBuildErrors: true,
   },
-  // Увеличиваем лимит для Server Actions
   experimental: {
     serverActions: {
       bodySizeLimit: '2gb',
     },
   },
+  async headers() {
+    return [
+      {
+        // Все страницы — никакого кеширования HTML
+        // Статика (_next/static) кешируется отдельно через свои immutable заголовки
+        source: '/((?!_next/static|_next/image|favicon.ico).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store',
+          },
+        ],
+      },
+    ]
+  },
   async rewrites() {
     return [
       {
         source: '/archive/:file*',
-        destination: '/srv/streaming/archive/:file*', // абсолютный путь
+        destination: '/srv/streaming/archive/:file*',
       },
     ]
   },
