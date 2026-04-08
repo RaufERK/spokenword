@@ -14,10 +14,10 @@ type AdminLink = {
 }
 
 const adminLinks: AdminLink[] = [
-  { href: '/admin/class', label: 'Управление классом', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
-  { href: '/admin', label: 'Ссылки (Службы)', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
-  { href: '/admin/upload', label: 'Загрузка конф.', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
-  { href: '/admin/packages', label: 'Загрузка пакетов', roles: ['ADMIN', 'SUPER'] },
+  { href: '/admin', label: 'Стрим', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
+  { href: '/admin/class', label: 'Конференция', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
+  { href: '/admin/upload', label: 'Загрузка', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
+  { href: '/admin/packages', label: 'Платные', roles: ['ADMIN', 'SUPER'] },
   { href: '/admin/users', label: 'Пользователи', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
 ]
 

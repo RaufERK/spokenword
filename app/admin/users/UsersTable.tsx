@@ -3,7 +3,7 @@
 import { ROLES, Role } from '@/lib/roles'
 import { useState, useMemo } from 'react'
 import UserAccessModal from '@/components/admin/UserAccessModal'
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Trash2, Link, Package, CheckCircle, XCircle } from 'lucide-react'
+import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Trash2, Link, Package, CheckCircle, XCircle, PlusCircle } from 'lucide-react'
 
 export interface UserRow {
   id: number
@@ -304,7 +304,7 @@ export default function UsersTable({
                         ) : paid ? (
                           <><XCircle className="w-3 h-3" /> Истекла</>
                         ) : (
-                          '—'
+                          <><PlusCircle className="w-3 h-3" /> Оплатить</>
                         )}
                       </button>
                       {paid && (
