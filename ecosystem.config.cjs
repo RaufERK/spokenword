@@ -105,8 +105,8 @@ module.exports = {
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env.production',
         'npm ci --include=dev',
         'cd upload-service && npm ci && cd ..',
-        'npx prisma generate',
-        'npx prisma migrate deploy',
+        './node_modules/.bin/prisma generate',
+        './node_modules/.bin/prisma migrate deploy',
         // Удаляем symlinks перед билдом (Turbopack не поддерживает внешние symlinks)
         'rm -rf ./paid-content',
         'npm run build',
