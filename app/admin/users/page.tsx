@@ -22,12 +22,14 @@ export default async function AdminUsersPage() {
         phoneNumber: true,
         city: true,
         paymentDate: true,
+        accessUntil: true,
         role: true,
       },
     })
   ).map((u) => ({
     ...u,
     paymentDate: u.paymentDate ? u.paymentDate.toISOString() : null,
+    accessUntil: u.accessUntil ? u.accessUntil.toISOString() : null,
   }))
 
   return (

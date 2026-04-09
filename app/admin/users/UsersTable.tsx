@@ -3,6 +3,7 @@
 import { ROLES, Role } from '@/lib/roles'
 import { useState, useMemo } from 'react'
 import UserAccessModal from '@/components/admin/UserAccessModal'
+import PaymentModal from '@/components/admin/PaymentModal'
 import {
   Search, ChevronUp, ChevronDown, ChevronsUpDown,
   Trash2, Link, Package, CheckCircle, XCircle, PlusCircle, Users, X,
@@ -16,21 +17,18 @@ export interface UserRow {
   password: string
   phoneNumber: string | null
   city: string | null
-  paymentDate: string | Date | null
+  paymentDate: string | null
+  accessUntil: string | null
   role: Role
 }
 
-type SortField = 'name' | 'surname' | 'login' | 'city' | 'paymentDate' | 'role'
+type SortField = 'name' | 'surname' | 'login' | 'city' | 'accessUntil' | 'role'
 type SortDir = 'asc' | 'desc'
 type PaymentFilter = 'all' | 'active' | 'inactive'
 
-const PAYMENT_WINDOW_DAYS = 30
-
-function isPaymentActive(paymentDate: string | Date | null): boolean {
-  if (!paymentDate) return false
-  const d = new Date(paymentDate)
-  const now = new Date()
-  return now.getTime() - d.getTime() < PAYMENT_WINDOW_DAYS * 24 * 60 * 60 * 1000
+function isAccessActive(accessUntil: string | null): boolean {
+  if (!accessUntil) return false
+  return new Date(accessUntil).getTime() > Date.now()
 }
 
 function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: SortDir }) {
@@ -62,6 +60,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
   const [list, setList] = useState(users)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [paymentUser, setPaymentUser] = useState<UserRow | null>(null)
   const [userToDelete, setUserToDelete] = useState<UserRow | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -91,8 +90,8 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
           (u.phoneNumber && u.phoneNumber.includes(q))
       )
     }
-    if (paymentFilter === 'active') result = result.filter((u) => isPaymentActive(u.paymentDate))
-    else if (paymentFilter === 'inactive') result = result.filter((u) => !isPaymentActive(u.paymentDate))
+    if (paymentFilter === 'active') result = result.filter((u) => isAccessActive(u.accessUntil))
+    else if (paymentFilter === 'inactive') result = result.filter((u) => !isAccessActive(u.accessUntil))
 
     result.sort((a, b) => {
       let cmp = 0
@@ -100,9 +99,9 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
       else if (sortField === 'surname') cmp = a.lastName.localeCompare(b.lastName, 'ru')
       else if (sortField === 'login') cmp = a.login.localeCompare(b.login, 'ru')
       else if (sortField === 'city') cmp = (a.city || '').localeCompare(b.city || '', 'ru')
-      else if (sortField === 'paymentDate') {
-        const da = a.paymentDate ? new Date(a.paymentDate).getTime() : 0
-        const db = b.paymentDate ? new Date(b.paymentDate).getTime() : 0
+      else if (sortField === 'accessUntil') {
+        const da = a.accessUntil ? new Date(a.accessUntil).getTime() : 0
+        const db = b.accessUntil ? new Date(b.accessUntil).getTime() : 0
         cmp = da - db
       } else if (sortField === 'role') {
         const order = { SUPER: 0, ADMIN: 1, MODERATOR: 2, USER: 3 }
@@ -120,15 +119,14 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
     await navigator.clipboard.writeText(data.url)
   }
 
-  const togglePaid = async (id: number, current: boolean) => {
+  const revokeAccess = async (id: number) => {
     const res = await fetch(`/api/users/${id}/payment`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paid: !current }),
+      body: JSON.stringify({ revoke: true }),
     })
-    if (!res.ok) return alert('Не удалось обновить оплату')
-    const { paymentDate } = await res.json()
-    setList((prev) => prev.map((u) => (u.id === id ? { ...u, paymentDate } : u)))
+    if (!res.ok) return alert('Не удалось отозвать доступ')
+    setList((prev) => prev.map((u) => (u.id === id ? { ...u, accessUntil: null, paymentDate: null } : u)))
   }
 
   const changeRole = async (id: number, newRole: Role) => {
@@ -162,7 +160,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
     }
   }
 
-  const totalActive = list.filter((u) => isPaymentActive(u.paymentDate)).length
+  const totalActive = list.filter((u) => isAccessActive(u.accessUntil)).length
 
   const colCount = isSuper
     ? 10 // №, Имя, Фамилия, Телефон, Логин, Город, Оплата, Роль, Пл.материалы, Профиль, Удалить — но считаем без №
@@ -222,7 +220,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                 <th className="px-4 py-3 text-left text-sm text-white">Телефон</th>
                 <SortableTh field="login"       label="Логин"    current={sortField} dir={sortDir} onSort={handleSort} />
                 <SortableTh field="city"        label="Город"    current={sortField} dir={sortDir} onSort={handleSort} />
-                <SortableTh field="paymentDate" label="Оплата"   current={sortField} dir={sortDir} onSort={handleSort} />
+                <SortableTh field="accessUntil" label="Доступ до" current={sortField} dir={sortDir} onSort={handleSort} />
                 {isSuper && (
                   <SortableTh field="role" label="Роль" current={sortField} dir={sortDir} onSort={handleSort} />
                 )}
@@ -233,8 +231,8 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
             </thead>
             <tbody>
               {processed.map((u, i) => {
-                const paid = !!u.paymentDate
-                const active = isPaymentActive(u.paymentDate)
+                const active = isAccessActive(u.accessUntil)
+                const hasAccess = !!u.accessUntil
                 return (
                   <tr
                     key={u.id}
@@ -247,31 +245,34 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                     <td className="px-4 py-3 text-blue-300 text-sm font-mono">{u.login}</td>
                     <td className="px-4 py-3 text-white/70 text-sm">{u.city || '—'}</td>
 
-                    {/* Оплата */}
+                    {/* Доступ */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => togglePaid(u.id, paid)}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                            active
-                              ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
-                              : paid
-                              ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30'
-                              : 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/50 hover:bg-yellow-400/40 hover:text-white'
-                          }`}
-                        >
-                          {active ? (
-                            <><CheckCircle className="w-3 h-3" /> Активна</>
-                          ) : paid ? (
-                            <><XCircle className="w-3 h-3" /> Истекла</>
-                          ) : (
-                            <><PlusCircle className="w-3 h-3" /> Поступила оплата</>
-                          )}
-                        </button>
-                        {paid && (
-                          <span className="text-xs text-white/30 whitespace-nowrap">
-                            {new Date(u.paymentDate!).toLocaleDateString('ru-RU')}
-                          </span>
+                        {active ? (
+                          <button
+                            onClick={() => revokeAccess(u.id)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30"
+                            title="Нажмите чтобы отозвать"
+                          >
+                            <CheckCircle className="w-3 h-3" />
+                            до {new Date(u.accessUntil!).toLocaleDateString('ru-RU')}
+                          </button>
+                        ) : hasAccess ? (
+                          <button
+                            onClick={() => setPaymentUser(u)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30"
+                          >
+                            <XCircle className="w-3 h-3" />
+                            Истёк {new Date(u.accessUntil!).toLocaleDateString('ru-RU')}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setPaymentUser(u)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors bg-yellow-400/20 text-yellow-300 border border-yellow-400/50 hover:bg-yellow-400/40 hover:text-white"
+                          >
+                            <PlusCircle className="w-3 h-3" />
+                            Поступила оплата
+                          </button>
                         )}
                       </div>
                     </td>
@@ -353,6 +354,21 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
         onClose={() => { setIsModalOpen(false); setSelectedUser(null) }}
         onSave={() => { setIsModalOpen(false); setSelectedUser(null) }}
       />
+
+      {paymentUser && (
+        <PaymentModal
+          isOpen={!!paymentUser}
+          userId={paymentUser.id}
+          userName={`${paymentUser.firstName} ${paymentUser.lastName}`}
+          onClose={() => setPaymentUser(null)}
+          onSave={({ paymentDate, accessUntil }) => {
+            setList((prev) =>
+              prev.map((u) => (u.id === paymentUser.id ? { ...u, paymentDate, accessUntil } : u))
+            )
+            setPaymentUser(null)
+          }}
+        />
+      )}
 
       {isDeleteModalOpen && userToDelete && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">

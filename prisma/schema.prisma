@@ -8,30 +8,63 @@ datasource db {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   firstName    String
   lastName     String
   city         String?
-  login        String   @unique
+  login        String    @unique
   password     String
-  phoneNumber  String?  @unique
-  email        String?  @unique
-  paymentDate  DateTime?
-  telegramId   String?  @unique
+  phoneNumber  String?   @unique
+  email        String?   @unique
+  paymentDate  DateTime? // фактическая дата последней оплаты (аудит)
+  accessUntil  DateTime? // дата окончания доступа (= max(paymentDate, event.startDate) + 30 дней)
+  telegramId   String?   @unique
   birthYear    Int?
   joinedYear   Int?
-  isPrivileged Boolean  @default(false)
-  role         Role     @default(USER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  // Связи с платными материалами
+  isPrivileged Boolean   @default(false)
+  role         Role      @default(USER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
   uploadedPackages     ContentPackage[]    @relation("UploadedPackages")
   packageAccess        UserPackageAccess[]
   grantedPackageAccess UserPackageAccess[] @relation("GrantedPackageAccess")
+  eventAccess          UserEventAccess[]
+  grantedEventAccess   UserEventAccess[]   @relation("GrantedEventAccess")
   chatMessages         ChatMessage[]
-  
+
   @@index([paymentDate])
+  @@index([accessUntil])
+}
+
+enum EventType {
+  CONFERENCE
+  CLASS
+}
+
+model Event {
+  id        Int       @id @default(autoincrement())
+  title     String
+  type      EventType @default(CONFERENCE)
+  startDate DateTime
+  createdAt DateTime  @default(now())
+
+  payments  UserEventAccess[]
+}
+
+model UserEventAccess {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  eventId     Int
+  paymentDate DateTime @default(now())
+  grantedBy   Int
+
+  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       Event @relation(fields: [eventId], references: [id])
+  admin       User  @relation("GrantedEventAccess", fields: [grantedBy], references: [id])
+
+  @@unique([userId, eventId])
+  @@index([userId])
 }
 
 enum Role {

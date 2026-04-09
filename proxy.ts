@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { isSubscriptionActive } from '@/lib/subscription'
 
+
 const paidRoutes = ['/conf', '/class', '/watch-class', '/watch-conf']
 const protectedRoutes = ['/cabinet', '/paid-content', '/chat', '/conf-arch', ...paidRoutes]
 // Только для ADMIN/SUPER (управление пакетами — финансы)
@@ -34,17 +35,17 @@ export async function proxy(req: NextRequest) {
     const allowedRoles = ['MODERATOR', 'ADMIN', 'SUPER'] as const
     const userRole = token.role
 
-    // Если роль не MODERATOR/ADMIN/SUPER — проверяем оплату
+    // Если роль не MODERATOR/ADMIN/SUPER — проверяем доступ
     if (
       typeof userRole !== 'string' ||
       !allowedRoles.includes(userRole as any)
     ) {
-      const paymentDate =
-        token && typeof token === 'object' && 'paymentDate' in token
-          ? (token.paymentDate as string | Date | null)
+      const accessUntil =
+        token && typeof token === 'object' && 'accessUntil' in token
+          ? (token.accessUntil as string | null)
           : null
 
-      if (!isSubscriptionActive(paymentDate)) {
+      if (!isSubscriptionActive(accessUntil)) {
         return NextResponse.redirect(new URL('/', req.url))
       }
     }
