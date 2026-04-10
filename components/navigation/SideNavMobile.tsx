@@ -33,7 +33,8 @@ export default function SideNavMobile() {
     if (l.isAdmin) return false
     if (!l.roles || (role && l.roles.includes(role))) {
       if (l.isPaid) {
-        if (!isAdmin && (role === 'USER' && (!hasActiveSub || !hasClassLinks))) return false
+        if (!hasClassLinks) return false
+        if (!isAdmin && role === 'USER' && !hasActiveSub) return false
         if (!isAdmin && !role) return false
       }
       return true

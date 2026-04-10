@@ -32,8 +32,8 @@ export default function SideNavDesktop() {
     if (l.isAdmin) return false
     if (!l.roles || (role && l.roles.includes(role))) {
       if (l.isPaid) {
-        // Admins/mods always see it; users — only if paid AND there are links
-        if (!isAdmin && (role === 'USER' && (!hasActiveSub || !hasClassLinks))) return false
+        if (!hasClassLinks) return false
+        if (!isAdmin && role === 'USER' && !hasActiveSub) return false
         if (!isAdmin && !role) return false
       }
       return true
