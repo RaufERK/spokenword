@@ -1,0 +1,291 @@
+MIRROR GATE LIGHT — БЫСТРЫЙ ПЕРЕЕЗД НА РФ-СЕРВЕР
+Дата: 2026-04-09
+Версия: 1.0
+
+Принцип: SQLite сейчас, PostgreSQL потом.
+Меняем одну вещь за раз — сначала сервер, потом БД.
+
+==================================================
+СЕРВЕРЫ
+==================================================
+PRIMARY (Москва, новый):
+  CPU: 8 ядер | RAM: 12 ГБ | NVMe: 120 ГБ | ~2619₽/мес
+
+MIRROR (Амстердам, текущий):
+  CPU: 8 ядер | RAM: 10 ГБ | NVMe: 120 ГБ
+
+==================================================
+АРХИТЕКТУРА (ПОСЛЕ ПЕРЕЕЗДА)
+==================================================
+
+  EU-браузер                    РФ-браузер
+      |                              |
+      | HTTPS                        | HTTPS
+      v                              v
+  EU-сервер (Амстердам)         РФ-сервер (Москва)
+  eu.spoken-word.ru             www.spoken-word.ru
+      |                              |
+      |-- видео → локальная копия    |-- Next.js (порт 3005)
+      |-- /api/* → proxy в РФ        |-- upload-service (порт 3006)
+      |-- фронт → локальный Next.js  |-- compression-worker
+      |                              |-- SQLite (data.db)
+      |   server-to-server           |-- Redis (BullMQ)
+      +----------------------------->|-- Видеофайлы
+
+Браузер EU-пользователя НИКОГДА не ходит в РФ напрямую.
+Запись в БД — ТОЛЬКО на РФ-сервере.
+
+==================================================
+ФАЗА 1: ПОДГОТОВКА (до переезда, без даунтайма)
+==================================================
+
+--- 1.1. Арендовать РФ-сервер ---
+
+[ ] Арендовать VPS в Москве (8 CPU / 12 GB / 120 GB NVMe)
+
+--- 1.2. Установить софт на РФ ---
+
+[ ] sudo apt update && sudo apt install -y \
+      nginx redis-server ffmpeg git curl
+
+[ ] Node.js 24 LTS:
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+    sudo apt install -y nodejs
+
+[ ] sudo npm install -g pm2
+
+--- 1.3. Настроить firewall ---
+
+[ ] sudo ufw allow 22
+    sudo ufw allow 80
+    sudo ufw allow 443
+    sudo ufw enable
+
+--- 1.4. Настроить SSH-ключ для доступа к GitHub ---
+
+[ ] ssh-keygen -t ed25519
+    # Добавить публичный ключ в GitHub → Settings → SSH keys
+
+--- 1.5. Клонировать репозиторий ---
+
+[ ] cd /home/appuser
+    git clone git@github.com:RaufERK/spokenword.git
+    cd spokenword
+
+--- 1.6. Скопировать .env с EU ---
+
+[ ] scp amster_app:/home/appuser/apps/spokenword/source/.env .env
+    scp amster_app:/home/appuser/apps/spokenword/source/.env.production .env.production
+    # Проверить: DATABASE_URL должен указывать на file:./prisma/data.db
+
+--- 1.7. Скопировать видеофайлы (заранее, это долго) ---
+
+[ ] rsync -avz --progress \
+      amster_app:/home/appuser/apps/spokenword/source/public/conf-archive/ \
+      /home/appuser/spokenword/public/conf-archive/
+
+[ ] rsync -avz --progress \
+      amster_app:/home/appuser/apps/spokenword/shared/paid-content/ \
+      /home/appuser/spokenword/paid-content/
+
+--- 1.8. Установить зависимости и собрать ---
+
+[ ] npm ci
+    cd upload-service && npm ci && cd ..
+    npx prisma generate
+    npm run build
+
+--- 1.9. Настроить Nginx на РФ (пока по IP) ---
+
+[ ] Скопировать и адаптировать Nginx-конфиг с EU
+    # Пока без SSL — проверяем по http://IP
+    sudo nginx -t && sudo systemctl reload nginx
+
+--- 1.10. Проверить по IP (без DNS) ---
+
+[ ] Запустить: pm2 start ecosystem.config.cjs
+[ ] Открыть http://<IP-РФ>:3005 — главная открывается
+[ ] Проверить: видео играет, страницы грузятся
+
+--- 1.11. Настроить SSL на РФ ---
+
+[ ] sudo apt install certbot python3-certbot-nginx
+    # SSL настроим после переключения DNS (certbot нужен домен)
+    # Либо временно использовать self-signed для теста
+
+Результат: РФ-сервер полностью готов, работает по IP.
+
+==================================================
+ФАЗА 2: ПЕРЕКЛЮЧЕНИЕ (даунтайм ~5 минут)
+==================================================
+
+ПОДГОТОВКА (за 1 день до):
+[ ] Снизить DNS TTL для www.spoken-word.ru до 60 секунд.
+
+ДЕНЬ ПЕРЕКЛЮЧЕНИЯ:
+
+[ ] 2.1. Баннер "Тех. работы 5 мин" на EU (опционально).
+
+[ ] 2.2. Скопировать СВЕЖУЮ базу данных:
+      scp amster_app:/home/appuser/apps/spokenword/source/prisma/data.db \
+          /home/appuser/spokenword/prisma/data.db
+
+[ ] 2.3. Перезапустить приложение на РФ:
+      pm2 restart all
+
+[ ] 2.4. Переключить DNS:
+      www.spoken-word.ru → IP РФ-сервера
+
+[ ] 2.5. Получить SSL-сертификат:
+      sudo certbot --nginx -d www.spoken-word.ru
+
+[ ] 2.6. Smoke test (раздел ниже).
+
+[ ] 2.7. pm2 save && pm2 startup
+
+Результат: www.spoken-word.ru → РФ-сервер, SQLite, всё работает.
+
+==================================================
+ФАЗА 3: EU СТАНОВИТСЯ ЗЕРКАЛОМ (без спешки, на след. день)
+==================================================
+
+[ ] 3.1. Создать DNS-запись: eu.spoken-word.ru → IP EU-сервера (Амстердам)
+
+[ ] 3.2. Получить SSL для eu.spoken-word.ru:
+      sudo certbot --nginx -d eu.spoken-word.ru
+
+[ ] 3.3. Обновить Nginx на EU:
+
+    server {
+        listen 443 ssl;
+        server_name eu.spoken-word.ru;
+
+        ssl_certificate /etc/letsencrypt/live/eu.spoken-word.ru/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/eu.spoken-word.ru/privkey.pem;
+
+        # Видео — локальная копия
+        location /conf-archive/ {
+            root /home/appuser/spokenword/public;
+            try_files $uri @rf_fallback;
+        }
+
+        location @rf_fallback {
+            proxy_pass https://www.spoken-word.ru;
+        }
+
+        # API — proxy в РФ
+        location /api/ {
+            proxy_pass https://www.spoken-word.ru;
+            proxy_set_header Host www.spoken-word.ru;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_read_timeout 300;
+            client_max_body_size 8G;
+        }
+
+        # Фронтенд — локальный Next.js
+        location / {
+            proxy_pass http://127.0.0.1:3005;
+        }
+    }
+
+[ ] 3.4. Перезапустить Nginx:
+      sudo nginx -t && sudo systemctl reload nginx
+
+[ ] 3.5. Проверить eu.spoken-word.ru:
+      - логин (через РФ API)
+      - чат (данные из РФ БД)
+      - видео (локальная копия)
+
+[ ] 3.6. Настроить rsync видео РФ → EU (cron):
+      0 */6 * * * rsync -avz --delete \
+        rf_app:/home/appuser/spokenword/public/conf-archive/ \
+        /home/appuser/spokenword/public/conf-archive/
+
+Результат: EU = зеркало. Видео локально, API через РФ.
+
+==================================================
+ROLLBACK-ПЛАН
+==================================================
+Если РФ-сервер не работает после переключения:
+
+  1. DNS www.spoken-word.ru → обратно на EU IP
+  2. EU продолжает работать как раньше (SQLite на месте)
+  3. Потеряны только данные за время работы на РФ
+     (если <1 часа — потерь почти нет)
+
+Держать EU в рабочем состоянии минимум 2 недели.
+
+==================================================
+SMOKE TEST (день переключения)
+==================================================
+С www.spoken-word.ru (РФ):
+  [ ] Главная открывается
+  [ ] Логин работает
+  [ ] Логаут работает
+  [ ] Регистрация нового пользователя
+  [ ] Отправка сообщения в чат
+  [ ] Сообщение видно после обновления
+  [ ] Видео открывается и мотается
+  [ ] Платный контент доступен
+  [ ] Админка работает
+  [ ] Загрузка файла (upload)
+
+С eu.spoken-word.ru (после Фазы 3):
+  [ ] Логин работает
+  [ ] Чат показывает те же сообщения что и www
+  [ ] Видео играет
+  [ ] Сообщение из EU видно на www
+
+==================================================
+COOKIE / AUTH — ПРОВЕРИТЬ ПЕРЕД ЗАПУСКОМ
+==================================================
+[ ] Cookie domain: .spoken-word.ru (работает на www и eu)
+[ ] Secure: true
+[ ] SameSite: Lax
+[ ] NextAuth callback URL: относительные пути, не хардкод
+[ ] Все fetch() во фронте — относительные пути (/api/...)
+
+==================================================
+БЭКАП (после переезда)
+==================================================
+# Ежедневный бэкап SQLite на РФ
+0 3 * * * cp /home/appuser/spokenword/prisma/data.db \
+  /backup/data_$(date +\%F).db && \
+  find /backup -name "data_*.db" -mtime +14 -delete
+
+# Копия бэкапа на EU
+0 4 * * * rsync -az /backup/ amster_app:/backup/spokenword-rf/
+
+==================================================
+ОТЛОЖЕНО НА ПОТОМ
+==================================================
+[ ] Миграция на PostgreSQL (когда будет время и понимание)
+[ ] Мониторинг и алёрты
+[ ] GeoDNS / автоматический редирект
+[ ] Автоочистка temp-файлов
+[ ] Генерация превью для видео
+
+==================================================
+SSH АЛИАСЫ
+==================================================
+# ~/.ssh/config
+Host rf_app
+  HostName <IP РФ-сервера>
+  User appuser
+
+Host amster_app
+  HostName 185.200.178.73
+  User appuser
+
+==================================================
+DEFINITION OF DONE
+==================================================
+✓ www.spoken-word.ru → РФ, SQLite, всё работает
+✓ eu.spoken-word.ru → зеркало, API через РФ, видео локально
+✓ Браузер EU-пользователя не ходит в РФ напрямую
+✓ Чат, регистрация, оплата — работают с обоих доменов
+✓ Видео доступно с обоих доменов
+✓ Бэкапы настроены
+✓ Rollback-план протестирован
+✓ EU-сервер сохранён как fallback минимум 2 недели

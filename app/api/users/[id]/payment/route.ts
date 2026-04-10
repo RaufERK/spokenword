@@ -14,20 +14,10 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json() as {
-    revoke?: boolean
     eventTitle?: string
     eventType?: 'CONFERENCE' | 'CLASS'
     eventStartDate?: string
     paymentDate?: string
-  }
-
-  // --- Отзыв доступа ---
-  if (body.revoke) {
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { accessUntil: null, paymentDate: null },
-    })
-    return NextResponse.json({ accessUntil: null, paymentDate: null })
   }
 
   // --- Выдача доступа ---
