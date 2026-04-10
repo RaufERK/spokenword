@@ -31,11 +31,13 @@ function FileItem({
   item,
   isAdmin,
   onDelete,
+  onWatch,
   dragHandleProps,
 }: {
   item: CombinedItem
   isAdmin: boolean
   onDelete: (systemName: string, type: 'conf' | 'class') => void
+  onWatch: (item: CombinedItem) => void
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement> | null
 }) {
   const watchUrl = item.type === 'conf'
@@ -96,6 +98,7 @@ function FileItem({
       <div className="flex items-center gap-2 ml-4 shrink-0">
         <Link
           href={watchUrl}
+          onClick={() => onWatch(item)}
           className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm transition-colors"
           prefetch={false}
           target="_blank"
@@ -147,6 +150,26 @@ export default function ArchiveList({
   const [items, setItems] = useState<CombinedItem[]>(() => buildCombined(initialConf, initialClass))
   const [saving, setSaving] = useState(false)
 
+  const handleWatch = useCallback((item: CombinedItem) => {
+    const encodedSystemName = encodeURIComponent(item.systemName)
+    const endpoint = item.type === 'conf'
+      ? `/api/conf-archive/${encodedSystemName}/view`
+      : `/api/class/${encodedSystemName}/view`
+
+    fetch(endpoint, { method: 'POST', keepalive: true })
+      .then((res) => {
+        if (!res.ok) return
+        setItems((prev) =>
+          prev.map((current) =>
+            current.id === item.id && current.type === item.type
+              ? { ...current, views: current.views + 1 }
+              : current
+          )
+        )
+      })
+      .catch(() => {})
+  }, [])
+
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination || result.destination.index === result.source.index) return
 
@@ -186,7 +209,7 @@ export default function ArchiveList({
       <ul className="space-y-3">
         {items.map((f) => (
           <li key={`${f.type}-${f.id}`}>
-            <FileItem item={f} isAdmin={false} onDelete={handleDelete} />
+            <FileItem item={f} isAdmin={false} onDelete={handleDelete} onWatch={handleWatch} />
           </li>
         ))}
       </ul>
@@ -218,6 +241,7 @@ export default function ArchiveList({
                         item={f}
                         isAdmin={isAdmin}
                         onDelete={handleDelete}
+                        onWatch={handleWatch}
                         dragHandleProps={provided.dragHandleProps}
                       />
                     </li>

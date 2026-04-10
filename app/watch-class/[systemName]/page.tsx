@@ -18,7 +18,7 @@ export default async function WatchClassFilePage({
       <h1 className='text-2xl mb-4'>{file.displayName}</h1>
       <ConferencePlayer
         src={`/api/class/${encodeURIComponent(file.systemName)}`}
-        systemName={file.systemName}
+        viewPath={`/api/class/${encodeURIComponent(file.systemName)}/view`}
       />
     </main>
   )

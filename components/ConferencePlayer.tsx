@@ -5,27 +5,17 @@ import { useEffect } from 'react'
 
 export default function ConferencePlayer({
   src,
-  systemName,
+  viewPath,
 }: {
   src: string
-  systemName: string
+  viewPath: string
 }) {
   useEffect(() => {
-    console.log('[ConferencePlayer] Incrementing view for:', systemName)
-    fetch(`/api/conf-archive/${encodeURIComponent(systemName)}/view`, {
+    fetch(viewPath, {
       method: 'POST',
     })
-      .then((res) => {
-        if (res.ok) {
-          console.log('[ConferencePlayer] ✅ View counted')
-        } else {
-          console.error('[ConferencePlayer] ❌ Failed to count view:', res.status)
-        }
-      })
-      .catch((err) => {
-        console.error('[ConferencePlayer] ❌ Error counting view:', err)
-      })
-  }, [systemName])
+      .catch(() => {})
+  }, [viewPath])
 
   return (
     <div className='relative bg-indigo-900 p-2 rounded-xl'>
