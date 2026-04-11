@@ -14,7 +14,7 @@
     "start": "next start",
     "lint": "next lint",
     "dblist": "npx prisma studio",
-    "deploy": "pm2 deploy ecosystem.config.cjs production",
+    "deploy": "pm2 deploy ecosystem.config.cjs ru",
     "seed": "node prisma/seed.js",
     "db:export": "node scripts/export-data.js",
     "db:backup": "node scripts/backup-database.cjs",
