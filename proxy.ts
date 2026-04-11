@@ -11,8 +11,14 @@ const adminOnlyRoutes = ['/admin/packages']
 const paidContentApiRoutes = ['/api/paid-content']
 
 export async function proxy(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const { pathname } = req.nextUrl
+  const nextActionHeader = req.headers.get('next-action')
+
+  if (nextActionHeader) {
+    return NextResponse.json({ message: 'Not Found' }, { status: 404 })
+  }
+
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
 
   // 1. Все /admin/* — только для MODERATOR/ADMIN/SUPER
   if (pathname.startsWith('/admin')) {

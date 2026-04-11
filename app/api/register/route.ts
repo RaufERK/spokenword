@@ -26,6 +26,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'phone' }, { status: 400 })
     }
 
+    const email = typeof data.email === 'string' ? data.email.trim() : ''
+
+    const [existingPhoneUser, existingEmailUser] = await Promise.all([
+      prisma.user.findUnique({
+        where: { phoneNumber: phone },
+        select: { id: true },
+      }),
+      email
+        ? prisma.user.findUnique({
+            where: { email },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ])
+
+    if (existingPhoneUser) {
+      return NextResponse.json(
+        { error: 'duplicate', fields: ['phoneNumber'] },
+        { status: 409 }
+      )
+    }
+
+    if (existingEmailUser) {
+      return NextResponse.json(
+        { error: 'duplicate', fields: ['email'] },
+        { status: 409 }
+      )
+    }
+
     /* 3. пароль – 6 цифр */
     const password = crypto.randomInt(100000, 999999).toString()
 
@@ -36,7 +65,7 @@ export async function POST(request: Request) {
         lastName: data.lastName,
         city: data.city,
         phoneNumber: phone,
-        email: data.email,
+        email: email || null,
         login,
         password,
       },
