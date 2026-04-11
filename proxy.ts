@@ -8,7 +8,7 @@ const protectedRoutes = ['/cabinet', '/paid-content', '/chat', '/conf-arch', ...
 const adminOnlyRoutes = ['/admin/packages']
 const paidContentApiRoutes = ['/api/paid-content']
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const nextActionHeader = req.headers.get('next-action')
 
