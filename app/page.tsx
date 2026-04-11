@@ -18,14 +18,18 @@ export default async function HomePage() {
   let youtubeUrl: string | null = null
   let rutubeUrl: string | null = null
 
-  if (hasClassAccess) {
-    const link = await prisma.classStreamLink.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
-    })
-    youtubeUrl = link?.youtubeUrl ?? null
-    rutubeUrl = link?.rutubeUrl ?? null
-  }
+  const link = hasClassAccess
+    ? await prisma.classStreamLink.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+      })
+    : await prisma.streamLink.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+      })
+
+  youtubeUrl = link?.youtubeUrl ?? null
+  rutubeUrl = link?.rutubeUrl ?? null
 
   const platforms = [
     {
