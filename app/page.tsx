@@ -80,7 +80,7 @@ export default async function HomePage() {
         {/* 3 stream buttons */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {platforms.map(({ id, label, icon: Icon, gradient, hoverGradient, url }) => {
-            const isAvailable = !!url && (hasClassAccess || id === 'audio')
+            const isAvailable = !!url
             const isAudio = id === 'audio'
 
             if (isAvailable) {
@@ -107,7 +107,7 @@ export default async function HomePage() {
                 <Icon className="w-12 h-12 text-white" />
                 <span className="text-white text-lg font-medium">{label}</span>
                 <span className="text-white/70 text-xs">
-                  {hasClassAccess ? 'Ссылка не добавлена' : 'Нет доступа'}
+                  Ссылка не добавлена
                 </span>
               </div>
             )
