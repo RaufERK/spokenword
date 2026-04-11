@@ -46,7 +46,7 @@ export default async function HomePage() {
       icon: Music,
       gradient: 'from-green-600 to-green-800',
       hoverGradient: 'hover:from-green-500 hover:to-green-700',
-      url: '/audio',
+      url: 'https://audio.spoken-word.ru/',
     },
   ]
 
@@ -78,8 +78,8 @@ export default async function HomePage() {
                 <a
                   key={id}
                   href={url!}
-                  target={isAudio ? '_self' : '_blank'}
-                  rel={isAudio ? undefined : 'noopener noreferrer'}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={`bg-gradient-to-br ${gradient} ${hoverGradient} rounded-xl p-6 flex flex-col items-center justify-center gap-3 hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer`}
                 >
                   <Icon className="w-12 h-12 text-white" />
