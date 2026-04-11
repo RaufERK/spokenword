@@ -113,11 +113,12 @@ module.exports = {
   ],
 
   deploy: {
+    // Новый основной сервер (sw / 155.212.174.133) — spoken-word.ru
     production: {
       user: 'appuser',
-      host: '185.200.178.73',
+      host: '155.212.174.133',
       ref: 'origin/master',
-      repo: 'https://github.com/RaufERK/spokenword.git',
+      repo: 'git@github.com:RaufERK/spokenword.git',
       path: '/home/appuser/apps/spokenword',
       'pre-deploy-local': '',
       'post-deploy': postDeploySteps,
@@ -126,11 +127,12 @@ module.exports = {
         NODE_ENV: 'production',
       },
     },
-    ru: {
+    // Старый сервер (amster / 185.200.178.73) — оставлен для справки
+    amster: {
       user: 'appuser',
-      host: '155.212.174.133',
+      host: '185.200.178.73',
       ref: 'origin/master',
-      repo: 'git@github.com:RaufERK/spokenword.git',
+      repo: 'https://github.com/RaufERK/spokenword.git',
       path: '/home/appuser/apps/spokenword',
       'pre-deploy-local': '',
       'post-deploy': postDeploySteps,
