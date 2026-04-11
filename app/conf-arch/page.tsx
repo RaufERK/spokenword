@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/prisma'
+import { isSubscriptionActive } from '@/lib/subscription'
 import ArchiveList from './ArchiveList'
 
 export const dynamic = 'force-dynamic'
@@ -13,8 +14,10 @@ export default async function ArchivePage() {
 
   const role = (session.user as { role?: string })?.role || ''
   const isAdmin = ['MODERATOR', 'ADMIN', 'SUPER'].includes(role)
+  const paymentDate = (session.user as { paymentDate?: string | null })?.paymentDate ?? null
+  const hasClassAccess = isAdmin || isSubscriptionActive(paymentDate)
 
-  const [confFiles, classFiles, streamLinks, classStreamLinks] = await Promise.all([
+  const [confFiles, classFiles, classStreamLinks] = await Promise.all([
     prisma.conferenceFile.findMany({
       where: isAdmin ? {} : { isPublic: true },
       orderBy: [{ orderIndex: 'asc' }, { uploadedAt: 'desc' }],
@@ -45,21 +48,17 @@ export default async function ArchivePage() {
         orderIndex: true,
       },
     }),
-    prisma.streamLink.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.classStreamLink.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
-    }),
+    hasClassAccess
+      ? prisma.classStreamLink.findFirst({
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+        })
+      : Promise.resolve(null),
   ])
 
   const hasLiveStream =
-    streamLinks?.youtubeUrl ||
-    streamLinks?.rutubeUrl ||
-    classStreamLinks?.youtubeUrl ||
-    classStreamLinks?.rutubeUrl
+    hasClassAccess &&
+    (classStreamLinks?.youtubeUrl || classStreamLinks?.rutubeUrl)
 
   return (
     <main className="p-4 max-w-4xl mx-auto">
@@ -73,26 +72,6 @@ export default async function ArchivePage() {
             <span className="text-green-400 font-semibold text-sm">Сейчас идёт трансляция</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {streamLinks?.youtubeUrl && (
-              <a
-                href={streamLinks.youtubeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors"
-              >
-                YouTube (Служба)
-              </a>
-            )}
-            {streamLinks?.rutubeUrl && (
-              <a
-                href={streamLinks.rutubeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-blue-600/80 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors"
-              >
-                Rutube (Служба)
-              </a>
-            )}
             {classStreamLinks?.youtubeUrl && (
               <a
                 href={classStreamLinks.youtubeUrl}
@@ -100,7 +79,7 @@ export default async function ArchivePage() {
                 rel="noopener noreferrer"
                 className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors"
               >
-                YouTube (Класс)
+                YouTube
               </a>
             )}
             {classStreamLinks?.rutubeUrl && (
@@ -110,7 +89,7 @@ export default async function ArchivePage() {
                 rel="noopener noreferrer"
                 className="px-4 py-2 bg-blue-600/80 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors"
               >
-                Rutube (Класс)
+                Rutube
               </a>
             )}
           </div>

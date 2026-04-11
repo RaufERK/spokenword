@@ -15,21 +15,13 @@ export default async function HomePage() {
     role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER' ||
     isSubscriptionActive(paymentDate)
 
-  let youtubeUrl: string | null = null
-  let rutubeUrl: string | null = null
+  const link = await prisma.streamLink.findFirst({
+    where: { isActive: true },
+    orderBy: { createdAt: 'desc' },
+  })
 
-  const link = hasClassAccess
-    ? await prisma.classStreamLink.findFirst({
-        where: { isActive: true },
-        orderBy: { createdAt: 'desc' },
-      })
-    : await prisma.streamLink.findFirst({
-        where: { isActive: true },
-        orderBy: { createdAt: 'desc' },
-      })
-
-  youtubeUrl = link?.youtubeUrl ?? null
-  rutubeUrl = link?.rutubeUrl ?? null
+  const youtubeUrl: string | null = link?.youtubeUrl ?? null
+  const rutubeUrl: string | null = link?.rutubeUrl ?? null
 
   const platforms = [
     {
@@ -68,12 +60,10 @@ export default async function HomePage() {
             <Play className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl md:text-4xl text-white mb-3">
-            {hasClassAccess ? 'Подключение к трансляции класса' : 'Подключение к трансляции'}
+            Подключение к трансляции
           </h1>
           <p className="text-purple-200/80">
-            {hasClassAccess
-              ? 'Выберите платформу для просмотра текущего учебного класса'
-              : 'Выберите платформу для просмотра текущего мероприятия'}
+            Выберите платформу для просмотра текущего мероприятия
           </p>
         </div>
 
@@ -117,29 +107,9 @@ export default async function HomePage() {
         {/* Info bar */}
         <div className="mt-8 p-4 bg-blue-900/30 rounded-xl border border-blue-400/20">
           <p className="text-blue-200 text-sm text-center">
-            📅 {hasClassAccess
-              ? 'Текущая трансляция: Учебный класс'
-              : 'Текущая трансляция: Открытое мероприятие'}
+            📅 Текущая трансляция: Открытое мероприятие
           </p>
         </div>
-
-        {/* No access warning */}
-        {!session && (
-          <div className="mt-4 p-4 bg-yellow-900/20 rounded-xl border border-yellow-400/20">
-            <p className="text-yellow-200 text-sm text-center">
-              Войдите в аккаунт для просмотра трансляций.{' '}
-              <a href="/login" className="text-yellow-300 underline hover:text-yellow-200">Войти</a>
-            </p>
-          </div>
-        )}
-
-        {session && !hasClassAccess && (
-          <div className="mt-4 p-4 bg-yellow-900/20 rounded-xl border border-yellow-400/20">
-            <p className="text-yellow-200 text-sm text-center">
-              ⚠️ У вас пока нет доступа к учебному классу. Свяжитесь с администратором для получения доступа.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Archive link */}
