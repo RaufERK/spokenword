@@ -64,7 +64,12 @@ async function migrate() {
           role: u.role,
           paymentDate: toDate(u.paymentDate),
           accessUntil: toDate(u.accessUntil),
+          telegramId: u.telegramId ?? null,
+          birthYear: u.birthYear ?? null,
+          joinedYear: u.joinedYear ?? null,
+          isPrivileged: Boolean(u.isPrivileged),
           createdAt: toDate(u.createdAt) ?? new Date(),
+          updatedAt: toDate(u.updatedAt) ?? new Date(),
         },
       })
     }
@@ -82,8 +87,8 @@ async function migrate() {
         data: {
           id: e.id,
           title: e.title,
-          date: toDate(e.date)!,
-          isActive: Boolean(e.isActive),
+          type: e.type ?? 'CONFERENCE',
+          startDate: toDate(e.startDate) ?? new Date(),
           createdAt: toDate(e.createdAt) ?? new Date(),
         },
       })
@@ -103,7 +108,8 @@ async function migrate() {
           id: a.id,
           userId: a.userId,
           eventId: a.eventId,
-          grantedAt: toDate(a.grantedAt) ?? new Date(),
+          paymentDate: toDate(a.paymentDate) ?? new Date(),
+          grantedBy: a.grantedBy,
         },
       })
     }
@@ -171,7 +177,10 @@ async function migrate() {
           id: a.id,
           userId: a.userId,
           packageId: a.packageId,
-          grantedAt: toDate(a.grantedAt) ?? new Date(),
+          purchaseDate: toDate(a.purchaseDate) ?? new Date(),
+          price: a.price ?? 0,
+          grantedBy: a.grantedBy,
+          notes: a.notes ?? null,
         },
       })
     }
