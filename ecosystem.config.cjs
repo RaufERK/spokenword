@@ -127,19 +127,8 @@ module.exports = {
         NODE_ENV: 'production',
       },
     },
-    // Старый сервер (amster / 185.200.178.73) — оставлен для справки
-    amster: {
-      user: 'appuser',
-      host: '185.200.178.73',
-      ref: 'origin/master',
-      repo: 'https://github.com/RaufERK/spokenword.git',
-      path: '/home/appuser/apps/spokenword',
-      'pre-deploy-local': '',
-      'post-deploy': postDeploySteps,
-
-      env: {
-        NODE_ENV: 'production',
-      },
-    },
+    // EU сервер (amster / 185.200.178.73) — nginx-only gateway, код не деплоится
+    // Управление: ssh amster → /etc/nginx/sites-available/spoken-word.info
+    // Rollback: rm /etc/nginx/sites-enabled/spoken-word.info && nginx -t && systemctl reload nginx
   },
 }

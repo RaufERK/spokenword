@@ -15,8 +15,6 @@
     "lint": "next lint",
     "dblist": "npx prisma studio",
     "deploy": "pm2 deploy ecosystem.config.cjs production",
-    "deploy:amster": "pm2 deploy ecosystem.config.cjs amster",
-    "deploy:all": "npm run deploy && npm run deploy:amster",
     "seed": "node prisma/seed.js",
     "db:export": "node scripts/export-data.js",
     "db:backup": "node scripts/backup-database.cjs",
@@ -24,10 +22,11 @@
     "conf:restore": "node scripts/restore-conference-archive.cjs",
     "cleanup": "node scripts/cleanup-orphan-files.cjs",
     "cleanup:dry": "node scripts/cleanup-orphan-files.cjs --dry-run --verbose",
-    "logs": "ssh amster_app 'bash /home/appuser/apps/spokenword/source/scripts/watch-logs.sh'",
-    "logs:errors": "ssh amster_app 'tail -f /home/appuser/logs/spokenword-error.log'",
-    "logs:output": "ssh amster_app 'tail -f /home/appuser/logs/spokenword-out.log'",
-    "logs:nginx": "ssh amster 'sudo tail -f /var/log/nginx/spoken_word_access.log'"
+    "logs": "ssh app 'bash /home/appuser/apps/spokenword/source/scripts/watch-logs.sh'",
+    "logs:errors": "ssh app 'tail -f /home/appuser/logs/spokenword-error.log'",
+    "logs:output": "ssh app 'tail -f /home/appuser/logs/spokenword-out.log'",
+    "logs:nginx:ru": "ssh sw 'tail -f /var/log/nginx/www_spoken_word_access.log'",
+    "logs:nginx:eu": "ssh amster 'tail -f /var/log/nginx/spoken_word_info_access.log'"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
