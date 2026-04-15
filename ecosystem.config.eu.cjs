@@ -90,31 +90,29 @@ module.exports = {
   ],
 
   deploy: {
-    production: {
+    // EU Amsterdam (185.200.178.73) — полигон для тестирования PostgreSQL миграции
+    // Деплой: npm run deploy:eu
+    eu: {
       user: 'appuser',
       host: '185.200.178.73',
       ref: 'origin/master',
-      repo: 'https://github.com/RaufERK/spokenword.git',
+      repo: 'git@github.com:RaufERK/spokenword.git',
       path: '/home/appuser/apps/spokenword',
       'pre-deploy-local': '',
       'post-deploy': [
         'export NODE_ENV=production',
         'source ~/.nvm/nvm.sh && nvm use --lts',
-        // симлинки создаём в КОРНЕ проекта (текущая cwd = /home/appuser/apps/spokenword/source)
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env',
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env.production',
+        'mkdir -p ./public',
         'npm ci --include=dev',
         'cd upload-service && npm ci && cd ..',
         './node_modules/.bin/prisma generate',
         './node_modules/.bin/prisma migrate deploy',
-        // Удаляем symlinks перед билдом (Turbopack не поддерживает внешние symlinks)
         'rm -rf ./paid-content',
         'npm run build',
-        // Восстанавливаем symlinks после билда
-        'ln -sfn /home/appuser/apps/spokenword/shared/paid-content ./paid-content',
-        // Примечание: права доступа нужно восстанавливать вручную после деплоя
-        // Запустите: ssh amster "bash /root/fix-streaming-permissions.sh"
-        'pm2 startOrReload ecosystem.config.cjs --env production',
+        'ln -sfn /home/appuser/apps/spokenword/shared/paid-content ./paid-content || true',
+        'pm2 startOrReload ecosystem.config.eu.cjs --env production',
         'pm2 save',
       ].join(' && '),
 
