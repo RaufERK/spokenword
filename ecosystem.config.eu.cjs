@@ -96,7 +96,7 @@ module.exports = {
       user: 'appuser',
       host: '185.200.178.73',
       ref: 'origin/master',
-      repo: 'git@github.com:RaufERK/spokenword.git',
+      repo: 'https://github.com/RaufERK/spokenword.git',
       path: '/home/appuser/apps/spokenword',
       'pre-deploy-local': '',
       'post-deploy': [
