@@ -46,7 +46,7 @@ export default async function HomePage() {
       icon: Music,
       gradient: 'from-green-600 to-green-800',
       hoverGradient: 'hover:from-green-500 hover:to-green-700',
-      url: 'https://audio.spoken-word.ru/',
+      url: '/audio',
     },
   ]
 

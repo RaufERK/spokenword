@@ -40,6 +40,7 @@ declare module 'next-auth/jwt' {
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
+  trustHost: true,
   providers: [
     CredentialsProvider({
       name: 'Credentials',

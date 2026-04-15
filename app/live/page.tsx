@@ -26,7 +26,7 @@ export default function LivePage() {
         } else if (data.isLive && !data.isWarmingUp) {
           console.log('🟢 Состояние: live')
           setIsWarmingUp(false)
-          setStreamUrl(`https://spoken-word.ru/hls/live/main.m3u8`)
+          setStreamUrl('/hls/live/main.m3u8')
         } else {
           console.log('⚪ Состояние: offline')
           setIsWarmingUp(false)

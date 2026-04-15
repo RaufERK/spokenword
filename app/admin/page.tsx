@@ -208,7 +208,7 @@ export default function AdminLinksPage() {
       <div className='bg-gradient-to-br from-purple-900/40 to-purple-800/30 border border-purple-400/20 rounded-xl p-4'>
         <ul className='text-purple-200 space-y-1 text-xs'>
           <li>• Ссылки Служб отображаются на главной странице для всех пользователей</li>
-          <li>• Аудиострим: https://audio.spoken-word.ru/</li>
+          <li>• Аудиострим открывается через локальный маршрут `/audio`</li>
         </ul>
       </div>
     </div>

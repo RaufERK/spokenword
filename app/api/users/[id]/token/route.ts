@@ -4,7 +4,7 @@ import { encryptToken } from '@/lib/token'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: idStr } = await params
@@ -20,8 +20,28 @@ export async function GET(
   }
 
   const token = encryptToken({ login: user.login, password: user.password })
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
-  const url = `${base}/profile?token=${token}`
+  const deployMode = process.env.APP_DEPLOY_MODE === 'mirror' ? 'mirror' : 'primary'
+  const primaryOrigin = (process.env.PRIMARY_ORIGIN ?? 'https://spoken-word.ru').replace(/\/$/, '')
+  const mirrorOrigin = (process.env.MIRROR_ORIGIN ?? 'https://spoken-word.info').replace(/\/$/, '')
+  const publicOriginFromEnv = process.env.PUBLIC_ORIGIN?.replace(/\/$/, '')
+  const requestOrigin = req.nextUrl.origin.replace(/\/$/, '')
+  const currentOrigin = publicOriginFromEnv || requestOrigin || (deployMode === 'mirror' ? mirrorOrigin : primaryOrigin)
 
-  return NextResponse.json({ token, url })
+  const ruUrl = `${primaryOrigin}/profile?token=${token}`
+  const euUrl = `${mirrorOrigin}/profile?token=${token}`
+  const currentUrl = `${currentOrigin}/profile?token=${token}`
+
+  return NextResponse.json({
+    token,
+    deployMode,
+    currentUrl,
+    urls: {
+      ru: ruUrl,
+      eu: euUrl,
+    },
+    comments: {
+      ru: 'основной РФ домен',
+      eu: 'EU mirror домен',
+    },
+  })
 }

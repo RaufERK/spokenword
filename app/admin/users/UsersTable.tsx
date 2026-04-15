@@ -27,6 +27,18 @@ type SortField = 'name' | 'surname' | 'login' | 'city' | 'accessUntil' | 'role'
 type SortDir = 'asc' | 'desc'
 type PaymentFilter = 'all' | 'active' | 'inactive'
 type AccessUpdate = { id: number; paymentDate: string | null; accessUntil: string | null }
+type ProfileLinkPayload = {
+  deployMode: 'primary' | 'mirror'
+  currentUrl: string
+  urls: {
+    ru: string
+    eu: string
+  }
+  comments: {
+    ru: string
+    eu: string
+  }
+}
 
 function isAccessActive(accessUntil: string | null): boolean {
   if (!accessUntil) return false
@@ -124,10 +136,31 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
   }, [list])
 
   const handleCopyLink = async (id: number) => {
-    const res = await fetch(`/api/users/${id}/token`)
-    const data = await res.json()
-    if (!res.ok) return alert('Ошибка при создании ссылки')
-    await navigator.clipboard.writeText(data.url)
+    try {
+      const res = await fetch(`/api/users/${id}/token`)
+      const data = await res.json() as ProfileLinkPayload | { error?: string }
+      if (!res.ok || !('urls' in data)) {
+        return alert('Ошибка при создании ссылки профиля')
+      }
+
+      const copiedText = [
+        `Профиль RU (${data.comments.ru}): ${data.urls.ru}`,
+        `Профиль EU (${data.comments.eu}): ${data.urls.eu}`,
+        `Текущий домен (${data.deployMode}): ${data.currentUrl}`,
+      ].join('\n')
+
+      await navigator.clipboard.writeText(copiedText)
+
+      alert(
+        [
+          'Скопированы две ссылки профиля:',
+          `1) RU: ${data.urls.ru}`,
+          `2) EU: ${data.urls.eu}`,
+        ].join('\n')
+      )
+    } catch {
+      alert('Ошибка при создании ссылки профиля')
+    }
   }
 
   const applyAccessUpdates = (updates: AccessUpdate[]) => {
@@ -412,7 +445,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                         onClick={() => handleCopyLink(u.id)}
                       >
                         <Link className="w-3.5 h-3.5" />
-                        Профиль
+                        Профиль RU/EU
                       </button>
                     </td>
 

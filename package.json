@@ -16,6 +16,7 @@
     "dblist": "npx prisma studio",
     "deploy": "pm2 deploy ecosystem.config.cjs production",
     "deploy:amster": "pm2 deploy ecosystem.config.cjs amster",
+    "deploy:all": "npm run deploy && npm run deploy:amster",
     "seed": "node prisma/seed.js",
     "db:export": "node scripts/export-data.js",
     "db:backup": "node scripts/backup-database.cjs",

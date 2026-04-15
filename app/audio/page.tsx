@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
 export default function AudioPage() {
-  redirect('https://audio.spoken-word.ru/')
+  const audioUrl = process.env.AUDIO_STREAM_URL ?? 'https://audio.spoken-word.ru/'
+  redirect(audioUrl)
 }
