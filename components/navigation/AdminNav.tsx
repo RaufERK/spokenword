@@ -16,10 +16,10 @@ type AdminLink = {
 const adminLinks: AdminLink[] = [
   { href: '/admin', label: 'Стрим', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
   { href: '/admin/class', label: 'Конференция', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
-  { href: '/admin/events', label: 'Мероприятия', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
   { href: '/admin/upload', label: 'Загрузка', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
   { href: '/admin/packages', label: 'Платные', roles: ['ADMIN', 'SUPER'] },
   { href: '/admin/users', label: 'Пользователи', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
+  { href: '/admin/events', label: 'Мероприятия', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
 ]
 
 export default function AdminNav() {
