@@ -52,15 +52,5 @@ export default async function AdminUsersPage() {
     }
   })
 
-  return (
-    <div className="w-full">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Пользователи</h1>
-          <p className="text-pink-300/60 text-sm mt-1">Всего: {users.length}</p>
-        </div>
-      </div>
-      <UsersTable users={users} currentRole={session.user.role} />
-    </div>
-  )
+  return <UsersTable users={users} currentRole={session.user.role} />
 }

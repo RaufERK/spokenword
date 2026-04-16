@@ -76,6 +76,7 @@ database-export-*.json
 
 # local design dumps
 FigmaNew26/
+FigmaV28/node_modules/
 .env.pg
 
 # server info (contains SSH aliases and IPs)

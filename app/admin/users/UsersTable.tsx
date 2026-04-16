@@ -7,7 +7,7 @@ import PaymentModal from '@/components/admin/PaymentModal'
 import BulkPaymentModal from '@/components/admin/BulkPaymentModal'
 import {
   Search, ChevronUp, ChevronDown, ChevronsUpDown,
-  Trash2, Link, Package, CheckCircle, XCircle, PlusCircle, Users, X, Ban,
+  Trash2, Link, Package, CheckCircle, XCircle, PlusCircle, Users, X, Ban, UserCog,
 } from 'lucide-react'
 
 export interface UserRow {
@@ -25,7 +25,7 @@ export interface UserRow {
 
 type SortField = 'name' | 'surname' | 'login' | 'city' | 'accessUntil' | 'role'
 type SortDir = 'asc' | 'desc'
-type PaymentFilter = 'all' | 'active' | 'inactive' | 'never'
+type PaymentFilter = 'all' | 'active' | 'inactive' | 'never' | 'admins'
 type AccessUpdate = { id: number; accessUntil: string | null; eventTitle?: string }
 
 type ProfileLinkPayload = {
@@ -41,20 +41,18 @@ function isAccessActive(accessUntil: string | null): boolean {
 }
 
 function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: SortDir }) {
-  if (field !== current) return <ChevronsUpDown className="w-3.5 h-3.5 opacity-40" />
-  return dir === 'asc'
-    ? <ChevronUp className="w-3.5 h-3.5" />
-    : <ChevronDown className="w-3.5 h-3.5" />
+  if (field !== current) return <ChevronsUpDown className="w-3 h-3 opacity-40" />
+  return dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
 }
 
 function SortableTh({
-  field, label, current, dir, onSort,
+  field, label, current, dir, onSort, className = '',
 }: {
-  field: SortField; label: string; current: SortField; dir: SortDir; onSort: (f: SortField) => void
+  field: SortField; label: string; current: SortField; dir: SortDir; onSort: (f: SortField) => void; className?: string
 }) {
   return (
     <th
-      className="px-4 py-3 text-left text-sm text-white cursor-pointer hover:bg-white/10 transition-colors select-none"
+      className={`px-3 py-2.5 text-left text-xs text-white/80 cursor-pointer hover:bg-white/10 transition-colors select-none whitespace-nowrap ${className}`}
       onClick={() => onSort(field)}
     >
       <div className="flex items-center gap-1">
@@ -65,12 +63,22 @@ function SortableTh({
   )
 }
 
+const FILTER_TABS: { key: PaymentFilter; label: string }[] = [
+  { key: 'all', label: 'Все' },
+  { key: 'active', label: 'Оплачено' },
+  { key: 'inactive', label: 'Не оплачено' },
+  { key: 'never', label: 'Новые' },
+  { key: 'admins', label: 'Админы' },
+]
+
 export default function UsersTable({ users, currentRole }: { users: UserRow[]; currentRole: Role }) {
   const [list, setList] = useState(users)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [paymentUser, setPaymentUser] = useState<UserRow | null>(null)
   const [isBulkPaymentOpen, setIsBulkPaymentOpen] = useState(false)
+  const [isBulkRoleOpen, setIsBulkRoleOpen] = useState(false)
+  const [bulkRole, setBulkRole] = useState<Role>('USER')
   const [userToDelete, setUserToDelete] = useState<UserRow | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -82,15 +90,26 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all')
 
   const isSuper = currentRole === 'SUPER'
+  const canEdit = ['ADMIN', 'SUPER'].includes(currentRole)
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortField(field); setSortDir('asc') }
   }
 
+  const totalAll = list.length
   const totalActive = list.filter((u) => isAccessActive(u.accessUntil)).length
-  const totalNever = list.filter((u) => !u.lastEvent).length
   const totalInactive = list.filter((u) => u.lastEvent && !isAccessActive(u.accessUntil)).length
+  const totalNever = list.filter((u) => !u.lastEvent).length
+  const totalAdmins = list.filter((u) => ['ADMIN', 'SUPER', 'MODERATOR'].includes(u.role)).length
+
+  const TAB_COUNTS: Record<PaymentFilter, number> = {
+    all: totalAll,
+    active: totalActive,
+    inactive: totalInactive,
+    never: totalNever,
+    admins: totalAdmins,
+  }
 
   const processed = useMemo(() => {
     let result = [...list]
@@ -108,6 +127,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
     if (paymentFilter === 'active') result = result.filter((u) => isAccessActive(u.accessUntil))
     else if (paymentFilter === 'inactive') result = result.filter((u) => u.lastEvent && !isAccessActive(u.accessUntil))
     else if (paymentFilter === 'never') result = result.filter((u) => !u.lastEvent)
+    else if (paymentFilter === 'admins') result = result.filter((u) => ['ADMIN', 'SUPER', 'MODERATOR'].includes(u.role))
 
     result.sort((a, b) => {
       let cmp = 0
@@ -141,7 +161,6 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
       const res = await fetch(`/api/users/${id}/token`)
       const data = await res.json() as ProfileLinkPayload | { error?: string }
       if (!res.ok || !('urls' in data)) return alert('Ошибка при создании ссылки профиля')
-
       const copiedText = [
         `Профиль RU (${data.comments.ru}): ${data.urls.ru}`,
         `Профиль EU (${data.comments.eu}): ${data.urls.eu}`,
@@ -191,16 +210,38 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
   const handleBulkRevoke = async () => {
     if (selectedIds.length === 0) return
     if (!confirm(`Отозвать доступ у ${selectedIds.length} пользователей?`)) return
-
     const res = await fetch('/api/users/bulk-payment', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'revoke', userIds: selectedIds }),
     })
-
-    if (!res.ok) { alert('Не удалось массово отозвать доступ'); return }
+    if (!res.ok) { alert('Не удалось отозвать доступ'); return }
     const data = await res.json() as { users: AccessUpdate[] }
     applyAccessUpdates(data.users)
+    clearSelection()
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Удалить ${selectedIds.length} пользователей? Это действие нельзя отменить.`)) return
+    for (const id of selectedIds) {
+      await fetch(`/api/users/${id}`, { method: 'DELETE' })
+    }
+    setList((prev) => prev.filter((u) => !selectedIds.includes(u.id)))
+    clearSelection()
+  }
+
+  const handleBulkRole = async () => {
+    if (selectedIds.length === 0) return
+    for (const id of selectedIds) {
+      await fetch(`/api/users/${id}/admin`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: bulkRole }),
+      })
+    }
+    setList((prev) => prev.map((u) => selectedIds.includes(u.id) ? { ...u, role: bulkRole } : u))
+    setIsBulkRoleOpen(false)
     clearSelection()
   }
 
@@ -213,17 +254,6 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
     })
     if (!res.ok) { alert('Не удалось отозвать доступ'); return }
     applyAccessUpdates([{ id: userId, accessUntil: null }])
-  }
-
-  const changeRole = async (id: number, newRole: Role) => {
-    const res = await fetch(`/api/users/${id}/admin`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: newRole }),
-    })
-    if (!res.ok) return alert('Не удалось обновить роль')
-    const { role } = await res.json()
-    setList((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)))
   }
 
   const confirmDelete = async () => {
@@ -246,231 +276,212 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
     }
   }
 
-  const colCount = isSuper ? 12 : 11
-
-  const FILTER_LABELS: Record<PaymentFilter, string> = {
-    all: `Все (${list.length})`,
-    active: `Активные (${totalActive})`,
-    inactive: `Истёк (${totalInactive})`,
-    never: `Никогда (${totalNever})`,
-  }
-
   return (
-    <div>
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 mb-5">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
+    <div className="flex flex-col h-full">
+      {/* ── Toolbar ── */}
+      <div className="mb-3 space-y-2">
+        {/* Row 1: поиск + фильтры */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-purple-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск по имени, логину, городу, телефону..."
-              className="w-full bg-purple-950/50 border border-purple-400/30 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-purple-300/40 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              placeholder="Поиск..."
+              className="bg-purple-950/50 border border-purple-400/30 rounded-lg pl-8 pr-8 py-1.5 text-sm text-white placeholder-purple-300/40 focus:outline-none focus:ring-2 focus:ring-pink-500 w-52"
             />
             {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 hover:text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
+              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-400 hover:text-white">
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          <div className="flex gap-1 bg-purple-900/40 p-1 rounded-xl border border-purple-400/20 self-start flex-wrap">
-            {(['all', 'active', 'inactive', 'never'] as PaymentFilter[]).map((f) => (
+          <div className="flex gap-1 bg-purple-900/40 p-0.5 rounded-lg border border-purple-400/20">
+            {FILTER_TABS.map((tab) => (
               <button
-                key={f}
-                onClick={() => setPaymentFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  paymentFilter === f ? 'bg-pink-600 text-white' : 'text-white/60 hover:text-white'
+                key={tab.key}
+                onClick={() => setPaymentFilter(tab.key)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                  paymentFilter === tab.key ? 'bg-pink-600 text-white' : 'text-white/55 hover:text-white'
                 }`}
               >
-                {FILTER_LABELS[f]}
+                {tab.label} <span className="opacity-60">({TAB_COUNTS[tab.key]})</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-white/70 px-2">Выбрано: {selectedIds.length}</span>
+        {/* Row 2: массовые действия */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-white/50 pr-1">
+            {selectedIds.length > 0 ? `Выбрано: ${selectedIds.length}` : 'Выберите галочками'}
+          </span>
           <button
             onClick={() => setIsBulkPaymentOpen(true)}
             disabled={selectedIds.length === 0}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-600/90 hover:bg-green-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-green-600/90 hover:bg-green-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            Массово выдать доступ
+            <CheckCircle className="w-3.5 h-3.5" />
+            Дать доступ
           </button>
           <button
             onClick={handleBulkRevoke}
             disabled={selectedIds.length === 0}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600/90 hover:bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-red-600/80 hover:bg-red-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            Массово отозвать доступ
+            <Ban className="w-3.5 h-3.5" />
+            Отозвать
+          </button>
+          <button
+            onClick={() => { if (selectedIds.length > 0) { setSelectedUser(list.find(u => u.id === selectedIds[0]) ?? null); setIsModalOpen(true) } }}
+            disabled={selectedIds.length === 0}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-600/80 hover:bg-purple-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <Package className="w-3.5 h-3.5" />
+            Платный контент
+          </button>
+          {isSuper && (
+            <button
+              onClick={() => { if (selectedIds.length > 0) setIsBulkRoleOpen(true) }}
+              disabled={selectedIds.length === 0}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-orange-600/80 hover:bg-orange-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <UserCog className="w-3.5 h-3.5" />
+              Роль
+            </button>
+          )}
+          <button
+            onClick={handleBulkDelete}
+            disabled={selectedIds.length === 0}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-red-900/80 hover:bg-red-800 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Удалить
           </button>
           {selectedIds.length > 0 && (
             <button
               onClick={clearSelection}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-800/70 hover:bg-purple-700 text-white transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-purple-800/60 hover:bg-purple-700 text-white/60 hover:text-white transition-colors"
             >
-              Сбросить выделение
+              <X className="w-3 h-3" />
+              Сбросить
             </button>
           )}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-gradient-to-br from-purple-900/60 to-pink-900/40 backdrop-blur-sm rounded-2xl shadow-2xl border border-pink-400/20 overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* ── Table ── */}
+      <div className="bg-gradient-to-br from-purple-900/60 to-pink-900/40 rounded-2xl border border-pink-400/20 overflow-hidden flex flex-col min-h-0">
+        <div className="overflow-auto max-h-[calc(100vh-220px)]">
           <table className="min-w-full">
-            <thead className="bg-gradient-to-r from-pink-700 to-purple-700">
+            <thead className="bg-gradient-to-r from-pink-700 to-purple-700 sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-center text-sm text-white w-10">
+                <th className="px-3 py-2.5 text-center w-8">
                   <input
                     type="checkbox"
                     checked={allVisibleSelected}
                     onChange={handleToggleVisibleSelection}
-                    className="w-4 h-4 rounded accent-pink-500 cursor-pointer"
-                    title="Выбрать/снять всех в текущем фильтре"
+                    className="w-3.5 h-3.5 rounded accent-pink-500 cursor-pointer"
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-sm text-white w-8">№</th>
+                <th className="px-3 py-2.5 text-left text-xs text-white/60 w-7">№</th>
                 <SortableTh field="name" label="Имя" current={sortField} dir={sortDir} onSort={handleSort} />
                 <SortableTh field="surname" label="Фамилия" current={sortField} dir={sortDir} onSort={handleSort} />
-                <th className="px-4 py-3 text-left text-sm text-white">Телефон</th>
                 <SortableTh field="login" label="Логин" current={sortField} dir={sortDir} onSort={handleSort} />
                 <SortableTh field="city" label="Город" current={sortField} dir={sortDir} onSort={handleSort} />
-                <th className="px-4 py-3 text-left text-sm text-white">Последнее мероприятие</th>
+                <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Телефон</th>
+                <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Последнее меропр.</th>
                 <SortableTh field="accessUntil" label="Доступ до" current={sortField} dir={sortDir} onSort={handleSort} />
-                {isSuper && (
-                  <SortableTh field="role" label="Роль" current={sortField} dir={sortDir} onSort={handleSort} />
-                )}
-                <th className="px-4 py-3 text-center text-sm text-white">Пл. материалы</th>
-                <th className="px-4 py-3 text-center text-sm text-white">Профиль</th>
-                <th className="px-4 py-3 text-center text-sm text-white">Удалить</th>
+                <th className="px-3 py-2.5 text-center text-xs text-white/80 whitespace-nowrap">Оплата</th>
+                <th className="px-3 py-2.5 text-center text-xs text-white/80 whitespace-nowrap">Профиль</th>
               </tr>
             </thead>
             <tbody>
               {processed.map((u, i) => {
                 const active = isAccessActive(u.accessUntil)
+                const isEven = i % 2 === 0
                 return (
-                  <tr key={u.id} className="border-t border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-3 text-center">
+                  <tr
+                    key={u.id}
+                    className={`border-t border-white/5 hover:bg-white/5 transition-colors text-sm ${
+                      isEven ? 'bg-purple-950/10' : ''
+                    }`}
+                  >
+                    <td className="px-3 py-2 text-center">
                       <input
                         type="checkbox"
                         checked={selectedSet.has(u.id)}
                         onChange={() => handleToggleUserSelection(u.id)}
-                        className="w-4 h-4 rounded accent-pink-500 cursor-pointer"
+                        className="w-3.5 h-3.5 rounded accent-pink-500 cursor-pointer"
                       />
                     </td>
-                    <td className="px-4 py-3 text-white/40 text-sm">{i + 1}</td>
-                    <td className="px-4 py-3 text-white text-sm">{u.firstName}</td>
-                    <td className="px-4 py-3 text-white text-sm font-medium">{u.lastName}</td>
-                    <td className="px-4 py-3 text-pink-200 text-sm font-mono">{u.phoneNumber || '—'}</td>
-                    <td className="px-4 py-3 text-blue-300 text-sm font-mono">{u.login}</td>
-                    <td className="px-4 py-3 text-white/70 text-sm">{u.city || '—'}</td>
+                    <td className="px-3 py-2 text-white/30 text-xs">{i + 1}</td>
+                    <td className="px-3 py-2 text-white">{u.firstName}</td>
+                    <td className="px-3 py-2 text-white font-medium">{u.lastName}</td>
+                    <td className="px-3 py-2 text-blue-300 text-xs font-mono">{u.login}</td>
+                    <td className="px-3 py-2 text-white/60 text-xs">{u.city || '—'}</td>
+                    <td className="px-3 py-2 text-pink-200/80 text-xs font-mono whitespace-nowrap">{u.phoneNumber || '—'}</td>
 
                     {/* Последнее мероприятие */}
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 py-2 text-xs max-w-[140px]">
                       {u.lastEvent ? (
-                        <span className="text-purple-200 text-xs">{u.lastEvent.title}</span>
+                        <span className="text-purple-200/80 truncate block" title={u.lastEvent.title}>
+                          {u.lastEvent.title}
+                        </span>
                       ) : (
-                        <span className="text-white/20 text-xs italic">никогда</span>
+                        <span className="text-white/20 italic">никогда</span>
                       )}
                     </td>
 
-                    {/* Доступ */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {active ? (
-                          <>
-                            <span
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30"
-                              title="Доступ активен"
-                            >
-                              <CheckCircle className="w-3 h-3" />
-                              до {new Date(u.accessUntil!).toLocaleDateString('ru-RU')}
-                            </span>
-                            <button
-                              onClick={() => handleIndividualRevoke(u.id)}
-                              className="p-1 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                              title="Отозвать доступ"
-                            >
-                              <Ban className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        ) : u.accessUntil ? (
-                          <button
-                            onClick={() => setPaymentUser(u)}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30"
-                          >
-                            <XCircle className="w-3 h-3" />
-                            Истёк {new Date(u.accessUntil).toLocaleDateString('ru-RU')}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setPaymentUser(u)}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors bg-yellow-400/20 text-yellow-300 border border-yellow-400/50 hover:bg-yellow-400/40 hover:text-white"
-                          >
-                            <PlusCircle className="w-3 h-3" />
-                            Поступила оплата
-                          </button>
-                        )}
-                      </div>
+                    {/* Доступ до */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {active ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                          <CheckCircle className="w-3 h-3" />
+                          {new Date(u.accessUntil!).toLocaleDateString('ru-RU')}
+                        </span>
+                      ) : u.accessUntil ? (
+                        <span className="text-orange-400/60 text-xs">
+                          истёк {new Date(u.accessUntil).toLocaleDateString('ru-RU')}
+                        </span>
+                      ) : (
+                        <span className="text-white/20 text-xs">—</span>
+                      )}
                     </td>
 
-                    {/* Роль */}
-                    {isSuper && (
-                      <td className="px-4 py-3">
-                        <select
-                          value={u.role}
-                          onChange={(e) => changeRole(u.id, e.target.value as Role)}
-                          disabled={u.role === 'SUPER'}
-                          className="border border-purple-500/40 rounded-lg px-2 py-1 bg-purple-950/80 text-pink-200 text-xs focus:outline-none"
+                    {/* Кнопка оплаты */}
+                    <td className="px-3 py-2 text-center">
+                      {active ? (
+                        <button
+                          onClick={() => handleIndividualRevoke(u.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-red-600/80 hover:bg-red-500 text-white transition-colors"
+                          title="Отозвать доступ"
                         >
-                          {ROLES.map((role) => (
-                            <option key={role} value={role} disabled={role === 'SUPER' && u.role !== 'SUPER'}>
-                              {role}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                    )}
-
-                    {/* Пл. материалы */}
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white py-1.5 px-3 rounded-lg text-xs transition-all shadow-sm"
-                        onClick={() => { setSelectedUser(u); setIsModalOpen(true) }}
-                      >
-                        <Package className="w-3.5 h-3.5" />
-                        Управлять
-                      </button>
+                          <XCircle className="w-3 h-3" />
+                          Отозвать
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setPaymentUser(u)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-yellow-500/80 to-orange-500/80 hover:from-yellow-400 hover:to-orange-400 text-white transition-colors"
+                        >
+                          <PlusCircle className="w-3 h-3" />
+                          ОПЛАТА
+                        </button>
+                      )}
                     </td>
 
                     {/* Профиль */}
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-2 text-center">
                       <button
-                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white py-1.5 px-3 rounded-lg text-xs transition-all shadow-sm"
                         onClick={() => handleCopyLink(u.id)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-blue-600/70 hover:bg-blue-500 text-white transition-colors"
+                        title="Скопировать ссылки профиля"
                       >
-                        <Link className="w-3.5 h-3.5" />
-                        Профиль RU/EU
-                      </button>
-                    </td>
-
-                    {/* Удалить */}
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white py-1.5 px-3 rounded-lg text-xs transition-all shadow-sm disabled:opacity-30"
-                        onClick={() => { setUserToDelete(u); setIsDeleteModalOpen(true) }}
-                        disabled={u.role === 'SUPER'}
-                        title={u.role === 'SUPER' ? 'Нельзя удалить SUPER' : ''}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Удалить
+                        <Link className="w-3 h-3" />
+                        RU/EU
                       </button>
                     </td>
                   </tr>
@@ -479,9 +490,9 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
 
               {processed.length === 0 && (
                 <tr>
-                  <td colSpan={colCount} className="py-12 text-center">
-                    <Users className="w-12 h-12 text-white/20 mx-auto mb-3" />
-                    <p className="text-white/30 text-sm">
+                  <td colSpan={11} className="py-12 text-center">
+                    <Users className="w-10 h-10 text-white/15 mx-auto mb-3" />
+                    <p className="text-white/25 text-sm">
                       {search || paymentFilter !== 'all' ? 'Нет пользователей по фильтру' : 'Нет пользователей'}
                     </p>
                   </td>
@@ -492,6 +503,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
         </div>
       </div>
 
+      {/* ── Modals ── */}
       <UserAccessModal
         user={selectedUser}
         isOpen={isModalOpen}
@@ -525,32 +537,55 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
         />
       )}
 
+      {/* Bulk Role Modal */}
+      {isBulkRoleOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-purple-900/95 border border-orange-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <UserCog className="w-5 h-5 text-orange-400" />
+                Назначить роль ({selectedIds.length} чел.)
+              </h2>
+              <button onClick={() => setIsBulkRoleOpen(false)} className="text-white/40 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="space-y-2 mb-5">
+              {(['USER', 'MODERATOR', 'ADMIN'] as Role[]).map((r) => (
+                <label key={r} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-colors ${
+                  bulkRole === r ? 'border-orange-500/60 bg-orange-500/10' : 'border-white/10 hover:border-white/20'
+                }`}>
+                  <input
+                    type="radio"
+                    name="bulk-role"
+                    value={r}
+                    checked={bulkRole === r}
+                    onChange={() => setBulkRole(r)}
+                    className="accent-orange-500"
+                  />
+                  <span className="text-white text-sm font-medium">{r}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setIsBulkRoleOpen(false)} className="flex-1 px-4 py-2 text-purple-300 border border-purple-600/50 rounded-xl hover:bg-purple-800 transition text-sm">Отмена</button>
+              <button onClick={handleBulkRole} className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-xl transition text-sm font-medium">Назначить</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
       {isDeleteModalOpen && userToDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-purple-900/90 border border-red-500/30 rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
-            <h2 className="text-lg font-bold text-red-400 mb-3">Удалить пользователя?</h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-purple-900/95 border border-red-500/30 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-base font-bold text-red-400 mb-3">Удалить пользователя?</h2>
             <div className="p-3 bg-purple-800/50 border border-purple-600/40 rounded-xl mb-4">
               <p className="font-semibold text-white">{userToDelete.firstName} {userToDelete.lastName}</p>
-              {userToDelete.phoneNumber && (
-                <p className="text-sm text-purple-300">{userToDelete.phoneNumber}</p>
-              )}
+              {userToDelete.phoneNumber && <p className="text-sm text-purple-300">{userToDelete.phoneNumber}</p>}
             </div>
-            <p className="text-red-300/80 text-sm mb-5">
-              Будут удалены профиль, доступы к материалам и история. Действие нельзя отменить.
-            </p>
+            <p className="text-red-300/80 text-sm mb-5">Будут удалены профиль, доступы и история. Нельзя отменить.</p>
             <div className="flex justify-end gap-3">
-              <button
-                onClick={() => { setIsDeleteModalOpen(false); setUserToDelete(null) }}
-                disabled={isDeleting}
-                className="px-4 py-2 text-purple-300 border border-purple-600/50 rounded-xl hover:bg-purple-800 disabled:opacity-50 transition text-sm"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl disabled:opacity-50 transition text-sm font-medium"
-              >
+              <button onClick={() => { setIsDeleteModalOpen(false); setUserToDelete(null) }} disabled={isDeleting} className="px-4 py-2 text-purple-300 border border-purple-600/50 rounded-xl hover:bg-purple-800 disabled:opacity-50 transition text-sm">Отмена</button>
+              <button onClick={confirmDelete} disabled={isDeleting} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl disabled:opacity-50 transition text-sm font-medium">
                 {isDeleting ? 'Удаление...' : 'Удалить'}
               </button>
             </div>
