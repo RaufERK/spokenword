@@ -13,6 +13,9 @@ git push origin master
 # Deploy via SSH
 ssh "$HOST" bash -s << REMOTE
   set -e
+  export NVM_DIR="\$HOME/.nvm"
+  [ -s "\$NVM_DIR/nvm.sh" ] && source "\$NVM_DIR/nvm.sh"
+  nvm use --lts --silent 2>/dev/null || true
   cd "$APP_DIR"
 
   echo "📥 Pulling latest..."
