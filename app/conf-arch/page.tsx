@@ -14,8 +14,8 @@ export default async function ArchivePage() {
 
   const role = (session.user as { role?: string })?.role || ''
   const isAdmin = ['MODERATOR', 'ADMIN', 'SUPER'].includes(role)
-  const paymentDate = (session.user as { paymentDate?: string | null })?.paymentDate ?? null
-  const hasClassAccess = isAdmin || isSubscriptionActive(paymentDate)
+  const accessUntil = (session.user as { accessUntil?: string | null })?.accessUntil ?? null
+  const hasClassAccess = isAdmin || isSubscriptionActive(accessUntil)
 
   const [confFiles, classFiles, classStreamLinks] = await Promise.all([
     prisma.conferenceFile.findMany({

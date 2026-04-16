@@ -9,11 +9,11 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage() {
   const session = await getServerSession(authOptions)
   const role = session?.user?.role
-  const paymentDate = session?.user?.paymentDate ?? null
+  const accessUntil = session?.user?.accessUntil ?? null
 
   const hasClassAccess =
     role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER' ||
-    isSubscriptionActive(paymentDate)
+    isSubscriptionActive(accessUntil)
 
   const link = await prisma.streamLink.findFirst({
     where: { isActive: true },

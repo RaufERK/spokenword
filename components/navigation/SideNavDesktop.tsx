@@ -13,9 +13,9 @@ export default function SideNavDesktop() {
   const { data } = useSession()
   const pathname = usePathname()
   const role: Role | undefined = data?.user?.role
-  const paymentDate = data?.user?.paymentDate ?? null
+  const accessUntil = data?.user?.accessUntil ?? null
   const isAdmin = role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER'
-  const hasActiveSub = isSubscriptionActive(paymentDate)
+  const hasActiveSub = isSubscriptionActive(accessUntil)
   const [hasClassLinks, setHasClassLinks] = useState(false)
 
   useEffect(() => {

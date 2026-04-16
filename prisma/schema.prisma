@@ -3,8 +3,25 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+  SUPER
+}
+
+enum EventType {
+  CONFERENCE
+  CLASS
+}
+
+enum PaymentStatus {
+  ACTIVE
+  REVOKED
 }
 
 model User {
@@ -16,8 +33,7 @@ model User {
   password     String
   phoneNumber  String?   @unique
   email        String?   @unique
-  paymentDate  DateTime? // фактическая дата последней оплаты (аудит)
-  accessUntil  DateTime? // дата окончания доступа (= max(paymentDate, event.startDate) + 30 дней)
+  accessUntil  DateTime?
   telegramId   String?   @unique
   birthYear    Int?
   joinedYear   Int?
@@ -31,112 +47,104 @@ model User {
   grantedPackageAccess UserPackageAccess[] @relation("GrantedPackageAccess")
   eventAccess          UserEventAccess[]
   grantedEventAccess   UserEventAccess[]   @relation("GrantedEventAccess")
+  revokedEventAccess   UserEventAccess[]   @relation("RevokedEventAccess")
   chatMessages         ChatMessage[]
 
-  @@index([paymentDate])
   @@index([accessUntil])
 }
 
-enum EventType {
-  CONFERENCE
-  CLASS
-}
-
 model Event {
-  id        Int       @id @default(autoincrement())
-  title     String
-  type      EventType @default(CONFERENCE)
-  startDate DateTime
-  createdAt DateTime  @default(now())
+  id         Int       @id @default(autoincrement())
+  title      String
+  type       EventType @default(CONFERENCE)
+  startDate  DateTime
+  accessDays Int       @default(30)
+  createdAt  DateTime  @default(now())
 
-  payments  UserEventAccess[]
+  payments UserEventAccess[]
+  files    ConferenceFile[]
 }
 
 model UserEventAccess {
-  id          Int      @id @default(autoincrement())
+  id          Int           @id @default(autoincrement())
   userId      Int
   eventId     Int
-  paymentDate DateTime @default(now())
+  paymentDate DateTime      @default(now())
   grantedBy   Int
+  status      PaymentStatus @default(ACTIVE)
+  revokedBy   Int?
+  revokedAt   DateTime?
 
-  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       Event @relation(fields: [eventId], references: [id])
-  admin       User  @relation("GrantedEventAccess", fields: [grantedBy], references: [id])
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event @relation(fields: [eventId], references: [id])
+  admin   User  @relation("GrantedEventAccess", fields: [grantedBy], references: [id])
+  revoker User? @relation("RevokedEventAccess", fields: [revokedBy], references: [id])
 
   @@unique([userId, eventId])
   @@index([userId])
+  @@index([eventId])
 }
-
-enum Role {
-  USER
-  MODERATOR
-  ADMIN
-  SUPER
-}
-
 
 model ConferenceFile {
   id           Int      @id @default(autoincrement())
-  displayName  String   // Красивое имя
-  originalName String   // Имя при загрузке
+  displayName  String
+  originalName String
   systemName   String   @unique
   uploadedAt   DateTime @default(now())
   uploadedBy   Int
-  size         BigInt   // Changed to BigInt for files > 2GB
+  size         BigInt
   views        Int      @default(0)
-  duration     Int?     // Длительность в секундах
-  isPublic     Boolean  @default(false) // Видимость для обычных пользователей
-  orderIndex   Int      @default(0)    // Кастомный порядок сортировки
+  duration     Int?
+  isPublic     Boolean  @default(false)
+  orderIndex   Int      @default(0)
+  eventId      Int?
+
+  event Event? @relation(fields: [eventId], references: [id])
 }
 
 model StreamLink {
   id         Int      @id @default(autoincrement())
-  youtubeUrl String?  // Ссылка на YouTube
-  rutubeUrl  String?  // Ссылка на Rutube
+  youtubeUrl String?
+  rutubeUrl  String?
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
 
-// Платные материалы - пакеты лекций
 model ContentPackage {
   id          Int      @id @default(autoincrement())
-  title       String   // "Курс медитации - 13 лекций"
-  description String?  // Подробное описание пакета
-  price       Decimal  // Цена за весь пакет
+  title       String
+  description String?
+  price       Decimal
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  uploadedBy  Int      // ID админа
-  
-  // Связи
-  items       PackageItem[]       // Лекции в пакете
-  purchases   UserPackageAccess[] // Кто купил пакет
-  uploader    User                @relation("UploadedPackages", fields: [uploadedBy], references: [id])
+  uploadedBy  Int
+
+  items     PackageItem[]
+  purchases UserPackageAccess[]
+  uploader  User                @relation("UploadedPackages", fields: [uploadedBy], references: [id])
 }
 
-// Отдельная лекция в пакете
 model PackageItem {
   id             Int      @id @default(autoincrement())
-  packageId      Int      // К какому пакету относится
-  title          String   // "Лекция 1: Основы"
-  fileName       String   // "lecture_01_compressed.mp3"
-  originalName   String   @default("") // Оригинальное имя файла
-  filePath       String   // Путь к файлу
-  duration       Int?     // Длительность в секундах
-  orderIndex     Int      // Порядок в пакете (1, 2, 3...)
-  originalSize   BigInt   // Changed to BigInt for files > 2GB
-  compressedSize BigInt   // Changed to BigInt for files > 2GB
+  packageId      Int
+  title          String
+  fileName       String
+  originalName   String   @default("")
+  filePath       String
+  duration       Int?
+  orderIndex     Int
+  originalSize   BigInt
+  compressedSize BigInt
   createdAt      DateTime @default(now())
-  
-  // Связи
-  package        ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  
+
+  package ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
   @@index([packageId, orderIndex])
-  @@index([packageId, originalName, originalSize]) // Индекс для быстрого поиска дубликатов
+  @@index([packageId, originalName, originalSize])
 }
 
-// Записи учебного класса
 model ClassFile {
   id           Int      @id @default(autoincrement())
   displayName  String
@@ -148,10 +156,9 @@ model ClassFile {
   views        Int      @default(0)
   duration     Int?
   isPublic     Boolean  @default(false)
-  orderIndex   Int      @default(0)    // Кастомный порядок сортировки
+  orderIndex   Int      @default(0)
 }
 
-// Ссылки на трансляцию учебного класса (отдельно от Служб)
 model ClassStreamLink {
   id         Int      @id @default(autoincrement())
   youtubeUrl String?
@@ -161,35 +168,32 @@ model ClassStreamLink {
   updatedAt  DateTime @updatedAt
 }
 
-// Сообщения чата
 model ChatMessage {
   id        Int      @id @default(autoincrement())
   userId    Int
   text      String
   link      String?
-  reactions String   @default("{}") // JSON: { "like": [userId, ...], "heart": [...], ... }
+  reactions String   @default("{}")
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
 }
 
-// Покупки пользователей (доступ к пакетам)
 model UserPackageAccess {
   id           Int      @id @default(autoincrement())
-  userId       Int      // Кто купил
-  packageId    Int      // Какой пакет купил
+  userId       Int
+  packageId    Int
   purchaseDate DateTime @default(now())
-  price        Decimal  // За сколько купил
-  grantedBy    Int      // Какой админ дал доступ
-  notes        String?  // Заметки (способ оплаты, комментарии)
-  
-  // Связи
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  package      ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  admin        User           @relation("GrantedPackageAccess", fields: [grantedBy], references: [id])
-  
+  price        Decimal
+  grantedBy    Int
+  notes        String?
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  admin   User           @relation("GrantedPackageAccess", fields: [grantedBy], references: [id])
+
   @@unique([userId, packageId])
   @@index([userId])
   @@index([packageId])

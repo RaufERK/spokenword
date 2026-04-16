@@ -77,3 +77,6 @@ database-export-*.json
 # local design dumps
 FigmaNew26/
 .env.pg
+
+# server info (contains SSH aliases and IPs)
+PLANS/SERVERS.md

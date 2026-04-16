@@ -1,6 +1,6 @@
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import { computeAccessUntil } from '@/lib/subscription'
+import { recalculateAccessUntil } from '@/lib/subscription'
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -13,59 +13,40 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const body = await request.json() as {
-    eventTitle?: string
-    eventType?: 'CONFERENCE' | 'CLASS'
-    eventStartDate?: string
-    paymentDate?: string
-  }
-
-  // --- Выдача доступа ---
-  const { eventTitle, eventType = 'CONFERENCE', eventStartDate, paymentDate: paymentDateStr } = body
-
-  if (!eventTitle || !eventStartDate) {
-    return NextResponse.json({ error: 'Необходимы eventTitle и eventStartDate' }, { status: 400 })
-  }
-
-  const eventStart = new Date(eventStartDate)
-  const paymentDate = paymentDateStr ? new Date(paymentDateStr) : new Date()
-  const accessUntil = computeAccessUntil(paymentDate, eventStart)
+  const body = await request.json() as { action?: 'grant' | 'revoke'; eventId?: number }
   const adminId = Number(session.user.id)
 
-  // Найти или создать мероприятие по заголовку + дате
-  let event = await prisma.event.findFirst({
-    where: { title: eventTitle, startDate: eventStart },
-  })
-  if (!event) {
-    event = await prisma.event.create({
-      data: { title: eventTitle, type: eventType, startDate: eventStart },
+  if (body.action === 'revoke') {
+    await prisma.userEventAccess.updateMany({
+      where: { userId, status: 'ACTIVE' },
+      data: { status: 'REVOKED', revokedBy: adminId, revokedAt: new Date() },
     })
+    await recalculateAccessUntil(userId)
+    return NextResponse.json({ accessUntil: null })
   }
 
-  // Создать или обновить запись о доступе
+  // Grant
+  if (!body.eventId) {
+    return NextResponse.json({ error: 'eventId обязателен' }, { status: 400 })
+  }
+
+  const event = await prisma.event.findUnique({ where: { id: body.eventId } })
+  if (!event) {
+    return NextResponse.json({ error: 'Мероприятие не найдено' }, { status: 404 })
+  }
+
+  const paymentDate = new Date()
+
   await prisma.userEventAccess.upsert({
     where: { userId_eventId: { userId, eventId: event.id } },
-    create: { userId, eventId: event.id, paymentDate, grantedBy: adminId },
-    update: { paymentDate, grantedBy: adminId },
+    create: { userId, eventId: event.id, paymentDate, grantedBy: adminId, status: 'ACTIVE' },
+    update: { paymentDate, grantedBy: adminId, status: 'ACTIVE', revokedBy: null, revokedAt: null },
   })
 
-  // Обновить User: если новый accessUntil позже текущего — обновляем
-  const currentUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { accessUntil: true },
-  })
-  const shouldUpdate = !currentUser?.accessUntil || accessUntil > currentUser.accessUntil
-
-  const user = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      paymentDate,
-      ...(shouldUpdate ? { accessUntil } : {}),
-    },
-  })
+  const accessUntil = await recalculateAccessUntil(userId)
 
   return NextResponse.json({
-    paymentDate: user.paymentDate,
-    accessUntil: user.accessUntil,
+    accessUntil: accessUntil?.toISOString() ?? null,
+    event: { id: event.id, title: event.title },
   })
 }

@@ -1,4 +1,3 @@
-// lib/auth.ts
 import prisma from '@/lib/prisma'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
@@ -14,7 +13,6 @@ declare module 'next-auth' {
     phoneNumber: string | null
     login: string
     email?: string | null
-    paymentDate?: string | null
     accessUntil?: string | null
     password?: string | null
   }
@@ -32,7 +30,6 @@ declare module 'next-auth/jwt' {
     phoneNumber: string | null
     login: string
     email?: string | null
-    paymentDate?: string | null
     accessUntil?: string | null
     password?: string | null
   }
@@ -63,7 +60,6 @@ export const authOptions: NextAuthOptions = {
           phoneNumber: user.phoneNumber,
           login: user.login,
           email: user.email,
-          paymentDate: user.paymentDate ? user.paymentDate.toISOString() : null,
           accessUntil: user.accessUntil ? user.accessUntil.toISOString() : null,
           password: user.password,
         }
@@ -80,17 +76,15 @@ export const authOptions: NextAuthOptions = {
         token.phoneNumber = user.phoneNumber
         token.login = user.login
         token.email = user.email
-        token.paymentDate = user.paymentDate ?? null
         token.accessUntil = user.accessUntil ?? null
         token.password = user.password ?? null
       } else if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: Number(token.id) },
-          select: { role: true, paymentDate: true, accessUntil: true },
+          select: { role: true, accessUntil: true },
         })
         if (dbUser) {
           token.role = dbUser.role
-          token.paymentDate = dbUser.paymentDate ? dbUser.paymentDate.toISOString() : null
           token.accessUntil = dbUser.accessUntil ? dbUser.accessUntil.toISOString() : null
         }
       }
@@ -106,7 +100,6 @@ export const authOptions: NextAuthOptions = {
         login: token.login as string,
         email: token.email as string | null,
         name: `${token.firstName} ${token.lastName}`,
-        paymentDate: token.paymentDate as string | null,
         accessUntil: token.accessUntil as string | null,
         password: token.password as string | null,
       }

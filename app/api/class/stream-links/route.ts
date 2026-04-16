@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const role = token.role as string
   const hasClassAccess =
     ['MODERATOR', 'ADMIN', 'SUPER'].includes(role) ||
-    isSubscriptionActive(token.paymentDate as string | null)
+    isSubscriptionActive(token.accessUntil as string | null)
 
   if (!hasClassAccess) {
     return NextResponse.json({ success: false, error: 'Нет доступа' }, { status: 403 })
