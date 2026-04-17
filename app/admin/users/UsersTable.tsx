@@ -30,10 +30,8 @@ type PaymentFilter = 'all' | 'active' | 'inactive' | 'never' | 'admins'
 type AccessUpdate = { id: number; accessUntil: string | null; eventTitle?: string }
 
 type ProfileLinkPayload = {
-  deployMode: 'primary' | 'mirror'
-  currentUrl: string
+  token: string
   urls: { ru: string; eu: string }
-  comments: { ru: string; eu: string }
 }
 
 function isAccessActive(accessUntil: string | null): boolean {
@@ -163,12 +161,11 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
       const data = await res.json() as ProfileLinkPayload | { error?: string }
       if (!res.ok || !('urls' in data)) return alert('Ошибка при создании ссылки профиля')
       const copiedText = [
-        `Профиль RU (${data.comments.ru}): ${data.urls.ru}`,
-        `Профиль EU (${data.comments.eu}): ${data.urls.eu}`,
-        `Текущий домен (${data.deployMode}): ${data.currentUrl}`,
+        `ДОСТУП ИЗ РОССИИ: ${data.urls.ru}`,
+        `ДОСТУП НЕ ИЗ РОССИИ: ${data.urls.eu}`,
       ].join('\n')
       await navigator.clipboard.writeText(copiedText)
-      alert(['Скопированы две ссылки профиля:', `1) RU: ${data.urls.ru}`, `2) EU: ${data.urls.eu}`].join('\n'))
+      alert(copiedText)
     } catch {
       alert('Ошибка при создании ссылки профиля')
     }
