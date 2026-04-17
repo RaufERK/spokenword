@@ -24,6 +24,12 @@ enum PaymentStatus {
   REVOKED
 }
 
+enum ChatRoomType {
+  GENERAL
+  SUPPORT
+  PRIVATE
+}
+
 model User {
   id           Int       @id @default(autoincrement())
   firstName    String
@@ -50,6 +56,7 @@ model User {
   grantedEventAccess   UserEventAccess[]   @relation("GrantedEventAccess")
   revokedEventAccess   UserEventAccess[]   @relation("RevokedEventAccess")
   chatMessages         ChatMessage[]
+  chatRoomParticipants ChatRoomParticipant[]
 
   @@index([accessUntil])
 }
@@ -169,16 +176,42 @@ model ClassStreamLink {
   updatedAt  DateTime @updatedAt
 }
 
+model ChatRoom {
+  id        Int          @id @default(autoincrement())
+  type      ChatRoomType
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  messages     ChatMessage[]
+  participants ChatRoomParticipant[]
+}
+
+model ChatRoomParticipant {
+  id         Int       @id @default(autoincrement())
+  roomId     Int
+  userId     Int
+  lastReadAt DateTime?
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
 model ChatMessage {
   id        Int      @id @default(autoincrement())
+  roomId    Int
   userId    Int
   text      String
   link      String?
   reactions String   @default("{}")
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([roomId, createdAt])
   @@index([createdAt])
 }
 

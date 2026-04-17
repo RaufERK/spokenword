@@ -1,19 +1,18 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { MessageCircle, Send, Link as LinkIcon, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  MessageCircle, Send, Link as LinkIcon, Trash2, Search, User,
+} from 'lucide-react'
 
-type ChatUser = {
-  id: number
-  firstName: string
-  lastName: string
-  role: 'USER' | 'MODERATOR' | 'ADMIN' | 'SUPER'
-}
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-type Reactions = Partial<Record<ReactionType, number[]>>
+type Role = 'USER' | 'MODERATOR' | 'ADMIN' | 'SUPER'
 
-type Message = {
+interface ChatUser { id: number; firstName: string; lastName: string; role: Role }
+
+interface Message {
   id: number
   text: string
   link: string | null
@@ -22,291 +21,500 @@ type Message = {
   user: ChatUser
 }
 
-const PRIVILEGED_ROLES = ['MODERATOR', 'ADMIN', 'SUPER'] as const
+interface Room {
+  id: number | null
+  type: 'GENERAL' | 'SUPPORT' | 'PRIVATE'
+  name: string
+  icon: string
+  unreadCount: number
+  participantId?: number
+  lastMessage: { text: string; time: string; authorName: string } | null
+}
 
 type ReactionType = 'like' | 'heart' | 'smile' | 'fire' | 'clap'
 
-const REACTION_EMOJIS: { type: ReactionType; emoji: string; activeClass: string }[] = [
-  { type: 'like',  emoji: '👍', activeClass: 'bg-blue-600/30 text-blue-300' },
-  { type: 'heart', emoji: '❤️', activeClass: 'bg-pink-600/30 text-pink-300' },
-  { type: 'smile', emoji: '😊', activeClass: 'bg-yellow-600/30 text-yellow-300' },
-  { type: 'fire',  emoji: '🔥', activeClass: 'bg-orange-600/30 text-orange-300' },
-  { type: 'clap',  emoji: '👏', activeClass: 'bg-green-600/30 text-green-300' },
+const REACTIONS: { type: ReactionType; emoji: string; active: string }[] = [
+  { type: 'like',  emoji: '👍', active: 'bg-blue-600/30 text-blue-300' },
+  { type: 'heart', emoji: '❤️', active: 'bg-pink-600/30 text-pink-300' },
+  { type: 'smile', emoji: '😊', active: 'bg-yellow-600/30 text-yellow-300' },
+  { type: 'fire',  emoji: '🔥', active: 'bg-orange-600/30 text-orange-300' },
+  { type: 'clap',  emoji: '👏', active: 'bg-green-600/30 text-green-300' },
 ]
 
-function parseReactions(raw: string): Reactions {
+const PRIVILEGED = ['MODERATOR', 'ADMIN', 'SUPER']
+
+function parseReactions(raw: string): Partial<Record<ReactionType, number[]>> {
   try { return JSON.parse(raw) } catch { return {} }
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-function formatTime(iso: string) {
+function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function roleBadge(role: Role) {
+  if (role === 'SUPER') return <span className="bg-gradient-to-r from-red-600 to-pink-600 text-white px-1.5 py-0.5 rounded text-[10px] border border-pink-400/50">SUPER</span>
+  if (role === 'ADMIN') return <span className="bg-gradient-to-r from-pink-600 to-rose-600 text-white px-1.5 py-0.5 rounded text-[10px] border border-rose-400/50">ADMIN</span>
+  if (role === 'MODERATOR') return <span className="bg-gradient-to-r from-yellow-600 to-amber-600 text-white px-1.5 py-0.5 rounded text-[10px] border border-yellow-400/50">MOD</span>
+  return null
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ChatPage() {
   const { data: session, status } = useSession()
+  const userId = Number((session?.user as { id?: string })?.id ?? 0)
+  const userRole = ((session?.user as { role?: string })?.role ?? '') as Role
+  const isPrivileged = PRIVILEGED.includes(userRole)
+
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [activeRoomId, setActiveRoomId] = useState<number | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [link, setLink] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<ChatUser[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+
   const bottomRef = useRef<HTMLDivElement>(null)
-  const firstLoad = useRef(true)
+  const firstMsgLoad = useRef(true)
+  const lastActivityRef = useRef(Date.now())
+  const roomsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const msgsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const rawId = (session?.user as { id?: string | number })?.id
-  const userId = rawId !== undefined ? Number(rawId) : undefined
-  const userRole = (session?.user as { role?: string })?.role || ''
-  const isPrivileged = PRIVILEGED_ROLES.includes(userRole as typeof PRIVILEGED_ROLES[number])
+  const activeRoom = rooms.find(r => r.id === activeRoomId) ?? null
 
-  const fetchMessages = useCallback(async () => {
+  // ── Fetch rooms ────────────────────────────────────────────────────────────
+  const fetchRooms = useCallback(async () => {
     try {
-      const res = await fetch('/api/chat?limit=100', { cache: 'no-store' })
+      const res = await fetch('/api/chat/rooms', { cache: 'no-store' })
       if (!res.ok) return
-      const json = await res.json()
-      setMessages(json.data || [])
-      if (firstLoad.current) {
-        firstLoad.current = false
-        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+      const data = await res.json()
+      setRooms(data.rooms ?? [])
+      // Если нет активной комнаты — открыть GENERAL
+      setActiveRoomId(prev => {
+        if (prev !== null) return prev
+        const general = (data.rooms as Room[]).find(r => r.type === 'GENERAL')
+        return general?.id ?? null
+      })
+    } catch {}
+  }, [])
+
+  // ── Fetch messages ─────────────────────────────────────────────────────────
+  const fetchMessages = useCallback(async (roomId: number) => {
+    try {
+      const res = await fetch(`/api/chat/rooms/${roomId}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      setMessages(data.messages ?? [])
+      if (firstMsgLoad.current) {
+        firstMsgLoad.current = false
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 80)
       }
     } catch {}
   }, [])
 
+  // ── Adaptive interval + visibility pause ──────────────────────────────────
+  const getInterval = () => Date.now() - lastActivityRef.current > 120_000 ? 10_000 : 5_000
+
+  const startPolling = useCallback(() => {
+    if (roomsIntervalRef.current) clearInterval(roomsIntervalRef.current)
+    roomsIntervalRef.current = setInterval(() => { fetchRooms() }, getInterval())
+  }, [fetchRooms])
+
+  const startMsgPolling = useCallback((roomId: number) => {
+    if (msgsIntervalRef.current) clearInterval(msgsIntervalRef.current)
+    msgsIntervalRef.current = setInterval(() => { fetchMessages(roomId) }, getInterval())
+  }, [fetchMessages])
+
   useEffect(() => {
     if (status !== 'authenticated') return
-    fetchMessages()
-    const interval = setInterval(fetchMessages, 5000)
-    return () => clearInterval(interval)
-  }, [status, fetchMessages])
+    fetchRooms()
+    startPolling()
 
+    const onActivity = () => { lastActivityRef.current = Date.now() }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (roomsIntervalRef.current) clearInterval(roomsIntervalRef.current)
+        if (msgsIntervalRef.current) clearInterval(msgsIntervalRef.current)
+      } else {
+        fetchRooms()
+        startPolling()
+        if (activeRoomId) { fetchMessages(activeRoomId); startMsgPolling(activeRoomId) }
+      }
+    }
+
+    document.addEventListener('mousemove', onActivity)
+    document.addEventListener('keydown', onActivity)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      if (roomsIntervalRef.current) clearInterval(roomsIntervalRef.current)
+      if (msgsIntervalRef.current) clearInterval(msgsIntervalRef.current)
+      document.removeEventListener('mousemove', onActivity)
+      document.removeEventListener('keydown', onActivity)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [status, fetchRooms, startPolling, fetchMessages, startMsgPolling, activeRoomId])
+
+  // ── Switch room ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!activeRoomId) return
+    firstMsgLoad.current = true
+    setMessages([])
+    fetchMessages(activeRoomId)
+    startMsgPolling(activeRoomId)
+    fetchRooms() // обновить unreadCount
+  }, [activeRoomId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Search users ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) { setSearchResults([]); return }
+    const timeout = setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const res = await fetch(`/api/chat/users/search?q=${encodeURIComponent(searchQuery)}`)
+        const data = await res.json()
+        setSearchResults(data.users ?? [])
+      } catch {} finally { setSearchLoading(false) }
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [searchQuery])
+
+  // ── Open/create private room ───────────────────────────────────────────────
+  const openPrivateRoom = async (participantId: number) => {
+    setSearchQuery('')
+    setSearchResults([])
+    const existing = rooms.find(r => r.type === 'PRIVATE' && r.participantId === participantId)
+    if (existing?.id) { setActiveRoomId(existing.id); return }
+    const res = await fetch('/api/chat/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'PRIVATE', participantId }),
+    })
+    const data = await res.json()
+    if (data.roomId) { await fetchRooms(); setActiveRoomId(data.roomId) }
+  }
+
+  // ── Open/create support room ───────────────────────────────────────────────
+  const openSupportRoom = async () => {
+    const existing = rooms.find(r => r.type === 'SUPPORT' && r.id !== null)
+    if (existing?.id) { setActiveRoomId(existing.id); return }
+    const res = await fetch('/api/chat/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'SUPPORT' }),
+    })
+    const data = await res.json()
+    if (data.roomId) { await fetchRooms(); setActiveRoomId(data.roomId) }
+  }
+
+  // ── Send message ───────────────────────────────────────────────────────────
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!text.trim() && !link.trim()) return
-    setSending(true)
-    setError('')
+    if (!text.trim() || !activeRoomId) return
+    setSending(true); setError('')
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(`/api/chat/rooms/${activeRoomId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text.trim(), link: link.trim() || undefined }),
       })
       const json = await res.json()
       if (!res.ok) { setError(json.error || 'Ошибка'); return }
-      setText('')
-      setLink('')
-      await fetchMessages()
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+      setText(''); setLink('')
+      await fetchMessages(activeRoomId)
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 80)
     } finally { setSending(false) }
   }
 
-  const handleDelete = async (id: number) => {
+  // ── Delete message ─────────────────────────────────────────────────────────
+  const handleDelete = async (msgId: number) => {
     if (!confirm('Удалить сообщение?')) return
-    await fetch(`/api/chat/${id}`, { method: 'DELETE' })
-    setMessages((prev) => prev.filter((m) => m.id !== id))
+    await fetch(`/api/chat/${msgId}`, { method: 'DELETE' })
+    setMessages(prev => prev.filter(m => m.id !== msgId))
   }
 
+  // ── React ──────────────────────────────────────────────────────────────────
   const handleReact = async (msgId: number, type: ReactionType) => {
-    // Optimistic update
-    setMessages((prev) => prev.map((m) => {
+    setMessages(prev => prev.map(m => {
       if (m.id !== msgId) return m
       const r = parseReactions(m.reactions)
-      const arr = r[type] || []
-      const idx = arr.indexOf(userId!)
-      // remove from all then toggle
-      const cleaned: Reactions = {}
+      const cleaned: Partial<Record<ReactionType, number[]>> = {}
       for (const k of Object.keys(r) as ReactionType[]) {
-        cleaned[k] = (r[k] || []).filter((uid) => uid !== userId)
+        cleaned[k] = (r[k] ?? []).filter(id => id !== userId)
         if (!cleaned[k]!.length) delete cleaned[k]
       }
-      if (idx < 0) {
-        cleaned[type] = [...(cleaned[type] || []), userId!]
-      }
+      const wasActive = (r[type] ?? []).includes(userId)
+      if (!wasActive) cleaned[type] = [...(cleaned[type] ?? []), userId]
       return { ...m, reactions: JSON.stringify(cleaned) }
     }))
-
     const res = await fetch(`/api/chat/${msgId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type }),
     })
-    if (!res.ok) fetchMessages() // revert on error
+    if (!res.ok && activeRoomId) fetchMessages(activeRoomId)
   }
 
-  if (status === 'loading') {
-    return <div className="flex items-center justify-center min-h-[60vh] text-white/50">Загрузка...</div>
+  // ── Handle room click ──────────────────────────────────────────────────────
+  const handleRoomClick = (room: Room) => {
+    if (room.id === null) {
+      openSupportRoom()
+    } else {
+      setActiveRoomId(room.id)
+    }
   }
-  if (status === 'unauthenticated') {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] text-center">
-        <p className="text-white/60">Войдите, чтобы открыть чат — <a href="/login" className="text-blue-400 underline">Войти</a></p>
-      </div>
-    )
-  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  if (status === 'loading') return <div className="flex items-center justify-center h-[calc(100vh-4rem)] text-white/40">Загрузка...</div>
+  if (status === 'unauthenticated') return (
+    <div className="flex items-center justify-center h-[calc(100vh-4rem)] text-center">
+      <p className="text-white/60">Войдите чтобы открыть чат — <a href="/login" className="text-blue-400 underline">Войти</a></p>
+    </div>
+  )
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 h-[calc(100vh-5rem)]">
-      <div className="h-full flex flex-col bg-gradient-to-br from-purple-900/40 to-purple-800/30 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 h-[calc(100vh-3.5rem)]">
+      <div className="h-full flex bg-gradient-to-br from-purple-900/40 to-purple-800/30 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
 
-        {/* Header */}
-        <div className="p-5 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3">
-            <MessageCircle className="w-8 h-8 text-purple-400" />
-            <div>
-              <h1 className="text-2xl text-white leading-tight">Чат общины</h1>
-              <p className="text-purple-200/70 text-sm">Общение участников · обновляется каждые 5 сек</p>
+        {/* ── Sidebar ── */}
+        <div className="w-72 shrink-0 border-r border-white/10 flex flex-col">
+          {/* Header + search */}
+          <div className="p-3 border-b border-white/10">
+            <h2 className="text-base text-white font-medium flex items-center gap-2 mb-2.5">
+              <MessageCircle className="w-5 h-5 text-purple-400" />
+              Чаты
+            </h2>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-purple-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Поиск по имени..."
+                className="w-full pl-8 pr-3 py-1.5 bg-purple-950/50 border border-purple-400/30 rounded-lg text-white placeholder-purple-300/40 focus:ring-1 focus:ring-purple-500 outline-none text-xs"
+              />
             </div>
           </div>
-        </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-          {messages.length === 0 && (
-            <div className="flex items-center justify-center h-full text-white/30 text-sm">
-              Сообщений пока нет
-            </div>
-          )}
-
-          {messages.map((msg) => {
-            const isAdmin = msg.user.role === 'ADMIN'
-            const isMod = msg.user.role === 'MODERATOR'
-            const reactions = parseReactions(msg.reactions)
-            const myReaction = userId !== undefined
-              ? (Object.keys(reactions) as ReactionType[]).find((k) => reactions[k]?.includes(userId))
-              : undefined
-
-            return (
-              <div
-                key={msg.id}
-                className={`backdrop-blur-sm rounded-xl p-4 border transition-all ${
-                  isAdmin
-                    ? 'bg-gradient-to-br from-pink-900/50 to-rose-900/40 border-pink-500/40 shadow-lg shadow-pink-500/10'
-                    : isMod
-                    ? 'bg-gradient-to-br from-yellow-900/30 to-amber-900/20 border-yellow-500/30'
-                    : 'bg-white/8 border-white/5 hover:border-purple-400/30'
-                }`}
-              >
-                {/* Message header row */}
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`font-semibold text-sm ${isAdmin ? 'text-pink-200' : isMod ? 'text-yellow-200' : 'text-purple-300'}`}>
-                      {msg.user.firstName} {msg.user.lastName}
-                    </span>
-
-                    {msg.user.role === 'ADMIN' && (
-                      <span className="bg-gradient-to-r from-pink-600 to-rose-600 text-white px-1.5 py-0.5 rounded text-xs border border-rose-400/50 font-medium">
-                        ADMIN
-                      </span>
-                    )}
-                    {msg.user.role === 'MODERATOR' && (
-                      <span className="bg-gradient-to-r from-yellow-600 to-amber-600 text-white px-1.5 py-0.5 rounded text-xs border border-yellow-400/50 font-medium">
-                        MOD
-                      </span>
-                    )}
-
-                    <span className={`text-xs ${isAdmin ? 'text-pink-300/50' : 'text-purple-400/50'}`}>•</span>
-                    <span className={`text-xs ${isAdmin ? 'text-pink-300/50' : 'text-purple-400/50'}`}>
-                      {formatDate(msg.createdAt)}
-                    </span>
-                    <span className={`text-xs ${isAdmin ? 'text-pink-300/50' : 'text-purple-400/50'}`}>
-                      {formatTime(msg.createdAt)}
-                    </span>
-                  </div>
-
-                  {isPrivileged && (
-                    <button
-                      onClick={() => handleDelete(msg.id)}
-                      className="text-red-400/60 hover:text-red-400 transition-colors ml-2 shrink-0"
-                      title="Удалить сообщение"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+          <div className="flex-1 overflow-y-auto">
+            {/* Search results */}
+            {searchQuery.trim().length >= 2 && (
+              <div className="border-b border-white/10">
+                <div className="px-3 py-1 bg-purple-900/30">
+                  <p className="text-purple-300 text-[11px] font-medium">
+                    {searchLoading ? 'Поиск...' : searchResults.length > 0 ? `Найдено: ${searchResults.length}` : 'Ничего не найдено'}
+                  </p>
                 </div>
-
-                {/* Text */}
-                {msg.text && <p className="text-white text-sm leading-relaxed mb-2">{msg.text}</p>}
-
-                {/* Link */}
-                {msg.link && (
-                  <a
-                    href={msg.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex items-center gap-2 underline text-sm mb-3 break-all ${
-                      isAdmin ? 'text-pink-300 hover:text-pink-200' : 'text-blue-400 hover:text-blue-300'
-                    }`}
+                {searchResults.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={() => openPrivateRoom(u.id)}
+                    className="w-full px-3 py-2 text-left hover:bg-white/5 transition-colors border-b border-white/5 flex items-center gap-2"
                   >
-                    <LinkIcon className="w-3.5 h-3.5 shrink-0" />
-                    <span>{msg.link}</span>
-                  </a>
-                )}
-
-                {/* Reactions */}
-                <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/5 flex-wrap">
-                  {REACTION_EMOJIS.map(({ type, emoji, activeClass }) => {
-                    const count = reactions[type]?.length || 0
-                    const active = myReaction === type
-                    return (
-                      <button
-                        key={type}
-                        onClick={() => userId !== undefined && handleReact(msg.id, type)}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all ${
-                          active
-                            ? activeClass
-                            : 'bg-white/5 text-purple-300 hover:bg-white/10'
-                        }`}
-                        title={type}
-                      >
-                        <span>{emoji}</span>
-                        {count > 0 && <span className="font-medium">{count}</span>}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input Form */}
-        <div className="p-5 border-t border-white/10 shrink-0">
-          {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
-          <form onSubmit={handleSend} className="space-y-3">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
-              placeholder="Введите сообщение..."
-              rows={2}
-              maxLength={1000}
-              className="w-full px-4 py-3 bg-purple-950/50 border border-purple-400/30 rounded-xl text-white placeholder-purple-300/40 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-none text-sm"
-            />
-
-            {isPrivileged && (
-              <div className="relative">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
-                <input
-                  type="url"
-                  value={link}
-                  onChange={(e) => setLink(e.target.value)}
-                  placeholder="Ссылка (необязательно)"
-                  className="w-full pl-10 pr-4 py-3 bg-purple-950/50 border border-purple-400/30 rounded-xl text-white placeholder-purple-300/40 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all text-sm"
-                />
+                    <div className="w-7 h-7 bg-purple-600/40 rounded-full flex items-center justify-center shrink-0">
+                      <User className="w-3.5 h-3.5 text-purple-300" />
+                    </div>
+                    <div>
+                      <p className="text-white text-xs font-medium">{u.firstName} {u.lastName}</p>
+                      <p className="text-purple-400 text-[10px]">
+                        {u.role === 'SUPER' ? 'Супер-администратор' : u.role === 'ADMIN' ? 'Администратор' : u.role === 'MODERATOR' ? 'Модератор' : 'Участник'}
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={sending || (!text.trim() && !link.trim())}
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-40 text-white py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium"
-            >
-              <Send className="w-5 h-5" />
-              <span>Отправить</span>
-            </button>
-          </form>
+            {/* Room list */}
+            {rooms.map(room => (
+              <button
+                key={room.id ?? 'support-new'}
+                onClick={() => handleRoomClick(room)}
+                className={`w-full px-3 py-2.5 text-left transition-all border-b border-white/5 ${
+                  activeRoomId === room.id && room.id !== null
+                    ? 'bg-purple-600/30 border-l-2 border-l-purple-400'
+                    : 'hover:bg-white/5'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-lg shrink-0">{room.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-xs font-medium truncate">{room.name}</p>
+                      {room.lastMessage && (
+                        <p className="text-purple-300 text-[11px] truncate">
+                          {room.lastMessage.authorName}: {room.lastMessage.text}
+                        </p>
+                      )}
+                      {!room.lastMessage && room.type === 'SUPPORT' && room.id === null && (
+                        <p className="text-purple-400/60 text-[11px]">Нажмите чтобы написать</p>
+                      )}
+                    </div>
+                  </div>
+                  {room.unreadCount > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 shrink-0">
+                      {room.unreadCount}
+                    </span>
+                  )}
+                </div>
+                {room.lastMessage && (
+                  <p className="text-purple-400/50 text-[10px] mt-0.5 ml-8">
+                    {fmtTime(room.lastMessage.time)}
+                  </p>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Main chat panel ── */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {!activeRoom ? (
+            <div className="flex-1 flex items-center justify-center text-white/30 text-sm">
+              Выберите чат
+            </div>
+          ) : (
+            <>
+              {/* Chat header */}
+              <div className="px-4 py-3 border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{activeRoom.icon}</span>
+                  <div>
+                    <h1 className="text-base text-white font-medium">{activeRoom.name}</h1>
+                    <p className="text-purple-200/60 text-xs">
+                      {activeRoom.type === 'GENERAL' && 'Общение участников · обновляется автоматически'}
+                      {activeRoom.type === 'SUPPORT' && 'Обращения к администрации'}
+                      {activeRoom.type === 'PRIVATE' && 'Личная переписка'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {messages.length === 0 && (
+                  <div className="flex items-center justify-center h-full text-white/30 text-sm">
+                    Сообщений пока нет
+                  </div>
+                )}
+                {messages.map(msg => {
+                  const isAdmin = msg.user.role === 'ADMIN' || msg.user.role === 'SUPER'
+                  const isMod = msg.user.role === 'MODERATOR'
+                  const isOwn = msg.user.id === userId
+                  const reactions = parseReactions(msg.reactions)
+                  const myReaction = (Object.keys(reactions) as ReactionType[]).find(k => reactions[k]?.includes(userId))
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`rounded-lg p-3 border transition-all ${
+                        isAdmin
+                          ? 'bg-gradient-to-br from-pink-900/50 to-rose-900/40 border-pink-500/40 shadow-sm shadow-pink-500/10'
+                          : isMod
+                          ? 'bg-gradient-to-br from-yellow-900/30 to-amber-900/20 border-yellow-500/30'
+                          : 'bg-white/8 border-white/5 hover:border-purple-400/20'
+                      }`}
+                    >
+                      {/* Header row */}
+                      <div className="flex items-start justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            onClick={() => !isOwn && activeRoom.type === 'GENERAL' && openPrivateRoom(msg.user.id)}
+                            className={`font-semibold text-xs ${isAdmin ? 'text-pink-200' : isMod ? 'text-yellow-200' : 'text-purple-300'} ${!isOwn && activeRoom.type === 'GENERAL' ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
+                          >
+                            {msg.user.firstName} {msg.user.lastName}
+                          </button>
+                          {roleBadge(msg.user.role)}
+                          <span className={`text-[10px] ${isAdmin ? 'text-pink-300/50' : 'text-purple-400/50'}`}>
+                            {fmtDate(msg.createdAt)} {fmtTime(msg.createdAt)}
+                          </span>
+                        </div>
+                        {isPrivileged && (
+                          <button onClick={() => handleDelete(msg.id)} className="text-red-400/50 hover:text-red-400 transition-colors ml-2 shrink-0">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Text */}
+                      {msg.text && <p className="text-white text-sm leading-relaxed mb-1.5">{msg.text}</p>}
+
+                      {/* Link */}
+                      {msg.link && (
+                        <a href={msg.link} target="_blank" rel="noopener noreferrer"
+                          className={`inline-flex items-center gap-1 underline text-xs mb-2 break-all ${isAdmin ? 'text-pink-300 hover:text-pink-200' : 'text-blue-400 hover:text-blue-300'}`}
+                        >
+                          <LinkIcon className="w-3 h-3 shrink-0" />
+                          {msg.link}
+                        </a>
+                      )}
+
+                      {/* Reactions */}
+                      <div className="flex items-center gap-1 mt-2 pt-2 border-t border-white/5 flex-wrap">
+                        {REACTIONS.map(({ type, emoji, active }) => {
+                          const count = reactions[type]?.length ?? 0
+                          const isActive = myReaction === type
+                          return (
+                            <button
+                              key={type}
+                              onClick={() => handleReact(msg.id, type)}
+                              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs transition-all ${isActive ? active : 'bg-white/5 text-purple-300 hover:bg-white/10'}`}
+                            >
+                              <span>{emoji}</span>
+                              {count > 0 && <span className="font-medium">{count}</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Input form */}
+              <div className="p-3 border-t border-white/10 shrink-0">
+                {error && <p className="text-red-400 text-xs mb-2">{error}</p>}
+                <form onSubmit={handleSend} className="space-y-2">
+                  <textarea
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
+                    placeholder="Введите сообщение... (Enter — отправить, Shift+Enter — перенос)"
+                    rows={2}
+                    maxLength={1000}
+                    className="w-full px-3 py-2 bg-purple-950/50 border border-purple-400/30 rounded-xl text-white placeholder-purple-300/40 focus:ring-1 focus:ring-purple-500 outline-none resize-none text-sm"
+                  />
+                  {(isPrivileged || activeRoom.type === 'PRIVATE') && (
+                    <div className="relative">
+                      <LinkIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-purple-400" />
+                      <input
+                        type="url"
+                        value={link}
+                        onChange={e => setLink(e.target.value)}
+                        placeholder="Ссылка (необязательно)"
+                        className="w-full pl-8 pr-3 py-2 bg-purple-950/50 border border-purple-400/30 rounded-xl text-white placeholder-purple-300/40 focus:ring-1 focus:ring-purple-500 outline-none text-sm"
+                      />
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={sending || !text.trim()}
+                    className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-40 text-white py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-medium"
+                  >
+                    <Send className="w-4 h-4" />
+                    Отправить
+                  </button>
+                </form>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
