@@ -73,14 +73,10 @@ export default async function PaidContentPage() {
     }))
 
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Платные материалы</h1>
-      
-      <PaidContentClient 
-        purchasedPackages={purchasedPackages}
-        availablePackages={availablePackages}
-        userRole={session.user.role}
-      />
-    </main>
+    <PaidContentClient
+      purchasedPackages={purchasedPackages}
+      availablePackages={availablePackages}
+      userRole={session.user.role}
+    />
   )
 }

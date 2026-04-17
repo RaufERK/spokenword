@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { BookOpen, Clock, Users, Lock, ChevronDown, ChevronUp, Play, CheckCircle } from 'lucide-react'
 import VideoPlayer from '@/components/user/VideoPlayer'
 
 interface PackageItem {
@@ -31,200 +32,210 @@ interface Props {
   userRole: string
 }
 
-export default function PaidContentClient({ 
-  purchasedPackages, 
-  availablePackages, 
-  userRole 
-}: Props) {
-  const [expandedPackages, setExpandedPackages] = useState<Set<number>>(new Set())
+function fmtDuration(s: number | null) {
+  if (!s) return ''
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+  return `${m}:${String(sec).padStart(2, '0')}`
+}
 
-  const togglePackage = (packageId: number) => {
-    setExpandedPackages(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(packageId)) {
-        newSet.delete(packageId)
-      } else {
-        newSet.add(packageId)
-      }
-      return newSet
-    })
-  }
+function totalDuration(items: PackageItem[]) {
+  const total = items.reduce((sum, i) => sum + (i.duration || 0), 0)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  if (h > 0) return `${h}ч ${m}мин`
+  return `${m}мин`
+}
 
-  const formatDuration = (seconds: number | null) => {
-    if (!seconds) return ''
-    const minutes = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${minutes}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const getTotalDuration = (items: PackageItem[]) => {
-    const total = items.reduce((sum, item) => sum + (item.duration || 0), 0)
-    const hours = Math.floor(total / 3600)
-    const minutes = Math.floor((total % 3600) / 60)
-    
-    if (hours > 0) {
-      return `${hours}ч ${minutes}мин`
-    }
-    return `${minutes}мин`
-  }
-
-  // Проверяем, есть ли у пользователя права модератора/админа
-  const hasModeratorAccess = ['MODERATOR', 'ADMIN', 'SUPER'].includes(userRole)
+function PurchasedCard({ pkg }: { pkg: PurchasedPackage }) {
+  const [open, setOpen] = useState(false)
+  const [playingId, setPlayingId] = useState<number | null>(null)
 
   return (
-    <div className="space-y-8">
-      {/* Купленные материалы */}
-      {(purchasedPackages.length > 0 || hasModeratorAccess) && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-green-700">
-            {hasModeratorAccess ? 'Все материалы (доступ по роли)' : 'Ваши материалы'}
-          </h2>
-          
-          {purchasedPackages.length === 0 && hasModeratorAccess && (
-            <p className="text-gray-500 mb-4">
-              У вас есть доступ ко всем материалам благодаря вашей роли, но пакетов пока нет.
-            </p>
+    <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/30 backdrop-blur-sm rounded-xl border border-white/10 hover:border-green-400/50 transition-all duration-300 overflow-hidden">
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-xl text-white flex-1 leading-snug">{pkg.title}</h3>
+          <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 ml-2 mt-0.5" />
+        </div>
+
+        {pkg.description && (
+          <p className="text-purple-300 text-sm mb-4">{pkg.description}</p>
+        )}
+
+        <div className="space-y-2 text-purple-200 text-sm mb-5">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            <span>{pkg.items.length} лекций</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            <span>{totalDuration(pkg.items)}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-green-400 text-sm mb-4">
+          <div className="w-2 h-2 rounded-full bg-green-400" />
+          <span>Куплено {new Date(pkg.purchaseDate).toLocaleDateString('ru-RU')}</span>
+        </div>
+
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm"
+        >
+          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {open ? 'Свернуть' : 'Смотреть лекции'}
+        </button>
+      </div>
+
+      {open && (
+        <div className="border-t border-white/10 bg-black/20">
+          {pkg.items.map((item, idx) => (
+            <div key={item.id} className="border-b border-white/5 last:border-0">
+              <button
+                onClick={() => setPlayingId(playingId === item.id ? null : item.id)}
+                className="w-full flex items-center gap-3 px-6 py-3 hover:bg-white/5 transition-colors text-left"
+              >
+                <div className="w-7 h-7 rounded-full bg-purple-700/60 flex items-center justify-center text-xs text-purple-200 flex-shrink-0">
+                  {idx + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm truncate">{item.title}</p>
+                  {item.duration && (
+                    <p className="text-purple-400 text-xs">{fmtDuration(item.duration)}</p>
+                  )}
+                </div>
+                <Play className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              </button>
+              {playingId === item.id && (
+                <div className="px-4 pb-4">
+                  <VideoPlayer packageId={pkg.id} itemId={item.id} title={item.title} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LockedCard({ pkg }: { pkg: Package }) {
+  return (
+    <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/30 backdrop-blur-sm rounded-xl border border-white/10 hover:border-blue-400/50 transition-all duration-300 overflow-hidden">
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-xl text-white flex-1 leading-snug">{pkg.title}</h3>
+          <Lock className="w-5 h-5 text-yellow-400 flex-shrink-0 ml-2 mt-0.5" />
+        </div>
+
+        {pkg.description && (
+          <p className="text-purple-300 text-sm mb-4">{pkg.description}</p>
+        )}
+
+        <div className="space-y-2 text-purple-200 text-sm mb-6">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            <span>{pkg.items.length} лекций</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            <span>{totalDuration(pkg.items)}</span>
+          </div>
+          {pkg._count && (
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span>{pkg._count.purchases} покупок</span>
+            </div>
           )}
-          
-          <div className="space-y-4">
-            {(hasModeratorAccess ? [...purchasedPackages, ...availablePackages] : purchasedPackages).map(pkg => (
-              <div key={pkg.id} className="border rounded-lg bg-green-50 border-green-200">
-                <div 
-                  className="p-4 cursor-pointer hover:bg-green-100 transition-colors"
-                  onClick={() => togglePackage(pkg.id)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-green-800">{pkg.title}</h3>
-                      {pkg.description && (
-                        <p className="text-green-700 mt-1">{pkg.description}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-2 text-sm text-green-600">
-                        <span>🎬 {pkg.items.length} лекций</span>
-                        <span>⏱️ {getTotalDuration(pkg.items)}</span>
-                        {'purchaseDate' in pkg && (
-                          <span>💰 Куплено: {new Date(pkg.purchaseDate).toLocaleDateString()}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-green-700">{pkg.price}₽</p>
-                      <button className="text-green-600 hover:text-green-800 text-sm">
-                        {expandedPackages.has(pkg.id) ? '▼ Свернуть' : '▶ Развернуть'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                {expandedPackages.has(pkg.id) && (
-                  <div className="border-t border-green-200 p-4 bg-white">
-                    <div className="space-y-3">
-                      {pkg.items.map((item, index) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                          <div className="flex items-center space-x-3">
-                            <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
-                              {index + 1}
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-gray-900">{item.title}</h4>
-                              {item.duration && (
-                                <p className="text-sm text-gray-600">
-                                  Длительность: {formatDuration(item.duration)}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <VideoPlayer 
-                            packageId={pkg.id}
-                            itemId={item.id}
-                            title={item.title}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+        </div>
 
-      {/* Доступные для покупки */}
-      {!hasModeratorAccess && availablePackages.length > 0 && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-blue-700">Доступные для покупки</h2>
-          <div className="space-y-4">
-            {availablePackages.map(pkg => (
-              <div key={pkg.id} className="border rounded-lg bg-blue-50 border-blue-200 p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-medium text-blue-800">{pkg.title}</h3>
-                    {pkg.description && (
-                      <p className="text-blue-700 mt-1">{pkg.description}</p>
-                    )}
-                    <div className="flex items-center gap-4 mt-2 text-sm text-blue-600">
-                      <span>🎬 {pkg.items.length} лекций</span>
-                      <span>⏱️ {getTotalDuration(pkg.items)}</span>
-                      {pkg._count && (
-                        <span>👥 {pkg._count.purchases} покупок</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-blue-700 mb-2">{pkg.price}₽</p>
-                    <div className="bg-blue-600 text-white px-4 py-2 rounded text-sm">
-                      Свяжитесь с администратором
-                    </div>
-                  </div>
-                </div>
-                
-                {pkg.items.length > 0 && (
-                  <div className="mt-4 p-3 bg-white rounded border">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Содержание:</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-sm text-gray-600">
-                      {pkg.items.slice(0, 6).map(item => (
-                        <div key={item.id} className="flex justify-between">
-                          <span>{item.title}</span>
-                          <span>{formatDuration(item.duration)}</span>
-                        </div>
-                      ))}
-                      {pkg.items.length > 6 && (
-                        <p className="text-gray-500 col-span-2">
-                          ... и еще {pkg.items.length - 6} лекций
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Если нет материалов вообще */}
-      {purchasedPackages.length === 0 && availablePackages.length === 0 && !hasModeratorAccess && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📚</div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">
-            Платных материалов пока нет
-          </h2>
-          <p className="text-gray-500">
-            Скоро здесь появятся интересные материалы для изучения
+        <div className="bg-yellow-900/30 border border-yellow-600/30 rounded-lg p-4">
+          <p className="text-yellow-200 text-sm text-center">⚠️ Нет доступа к этим материалам</p>
+          <p className="text-yellow-300 text-xs text-center mt-1">
+            Свяжитесь с администратором для получения доступа
           </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function PaidContentClient({ purchasedPackages, availablePackages, userRole }: Props) {
+  const isModerator = ['MODERATOR', 'ADMIN', 'SUPER'].includes(userRole)
+
+  const allPurchased = isModerator
+    ? [...purchasedPackages, ...availablePackages.map(p => ({
+        ...p,
+        purchaseDate: new Date().toISOString(),
+        purchasePrice: p.price,
+        notes: null,
+      }))]
+    : purchasedPackages
+
+  const hasNothing = allPurchased.length === 0 && availablePackages.length === 0
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Заголовок */}
+      <div className="mb-10">
+        <div className="flex items-center gap-3 mb-2">
+          <BookOpen className="w-8 h-8 text-blue-400" />
+          <h1 className="text-4xl text-white font-light">Платные материалы</h1>
+        </div>
+        <p className="text-purple-200">Специальные курсы и семинары для углубленного изучения</p>
+      </div>
+
+      {/* Купленные */}
+      {allPurchased.length > 0 && (
+        <section className="mb-10">
+          {!isModerator && (
+            <h2 className="text-lg text-green-400 font-medium mb-4 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" /> Ваши материалы
+            </h2>
+          )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {allPurchased.map(pkg => (
+              <PurchasedCard key={pkg.id} pkg={pkg as PurchasedPackage} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Недоступные (только для обычных пользователей) */}
+      {!isModerator && availablePackages.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-lg text-purple-300 font-medium mb-4 flex items-center gap-2">
+            <Lock className="w-5 h-5" /> Другие курсы
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {availablePackages.map(pkg => (
+              <LockedCard key={pkg.id} pkg={pkg} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Пусто */}
+      {hasNothing && (
+        <div className="text-center py-20 text-purple-300">
+          <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-40" />
+          <p className="text-xl">Платных материалов пока нет</p>
+          <p className="text-sm mt-2 opacity-60">Скоро здесь появятся курсы</p>
         </div>
       )}
 
-      {/* Если у пользователя нет купленных материалов, но есть доступные */}
-      {purchasedPackages.length === 0 && availablePackages.length > 0 && !hasModeratorAccess && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h3 className="font-medium text-yellow-800 mb-2">
-            У вас пока нет доступа к платным материалам
-          </h3>
-          <p className="text-yellow-700 text-sm">
-            Свяжитесь с администратором для получения доступа к интересующим вас материалам.
-          </p>
+      {/* Инструкция */}
+      {!isModerator && (
+        <div className="mt-4 bg-gradient-to-br from-blue-900/40 to-blue-800/30 backdrop-blur-sm rounded-xl p-8 border border-blue-400/30">
+          <h2 className="text-2xl text-white mb-4 font-light">Как получить доступ к материалам?</h2>
+          <div className="space-y-2 text-purple-200 text-sm">
+            <p>1. Выберите интересующий вас курс или семинар</p>
+            <p>2. Свяжитесь с администратором для уточнения деталей</p>
+            <p>3. После оплаты вам будет предоставлен доступ</p>
+          </div>
         </div>
       )}
     </div>
