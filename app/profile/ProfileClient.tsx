@@ -4,6 +4,7 @@ import { signIn, useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { User, Mail, Phone, Key, Shield } from 'lucide-react'
+import { formatPhone } from '@/helpers/phone'
 
 interface UserProfile {
   id: number
@@ -26,7 +27,7 @@ type FieldDef = {
 const FIELDS: FieldDef[] = [
   { label: 'Имя', icon: User, value: (p) => p.firstName },
   { label: 'Фамилия', icon: User, value: (p) => p.lastName },
-  { label: 'Телефон', icon: Phone, value: (p) => p.phoneNumber },
+  { label: 'Телефон', icon: Phone, value: (p) => formatPhone(p.phoneNumber) },
   { label: 'Email', icon: Mail, value: (p) => p.email },
   { label: 'Логин', icon: Key, value: (p) => p.login },
   {

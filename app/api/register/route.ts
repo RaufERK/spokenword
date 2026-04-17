@@ -58,16 +58,26 @@ export async function POST(request: Request) {
     /* 3. пароль – 6 цифр */
     const password = crypto.randomInt(100000, 999999).toString()
 
-    /* 4. запись в БД */
+    /* 4. валидация имени и фамилии */
+    const nameRegex = /[а-яёА-ЯЁa-zA-Z]/
+    if (!data.firstName || data.firstName.trim().length < 3 || !nameRegex.test(data.firstName)) {
+      return NextResponse.json({ error: 'firstName' }, { status: 400 })
+    }
+    if (!data.lastName || data.lastName.trim().length < 3 || !nameRegex.test(data.lastName)) {
+      return NextResponse.json({ error: 'lastName' }, { status: 400 })
+    }
+
+    /* 5. запись в БД */
     const user = await prisma.user.create({
       data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        city: data.city,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        city: data.city?.trim() || null,
         phoneNumber: phone,
         email: email || null,
         login,
         password,
+        isAbroad: data.isAbroad === true || data.isAbroad === 'true',
       },
     })
 

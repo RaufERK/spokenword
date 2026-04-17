@@ -38,6 +38,7 @@ model User {
   birthYear    Int?
   joinedYear   Int?
   isPrivileged Boolean   @default(false)
+  isAbroad     Boolean   @default(false)
   role         Role      @default(USER)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

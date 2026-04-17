@@ -2,7 +2,6 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import PackagesClient from './PackagesClient'
 
 export default async function AdminPackagesPage() {
@@ -35,18 +34,21 @@ export default async function AdminPackagesPage() {
   }))
 
   return (
-    <main className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Управление пакетами материалов</h1>
-        <Link 
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-xl font-bold text-white">Платные материалы</h1>
+          <p className="text-pink-300/50 text-xs mt-0.5">Пакетов: {packagesForClient.length}</p>
+        </div>
+        <Link
           href="/admin/packages/create"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-medium transition-colors shadow-md"
         >
+          <span className="text-lg leading-none">+</span>
           Создать пакет
         </Link>
       </div>
-
       <PackagesClient packages={packagesForClient} />
-    </main>
+    </div>
   )
 }

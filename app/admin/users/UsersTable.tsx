@@ -7,8 +7,9 @@ import PaymentModal from '@/components/admin/PaymentModal'
 import BulkPaymentModal from '@/components/admin/BulkPaymentModal'
 import {
   Search, ChevronUp, ChevronDown, ChevronsUpDown,
-  Trash2, Link, Package, CheckCircle, XCircle, PlusCircle, Users, X, Ban, UserCog,
+  Trash2, Link, Package, CheckCircle, PlusCircle, Users, X, UserCog,
 } from 'lucide-react'
+import { formatPhone } from '@/helpers/phone'
 
 export interface UserRow {
   id: number
@@ -392,6 +393,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                 <SortableTh field="login" label="Логин" current={sortField} dir={sortDir} onSort={handleSort} />
                 <SortableTh field="city" label="Город" current={sortField} dir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Телефон</th>
+                <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Пароль</th>
                 <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Последнее меропр.</th>
                 <SortableTh field="accessUntil" label="Доступ до" current={sortField} dir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2.5 text-center text-xs text-white/80 whitespace-nowrap">Оплата</th>
@@ -422,7 +424,8 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                     <td className="px-3 py-2 text-white font-medium">{u.lastName}</td>
                     <td className="px-3 py-2 text-blue-300 text-xs font-mono">{u.login}</td>
                     <td className="px-3 py-2 text-white/60 text-xs">{u.city || '—'}</td>
-                    <td className="px-3 py-2 text-pink-200/80 text-xs font-mono whitespace-nowrap">{u.phoneNumber || '—'}</td>
+                    <td className="px-3 py-2 text-pink-200/80 text-xs font-mono whitespace-nowrap">{formatPhone(u.phoneNumber)}</td>
+                    <td className="px-3 py-2 text-yellow-200/70 text-xs font-mono tracking-wide">{u.password || '—'}</td>
 
                     {/* Последнее мероприятие */}
                     <td className="px-3 py-2 text-xs max-w-[140px]">
@@ -454,14 +457,10 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                     {/* Кнопка оплаты */}
                     <td className="px-3 py-2 text-center">
                       {active ? (
-                        <button
-                          onClick={() => handleIndividualRevoke(u.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-red-600/80 hover:bg-red-500 text-white transition-colors"
-                          title="Отозвать доступ"
-                        >
-                          <XCircle className="w-3 h-3" />
-                          Отозвать
-                        </button>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-green-500/15 text-green-400/70 border border-green-500/20">
+                          <CheckCircle className="w-3 h-3" />
+                          активно
+                        </span>
                       ) : (
                         <button
                           onClick={() => setPaymentUser(u)}
@@ -490,7 +489,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
 
               {processed.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center">
+                  <td colSpan={12} className="py-12 text-center">
                     <Users className="w-10 h-10 text-white/15 mx-auto mb-3" />
                     <p className="text-white/25 text-sm">
                       {search || paymentFilter !== 'all' ? 'Нет пользователей по фильтру' : 'Нет пользователей'}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { UserPlus, User, Mail, Phone, MapPin, Copy, Check } from 'lucide-react'
+import { UserPlus, User, Mail, Phone, MapPin, Copy, Check, Globe } from 'lucide-react'
 
 interface ApiOk {
   login: string
@@ -12,26 +12,43 @@ interface ApiOk {
 const inputClass =
   'w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 placeholder-gray-400'
 
-const fields = [
-  { name: 'firstName', label: 'Имя', placeholder: 'Имя', icon: User, type: 'text', required: true },
-  { name: 'lastName', label: 'Фамилия', placeholder: 'Фамилия', icon: User, type: 'text', required: true },
-  { name: 'phone', label: 'Телефон', placeholder: '+1234567890', icon: Phone, type: 'tel', required: true, pattern: '^\\+\\d{8,15}$' },
-  { name: 'email', label: 'E-mail', placeholder: 'E-mail', icon: Mail, type: 'email', required: false },
-  { name: 'city', label: 'Город', placeholder: 'Город', icon: MapPin, type: 'text', required: false },
-]
+function validateName(value: string): string | null {
+  const trimmed = value.trim()
+  if (trimmed.length < 3) return 'Минимум 3 символа'
+  if (!/[а-яёА-ЯЁa-zA-Z]/.test(trimmed)) return 'Должны быть буквы'
+  if (/^[^а-яёА-ЯЁa-zA-Z]+$/.test(trimmed)) return 'Только из спецсимволов — не подходит'
+  return null
+}
 
 export default function RegisterPage() {
   const [result, setResult] = useState<ApiOk | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [isAbroad, setIsAbroad] = useState(false)
+  const [nameErrors, setNameErrors] = useState<{ firstName?: string; lastName?: string }>({})
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+
+    const fd = new FormData(e.currentTarget)
+    const firstName = (fd.get('firstName') as string) ?? ''
+    const lastName = (fd.get('lastName') as string) ?? ''
+
+    const firstErr = validateName(firstName)
+    const lastErr = validateName(lastName)
+    if (firstErr || lastErr) {
+      setNameErrors({ firstName: firstErr ?? undefined, lastName: lastErr ?? undefined })
+      return
+    }
+    setNameErrors({})
     setLoading(true)
 
-    const body = Object.fromEntries(new FormData(e.currentTarget).entries())
+    const body = {
+      ...Object.fromEntries(fd.entries()),
+      isAbroad,
+    }
 
     const r = await fetch('/api/register', {
       method: 'POST',
@@ -48,8 +65,12 @@ export default function RegisterPage() {
       setError(
         fields?.includes('phoneNumber')
           ? 'Этот телефон уже зарегистрирован'
+          : fields?.includes('email')
+          ? 'Этот e-mail уже зарегистрирован'
           : 'Пользователь с такими данными уже существует'
       )
+    } else if (r.status === 400) {
+      setError('Проверьте правильность введённых данных')
     } else {
       setError('Ошибка сервера. Попробуйте позже')
     }
@@ -122,27 +143,133 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {fields.map(({ name, label, placeholder, icon: Icon, type, required, pattern }) => (
-              <div key={name}>
-                <label htmlFor={name} className="block text-gray-700 mb-1.5 text-sm font-medium">
-                  {label}
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Icon className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <input
-                    id={name}
-                    name={name}
-                    type={type}
-                    placeholder={placeholder}
-                    required={required}
-                    pattern={pattern}
-                    className={inputClass}
-                  />
+            {/* Имя */}
+            <div>
+              <label htmlFor="firstName" className="block text-gray-700 mb-1.5 text-sm font-medium">
+                Имя <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="w-5 h-5 text-gray-400" />
                 </div>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  placeholder="Имя"
+                  required
+                  className={`${inputClass} ${nameErrors.firstName ? 'border-red-400 focus:ring-red-400' : ''}`}
+                  onChange={() => setNameErrors((p) => ({ ...p, firstName: undefined }))}
+                />
               </div>
-            ))}
+              {nameErrors.firstName && (
+                <p className="text-red-500 text-xs mt-1">{nameErrors.firstName}</p>
+              )}
+            </div>
+
+            {/* Фамилия */}
+            <div>
+              <label htmlFor="lastName" className="block text-gray-700 mb-1.5 text-sm font-medium">
+                Фамилия <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  placeholder="Фамилия"
+                  required
+                  className={`${inputClass} ${nameErrors.lastName ? 'border-red-400 focus:ring-red-400' : ''}`}
+                  onChange={() => setNameErrors((p) => ({ ...p, lastName: undefined }))}
+                />
+              </div>
+              {nameErrors.lastName && (
+                <p className="text-red-500 text-xs mt-1">{nameErrors.lastName}</p>
+              )}
+            </div>
+
+            {/* Телефон */}
+            <div>
+              <label htmlFor="phone" className="block text-gray-700 mb-1.5 text-sm font-medium">
+                Телефон <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="+7 999 123-45-67"
+                  required
+                  pattern="^\+?\d{8,15}$"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-gray-700 mb-1.5 text-sm font-medium">
+                E-mail
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="E-mail"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            {/* Город */}
+            <div>
+              <label htmlFor="city" className="block text-gray-700 mb-1.5 text-sm font-medium">
+                Город
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MapPin className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  id="city"
+                  name="city"
+                  type="text"
+                  placeholder="Город"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            {/* Пользуюсь не из России */}
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 cursor-pointer transition-colors">
+              <div className="relative flex items-center justify-center mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={isAbroad}
+                  onChange={(e) => setIsAbroad(e.target.checked)}
+                  className="w-5 h-5 rounded accent-blue-600 cursor-pointer"
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 text-gray-800 font-medium text-sm">
+                  <Globe className="w-4 h-4 text-blue-500" />
+                  Пользуюсь не из России
+                </div>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  Отметьте, если вы находитесь за пределами РФ
+                </p>
+              </div>
+            </label>
 
             {error && (
               <p className="text-red-500 text-sm text-center bg-red-50 border border-red-200 rounded-xl py-2 px-3">
