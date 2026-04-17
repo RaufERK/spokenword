@@ -82,6 +82,8 @@ export default function ChatPage() {
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const firstMsgLoad = useRef(true)
+  const pendingScroll = useRef(false)
+  const [msgsVisible, setMsgsVisible] = useState(false)
   const lastActivityRef = useRef(Date.now())
   const roomsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const msgsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -110,13 +112,36 @@ export default function ChatPage() {
       const res = await fetch(`/api/chat/rooms/${roomId}`, { cache: 'no-store' })
       if (!res.ok) return
       const data = await res.json()
-      setMessages(data.messages ?? [])
       if (firstMsgLoad.current) {
         firstMsgLoad.current = false
-        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 80)
+        pendingScroll.current = true
       }
+      setMessages(data.messages ?? [])
     } catch {}
   }, [])
+
+  // После рендера новых сообщений — мгновенный скролл вниз, затем показываем
+  useEffect(() => {
+    if (!pendingScroll.current) return
+    pendingScroll.current = false
+    bottomRef.current?.scrollIntoView({ behavior: 'instant' })
+    setMsgsVisible(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages])
+
+  // Если сообщений нет — всё равно показываем контейнер
+  useEffect(() => {
+    if (!pendingScroll.current) return
+    if (msgsVisible) return
+    // fetchMessages мог вернуть пустой массив, messages не изменился → показываем
+    const timer = setTimeout(() => {
+      if (!pendingScroll.current) return
+      pendingScroll.current = false
+      setMsgsVisible(true)
+    }, 150)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoomId])
 
   // ── Adaptive interval + visibility pause ──────────────────────────────────
   const getInterval = () => Date.now() - lastActivityRef.current > 120_000 ? 10_000 : 5_000
@@ -165,6 +190,8 @@ export default function ChatPage() {
   useEffect(() => {
     if (!activeRoomId) return
     firstMsgLoad.current = true
+    pendingScroll.current = false
+    setMsgsVisible(false)
     setMessages([])
     fetchMessages(activeRoomId)
     startMsgPolling(activeRoomId)
@@ -397,7 +424,7 @@ export default function ChatPage() {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <div className={`flex-1 overflow-y-auto p-4 space-y-2 transition-opacity duration-0 ${msgsVisible ? 'opacity-100' : 'opacity-0'}`}>
                 {messages.length === 0 && (
                   <div className="flex items-center justify-center h-full text-white/30 text-sm">
                     Сообщений пока нет
