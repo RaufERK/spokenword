@@ -161,8 +161,9 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
       const data = await res.json() as ProfileLinkPayload | { error?: string }
       if (!res.ok || !('urls' in data)) return alert('Ошибка при создании ссылки профиля')
       const copiedText = [
-        `ДОСТУП ИЗ РОССИИ: ${data.urls.ru}`,
-        `ДОСТУП НЕ ИЗ РОССИИ: ${data.urls.eu}`,
+        `ДОСТУП ИЗ РОССИИ:\n${data.urls.ru}`,
+        ``,
+        `ДОСТУП НЕ ИЗ РОССИИ:\n${data.urls.eu}`,
       ].join('\n')
       await navigator.clipboard.writeText(copiedText)
       alert(copiedText)
