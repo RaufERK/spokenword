@@ -7,7 +7,7 @@ import PaymentModal from '@/components/admin/PaymentModal'
 import BulkPaymentModal from '@/components/admin/BulkPaymentModal'
 import {
   Search, ChevronUp, ChevronDown, ChevronsUpDown,
-  Trash2, Link, Package, CheckCircle, PlusCircle, Users, X, UserCog,
+  Trash2, Link, Package, CheckCircle, PlusCircle, Users, X, Ban, UserCog,
 } from 'lucide-react'
 import { formatPhone } from '@/helpers/phone'
 
