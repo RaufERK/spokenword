@@ -71,6 +71,7 @@ export default function ChatPage() {
 
   const [rooms, setRooms] = useState<Room[]>([])
   const [activeRoomId, setActiveRoomId] = useState<number | null>(null)
+  const [mobileChatOpen, setMobileChatOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [link, setLink] = useState('')
@@ -217,27 +218,27 @@ export default function ChatPage() {
     setSearchQuery('')
     setSearchResults([])
     const existing = rooms.find(r => r.type === 'PRIVATE' && r.participantId === participantId)
-    if (existing?.id) { setActiveRoomId(existing.id); return }
+    if (existing?.id) { setActiveRoomId(existing.id); setMobileChatOpen(true); return }
     const res = await fetch('/api/chat/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'PRIVATE', participantId }),
     })
     const data = await res.json()
-    if (data.roomId) { await fetchRooms(); setActiveRoomId(data.roomId) }
+    if (data.roomId) { await fetchRooms(); setActiveRoomId(data.roomId); setMobileChatOpen(true) }
   }
 
   // ── Open/create support room ───────────────────────────────────────────────
   const openSupportRoom = async () => {
     const existing = rooms.find(r => r.type === 'SUPPORT' && r.id !== null)
-    if (existing?.id) { setActiveRoomId(existing.id); return }
+    if (existing?.id) { setActiveRoomId(existing.id); setMobileChatOpen(true); return }
     const res = await fetch('/api/chat/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'SUPPORT' }),
     })
     const data = await res.json()
-    if (data.roomId) { await fetchRooms(); setActiveRoomId(data.roomId) }
+    if (data.roomId) { await fetchRooms(); setActiveRoomId(data.roomId); setMobileChatOpen(true) }
   }
 
   // ── Send message ───────────────────────────────────────────────────────────
@@ -295,6 +296,7 @@ export default function ChatPage() {
     } else {
       setActiveRoomId(room.id)
     }
+    setMobileChatOpen(true)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -310,7 +312,7 @@ export default function ChatPage() {
       <div className="h-full flex bg-gradient-to-br from-purple-900/40 to-purple-800/30 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
 
         {/* ── Sidebar ── */}
-        <div className="w-72 shrink-0 border-r border-white/10 flex flex-col">
+        <div className={`w-full md:w-72 shrink-0 border-r border-white/10 flex flex-col ${mobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
           {/* Header + search */}
           <div className="p-3 border-b border-white/10">
             <h2 className="text-base text-white font-medium flex items-center gap-2 mb-2.5">
@@ -401,7 +403,7 @@ export default function ChatPage() {
         </div>
 
         {/* ── Main chat panel ── */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className={`flex-1 flex flex-col min-w-0 ${mobileChatOpen ? 'flex' : 'hidden md:flex'}`}>
           {!activeRoom ? (
             <div className="flex-1 flex items-center justify-center text-white/30 text-sm">
               Выберите чат
@@ -411,6 +413,13 @@ export default function ChatPage() {
               {/* Chat header */}
               <div className="px-4 py-3 border-b border-white/10 shrink-0">
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setMobileChatOpen(false)}
+                    className="md:hidden text-purple-300 hover:text-white transition-colors mr-1 shrink-0"
+                    aria-label="Назад"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  </button>
                   <span className="text-xl">{activeRoom.icon}</span>
                   <div>
                     <h1 className="text-base text-white font-medium">{activeRoom.name}</h1>
