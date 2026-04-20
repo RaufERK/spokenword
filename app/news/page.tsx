@@ -1,7 +1,8 @@
 import prisma from '@/lib/prisma'
 import Image from 'next/image'
+import NewsAutoRefresh from './NewsAutoRefresh'
 
-export const revalidate = 30
+export const dynamic = 'force-dynamic'
 
 function formatTelegramDate(date: Date): string {
   return date.toLocaleString('ru-RU', {
@@ -28,6 +29,8 @@ export default async function NewsPage() {
 
   return (
     <main className='max-w-4xl mx-auto px-4 py-6 sm:py-8'>
+      <NewsAutoRefresh />
+
       <div className='mb-6'>
         <h1 className='text-2xl sm:text-3xl text-white font-semibold'>Новости</h1>
         <p className='text-white/60 text-sm mt-1'>Зеркало Telegram-канала</p>
