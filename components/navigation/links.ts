@@ -16,6 +16,7 @@ const links: NavLink[] = [
     isPaid: true,
   },
   { href: '/', label: 'Стрим' },
+  { href: '/news', label: 'Новости' },
   {
     href: '/chat',
     label: 'Чат',

@@ -119,6 +119,23 @@ model StreamLink {
   updatedAt  DateTime @updatedAt
 }
 
+model ChannelPost {
+  id                Int      @id @default(autoincrement())
+  telegramMessageId Int
+  channelId         String
+  channelUsername   String?
+  telegramDate      DateTime
+  text              String?
+  mediaType         String?
+  imageUrl          String?
+  isDeleted         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([channelId, telegramMessageId])
+  @@index([isDeleted, telegramDate(sort: Desc)])
+}
+
 model ContentPackage {
   id          Int      @id @default(autoincrement())
   title       String
