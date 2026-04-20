@@ -390,6 +390,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                 <SortableTh field="surname" label="Фамилия" current={sortField} dir={sortDir} onSort={handleSort} />
                 <SortableTh field="login" label="Логин" current={sortField} dir={sortDir} onSort={handleSort} />
                 <SortableTh field="city" label="Город" current={sortField} dir={sortDir} onSort={handleSort} />
+                <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Роль</th>
                 <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Телефон</th>
                 <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Пароль</th>
                 <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Последнее меропр.</th>
@@ -422,6 +423,11 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                     <td className="px-3 py-2 text-white font-medium">{u.lastName}</td>
                     <td className="px-3 py-2 text-blue-300 text-xs font-mono">{u.login}</td>
                     <td className="px-3 py-2 text-white/60 text-xs">{u.city || '—'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {u.role === 'SUPER' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600/30 text-red-300 border border-red-500/40">SUPER</span>}
+                      {u.role === 'ADMIN' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pink-600/30 text-pink-300 border border-pink-500/40">ADMIN</span>}
+                      {u.role === 'MODERATOR' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-600/30 text-yellow-300 border border-yellow-500/40">MOD</span>}
+                    </td>
                     <td className="px-3 py-2 text-pink-200/80 text-xs font-mono whitespace-nowrap">{formatPhone(u.phoneNumber)}</td>
                     <td className="px-3 py-2 text-yellow-200/70 text-xs font-mono tracking-wide">{u.password || '—'}</td>
 
