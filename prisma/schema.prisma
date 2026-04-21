@@ -126,6 +126,7 @@ model ChannelPost {
   channelUsername   String?
   telegramDate      DateTime
   text              String?
+  textEntities      Json?
   mediaType         String?
   imageUrl          String?
   isDeleted         Boolean  @default(false)

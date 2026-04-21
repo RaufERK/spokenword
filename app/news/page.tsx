@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma'
 import Image from 'next/image'
 import NewsAutoRefresh from './NewsAutoRefresh'
+import { renderTelegramText } from './renderTelegramText'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,9 +58,9 @@ export default async function NewsPage() {
               </div>
 
               {post.text && (
-                <p className='text-white whitespace-pre-wrap leading-relaxed'>
-                  {post.text}
-                </p>
+                <div className='text-white whitespace-pre-wrap leading-relaxed'>
+                  {renderTelegramText(post.text, post.textEntities)}
+                </div>
               )}
 
               {post.imageUrl && (

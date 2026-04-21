@@ -13,6 +13,15 @@ type MirrorMediaFile = {
   mediaType: MirrorMediaType
 }
 
+type TelegramEntityPayload = {
+  type: string
+  offset: number
+  length: number
+  url?: string
+  language?: string
+  customEmojiId?: string
+}
+
 type MirrorPayload = {
   action: MirrorAction
   telegramMessageId: number
@@ -21,6 +30,8 @@ type MirrorPayload = {
   telegramDate: number
   text?: string
   caption?: string
+  entities?: TelegramEntityPayload[]
+  captionEntities?: TelegramEntityPayload[]
   mediaType?: MirrorMediaType
   mediaFiles: MirrorMediaFile[]
 }
@@ -99,6 +110,39 @@ function toRequiredInteger(value: unknown): number | null {
   return null
 }
 
+function normalizeEntities(value: unknown): TelegramEntityPayload[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const normalized = value
+    .map((entry): TelegramEntityPayload | null => {
+      if (!isRecord(entry)) {
+        return null
+      }
+
+      const type = toOptionalString(entry.type)
+      const offset = toRequiredInteger(entry.offset)
+      const length = toRequiredInteger(entry.length)
+
+      if (!type || offset === null || length === null || offset < 0 || length <= 0) {
+        return null
+      }
+
+      return {
+        type,
+        offset,
+        length,
+        url: toOptionalString(entry.url),
+        language: toOptionalString(entry.language),
+        customEmojiId: toOptionalString(entry.customEmojiId) ?? toOptionalString(entry.custom_emoji_id),
+      }
+    })
+    .filter((entry): entry is TelegramEntityPayload => entry !== null)
+
+  return normalized.length > 0 ? normalized : undefined
+}
+
 function normalizePayload(input: unknown): { payload: MirrorPayload | null; error?: string } {
   if (!isRecord(input)) {
     return { payload: null, error: 'Payload must be an object' }
@@ -147,6 +191,8 @@ function normalizePayload(input: unknown): { payload: MirrorPayload | null; erro
       telegramDate,
       text: toOptionalString(input.text),
       caption: toOptionalString(input.caption),
+      entities: normalizeEntities(input.entities),
+      captionEntities: normalizeEntities(input.captionEntities),
       mediaType,
       mediaFiles,
     },
@@ -365,6 +411,7 @@ export async function POST(request: NextRequest) {
 
         const savedImageUrl = hasPhotoMedia ? await saveFirstValidImage(parsedRequest.files) : null
         const currentText = payload.text ?? payload.caption ?? null
+        const currentEntities = payload.text ? payload.entities : payload.captionEntities
         const normalizedText = currentText && currentText.trim().length > 0 ? currentText : null
         const nextImageUrl = savedImageUrl ?? existingPost?.imageUrl ?? null
         const nextMediaType = nextImageUrl ? 'photo' : null
@@ -385,6 +432,7 @@ export async function POST(request: NextRequest) {
             channelUsername: payload.channelUsername ?? null,
             telegramDate,
             text: normalizedText,
+            textEntities: normalizedText ? (currentEntities ?? null) : null,
             mediaType: nextMediaType,
             imageUrl: nextImageUrl,
             isDeleted: false,
@@ -393,6 +441,7 @@ export async function POST(request: NextRequest) {
             channelUsername: payload.channelUsername ?? undefined,
             telegramDate,
             text: normalizedText,
+            textEntities: normalizedText ? (currentEntities ?? null) : null,
             mediaType: nextMediaType,
             imageUrl: nextImageUrl,
             isDeleted: false,
