@@ -55,7 +55,10 @@ const MIME_TO_EXTENSION: Record<string, string> = {
 }
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
-const NEWS_MEDIA_DIR = path.resolve(process.cwd(), 'public/news-media')
+const NEWS_MEDIA_DIR =
+  process.env.NODE_ENV === 'production'
+    ? '/home/appuser/apps/spokenword/shared/public/news-media'
+    : path.resolve(process.cwd(), 'public/news-media')
 
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_REQUESTS = getRateLimitMaxRequests()
@@ -141,6 +144,195 @@ function normalizeEntities(value: unknown): TelegramEntityPayload[] | undefined 
     .filter((entry): entry is TelegramEntityPayload => entry !== null)
 
   return normalized.length > 0 ? normalized : undefined
+}
+
+type TextRange = {
+  start: number
+  end: number
+}
+
+type PreparedTextPayload = {
+  text: string | null
+  entities: TelegramEntityPayload[] | null
+  hashtags: string[]
+}
+
+const HASHTAG_REGEX = /(?<![\p{L}\p{N}_])#[\p{L}\p{N}_]+/gu
+
+function mergeRanges(ranges: TextRange[]): TextRange[] {
+  if (ranges.length === 0) {
+    return []
+  }
+
+  const sortedRanges = [...ranges].sort((left, right) => left.start - right.start || left.end - right.end)
+  const mergedRanges: TextRange[] = [sortedRanges[0]]
+
+  for (const range of sortedRanges.slice(1)) {
+    const lastRange = mergedRanges[mergedRanges.length - 1]
+    if (!lastRange) {
+      mergedRanges.push(range)
+      continue
+    }
+
+    if (range.start <= lastRange.end) {
+      lastRange.end = Math.max(lastRange.end, range.end)
+      continue
+    }
+
+    mergedRanges.push(range)
+  }
+
+  return mergedRanges
+}
+
+function getHashtagValue(value: string): string | null {
+  const normalizedValue = value.trim().replace(/^#/, '')
+  return normalizedValue.length > 0 ? normalizedValue : null
+}
+
+function getHashtagRangesFromEntities(
+  text: string,
+  entities: TelegramEntityPayload[] | undefined
+): TextRange[] {
+  if (!entities || entities.length === 0) {
+    return []
+  }
+
+  return entities
+    .filter((entity) => entity.type === 'hashtag')
+    .map((entity): TextRange | null => {
+      const start = entity.offset
+      const end = Math.min(entity.offset + entity.length, text.length)
+      if (start < 0 || end <= start) {
+        return null
+      }
+      return { start, end }
+    })
+    .filter((range): range is TextRange => range !== null)
+}
+
+function getHashtagRangesFromText(text: string): TextRange[] {
+  const ranges: TextRange[] = []
+
+  for (const match of text.matchAll(HASHTAG_REGEX)) {
+    const value = match[0]
+    const start = match.index ?? -1
+    if (!value || start < 0) {
+      continue
+    }
+
+    ranges.push({
+      start,
+      end: start + value.length,
+    })
+  }
+
+  return ranges
+}
+
+function countRemovedCharsBefore(index: number, ranges: TextRange[]): number {
+  let removedChars = 0
+
+  for (const range of ranges) {
+    if (index <= range.start) {
+      break
+    }
+
+    removedChars += Math.max(0, Math.min(index, range.end) - range.start)
+  }
+
+  return removedChars
+}
+
+function rangeOverlaps(start: number, end: number, ranges: TextRange[]): boolean {
+  return ranges.some((range) => start < range.end && end > range.start)
+}
+
+function prepareTextPayload(
+  text: string | null,
+  entities: TelegramEntityPayload[] | undefined
+): PreparedTextPayload {
+  if (!text) {
+    return {
+      text: null,
+      entities: null,
+      hashtags: [],
+    }
+  }
+
+  const hashtagRangesFromEntities = getHashtagRangesFromEntities(text, entities)
+  const hashtagRanges = mergeRanges(
+    hashtagRangesFromEntities.length > 0
+      ? hashtagRangesFromEntities
+      : getHashtagRangesFromText(text)
+  )
+
+  if (hashtagRanges.length === 0) {
+    return {
+      text,
+      entities: entities && entities.length > 0 ? entities : null,
+      hashtags: [],
+    }
+  }
+
+  const hashtags = hashtagRanges.reduce<string[]>((result, range) => {
+    const hashtagValue = getHashtagValue(text.slice(range.start, range.end))
+    if (hashtagValue && !result.includes(hashtagValue)) {
+      result.push(hashtagValue)
+    }
+    return result
+  }, [])
+
+  let nextText = ''
+  let cursor = 0
+
+  for (const range of hashtagRanges) {
+    nextText += text.slice(cursor, range.start)
+    cursor = range.end
+  }
+
+  nextText += text.slice(cursor)
+  nextText = nextText.trimEnd()
+
+  if (nextText.length === 0) {
+    return {
+      text: null,
+      entities: null,
+      hashtags,
+    }
+  }
+
+  const nextEntities = (entities ?? [])
+    .filter((entity) => entity.type !== 'hashtag')
+    .map((entity): TelegramEntityPayload | null => {
+      const start = entity.offset
+      const end = entity.offset + entity.length
+
+      if (start < 0 || end <= start || rangeOverlaps(start, end, hashtagRanges)) {
+        return null
+      }
+
+      const nextOffset = start - countRemovedCharsBefore(start, hashtagRanges)
+      const nextEnd = end - countRemovedCharsBefore(end, hashtagRanges)
+      const boundedEnd = Math.min(nextEnd, nextText.length)
+
+      if (nextOffset < 0 || boundedEnd <= nextOffset) {
+        return null
+      }
+
+      return {
+        ...entity,
+        offset: nextOffset,
+        length: boundedEnd - nextOffset,
+      }
+    })
+    .filter((entity): entity is TelegramEntityPayload => entity !== null)
+
+  return {
+    text: nextText,
+    entities: nextEntities.length > 0 ? nextEntities : null,
+    hashtags,
+  }
 }
 
 function normalizePayload(input: unknown): { payload: MirrorPayload | null; error?: string } {
@@ -386,11 +578,13 @@ export async function POST(request: NextRequest) {
             text: null,
             mediaType: null,
             imageUrl: null,
+            hashtags: [],
             isDeleted: true,
           },
           update: {
             channelUsername: payload.channelUsername ?? undefined,
             telegramDate,
+            hashtags: [],
             isDeleted: true,
           },
         })
@@ -412,7 +606,10 @@ export async function POST(request: NextRequest) {
         const savedImageUrl = hasPhotoMedia ? await saveFirstValidImage(parsedRequest.files) : null
         const currentText = payload.text ?? payload.caption ?? null
         const currentEntities = payload.text ? payload.entities : payload.captionEntities
-        const normalizedText = currentText && currentText.trim().length > 0 ? currentText : null
+        const preparedTextPayload = prepareTextPayload(currentText, currentEntities)
+        const normalizedText = preparedTextPayload.text && preparedTextPayload.text.trim().length > 0
+          ? preparedTextPayload.text
+          : null
         const nextImageUrl = savedImageUrl ?? existingPost?.imageUrl ?? null
         const nextMediaType = nextImageUrl ? 'photo' : null
 
@@ -432,7 +629,8 @@ export async function POST(request: NextRequest) {
             channelUsername: payload.channelUsername ?? null,
             telegramDate,
             text: normalizedText,
-            textEntities: normalizedText ? (currentEntities ?? null) : null,
+            textEntities: normalizedText ? preparedTextPayload.entities : null,
+            hashtags: preparedTextPayload.hashtags,
             mediaType: nextMediaType,
             imageUrl: nextImageUrl,
             isDeleted: false,
@@ -441,7 +639,8 @@ export async function POST(request: NextRequest) {
             channelUsername: payload.channelUsername ?? undefined,
             telegramDate,
             text: normalizedText,
-            textEntities: normalizedText ? (currentEntities ?? null) : null,
+            textEntities: normalizedText ? preparedTextPayload.entities : null,
+            hashtags: preparedTextPayload.hashtags,
             mediaType: nextMediaType,
             imageUrl: nextImageUrl,
             isDeleted: false,

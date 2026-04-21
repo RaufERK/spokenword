@@ -222,6 +222,12 @@ model ContentPackage {
 - **Final files:** `public/conf-archive/[systemName].mp4`
 - **Served as:** `/conf-archive/[systemName]` or `/watch-conf/[systemName]`
 
+### News Mirror Media
+
+- **Production storage:** `/home/appuser/apps/spokenword/shared/public/news-media`
+- **Local storage:** `public/news-media`
+- **Served as:** `/news-media/[fileName]` via nginx static alias
+
 ### Paid Content Packages
 
 - **Temp files:** `paid-content/packages/package_[id]/temp_*.mp4`

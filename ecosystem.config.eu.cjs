@@ -105,6 +105,8 @@ module.exports = {
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env',
         'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env.production',
         'mkdir -p ./public',
+        'mkdir -p /home/appuser/apps/spokenword/shared/public/news-media',
+        'ln -sfn /home/appuser/apps/spokenword/shared/public/news-media ./public/news-media',
         'npm ci --include=dev',
         'cd upload-service && npm ci && cd ..',
         './node_modules/.bin/prisma generate',

@@ -1,0 +1,2 @@
+ALTER TABLE "ChannelPost"
+ADD COLUMN "hashtags" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
