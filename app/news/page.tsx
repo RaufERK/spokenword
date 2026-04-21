@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import DeleteNewsPostButton from './DeleteNewsPostButton'
 import NewsAutoRefresh from './NewsAutoRefresh'
 import { renderTelegramText } from './renderTelegramText'
 
@@ -37,9 +38,17 @@ function getTagHref(tag: string): string {
   return `/news?tag=${encodeURIComponent(tag)}`
 }
 
-function normalizeView(value: string | string[] | undefined): 'all' | 'test' {
+function normalizeView(value: string | string[] | undefined): 'all' | 'test' | 'channel' {
   const rawValue = Array.isArray(value) ? value[0] : value
-  return rawValue === 'test' ? 'test' : 'all'
+  if (rawValue === 'test') {
+    return 'test'
+  }
+
+  if (rawValue === 'channel') {
+    return 'channel'
+  }
+
+  return 'all'
 }
 
 function buildNewsHref({
@@ -47,7 +56,7 @@ function buildNewsHref({
   view,
 }: {
   tag?: string | null
-  view?: 'all' | 'test'
+  view?: 'all' | 'test' | 'channel'
 }): string {
   const params = new URLSearchParams()
 
@@ -55,8 +64,8 @@ function buildNewsHref({
     params.set('tag', tag)
   }
 
-  if (view === 'test') {
-    params.set('view', 'test')
+  if (view && view !== 'all') {
+    params.set('view', view)
   }
 
   const query = params.toString()
@@ -71,6 +80,7 @@ export default async function NewsPage({
   const session = await getServerSession(authOptions)
   const role = session?.user?.role
   const canViewTestPosts = role === 'ADMIN' || role === 'SUPER'
+  const canManagePosts = role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER'
   const testChannelId = process.env.TEST_CHANNEL_ID?.trim() ?? null
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const activeTag = normalizeTag(resolvedSearchParams?.tag)
@@ -93,7 +103,9 @@ export default async function NewsPage({
           ? canViewTestPosts
             ? activeView === 'test'
               ? [{ channelId: testChannelId }]
-              : []
+              : activeView === 'channel'
+                ? [{ NOT: { channelId: testChannelId } }]
+                : []
             : [{ NOT: { channelId: testChannelId } }]
           : []),
         {
@@ -141,6 +153,16 @@ export default async function NewsPage({
           >
             Тестовые
           </Link>
+          <Link
+            href={buildNewsHref({ tag: activeTag, view: 'channel' })}
+            className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+              activeView === 'channel'
+                ? 'border-green-400/40 bg-green-500/15 text-green-100'
+                : 'border-white/10 bg-white/5 text-white/70 hover:border-green-400/30 hover:text-white'
+            }`}
+          >
+            Канал
+          </Link>
         </div>
       )}
 
@@ -172,9 +194,17 @@ export default async function NewsPage({
               className='rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5'
             >
               <div className='mb-3 flex items-center justify-between gap-3'>
-                <p className='text-xs text-white/50'>
-                  Пост #{post.telegramMessageId}
-                </p>
+                <div className='flex items-center gap-3'>
+                  <p className='text-xs text-white/50'>
+                    Пост #{post.telegramMessageId}
+                  </p>
+                  {canManagePosts && (
+                    <DeleteNewsPostButton
+                      postId={post.id}
+                      telegramMessageId={post.telegramMessageId}
+                    />
+                  )}
+                </div>
                 <time className='text-xs text-white/50'>
                   {formatTelegramDate(post.telegramDate)}
                 </time>
