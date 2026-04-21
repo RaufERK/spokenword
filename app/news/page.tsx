@@ -1,9 +1,14 @@
 import prisma from '@/lib/prisma'
 import Image from 'next/image'
+import Link from 'next/link'
 import NewsAutoRefresh from './NewsAutoRefresh'
 import { renderTelegramText } from './renderTelegramText'
 
 export const dynamic = 'force-dynamic'
+
+type NewsPageSearchParams = Promise<{
+  tag?: string | string[]
+}>
 
 function formatTelegramDate(date: Date): string {
   return date.toLocaleString('ru-RU', {
@@ -15,10 +20,38 @@ function formatTelegramDate(date: Date): string {
   })
 }
 
-export default async function NewsPage() {
+function normalizeTag(value: string | string[] | undefined): string | null {
+  const rawValue = Array.isArray(value) ? value[0] : value
+  if (!rawValue) {
+    return null
+  }
+
+  const normalizedValue = rawValue.trim().replace(/^#/, '')
+  return normalizedValue.length > 0 ? normalizedValue : null
+}
+
+function getTagHref(tag: string): string {
+  return `/news?tag=${encodeURIComponent(tag)}`
+}
+
+export default async function NewsPage({
+  searchParams,
+}: {
+  searchParams?: NewsPageSearchParams
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const activeTag = normalizeTag(resolvedSearchParams?.tag)
+
   const posts = await prisma.channelPost.findMany({
     where: {
       isDeleted: false,
+      ...(activeTag
+        ? {
+            hashtags: {
+              has: activeTag,
+            },
+          }
+        : {}),
       OR: [
         { text: { not: null } },
         { imageUrl: { not: null } },
@@ -34,12 +67,30 @@ export default async function NewsPage() {
 
       <div className='mb-6'>
         <h1 className='text-2xl sm:text-3xl text-white font-semibold'>Новости</h1>
-        <p className='text-white/60 text-sm mt-1'>Зеркало Telegram-канала</p>
+        <p className='text-white/60 text-sm mt-1'>
+          {activeTag ? `Фильтр по хештегу #${activeTag}` : 'Зеркало Telegram-канала'}
+        </p>
       </div>
+
+      {activeTag && (
+        <div className='mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-blue-400/20 bg-blue-500/10 p-4'>
+          <span className='inline-flex items-center rounded-full border border-blue-400/30 bg-blue-500/15 px-3 py-1 text-sm text-blue-200'>
+            #{activeTag}
+          </span>
+          <Link
+            href='/news'
+            className='text-sm text-white/70 underline underline-offset-4 hover:text-white'
+          >
+            Сбросить фильтр
+          </Link>
+        </div>
+      )}
 
       {posts.length === 0 ? (
         <div className='rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70'>
-          Пока нет опубликованных новостей.
+          {activeTag
+            ? `По хештегу #${activeTag} пока нет опубликованных новостей.`
+            : 'Пока нет опубликованных новостей.'}
         </div>
       ) : (
         <div className='space-y-4'>
@@ -48,7 +99,7 @@ export default async function NewsPage() {
               key={`${post.channelId}-${post.telegramMessageId}`}
               className='rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5'
             >
-              <div className='flex items-center justify-between gap-3 mb-3'>
+              <div className='mb-3 flex items-center justify-between gap-3'>
                 <p className='text-xs text-white/50'>
                   Пост #{post.telegramMessageId}
                 </p>
@@ -74,6 +125,28 @@ export default async function NewsPage() {
                     className='w-full h-auto rounded-xl border border-white/10'
                     unoptimized
                   />
+                </div>
+              )}
+
+              {post.hashtags.length > 0 && (
+                <div className='mt-4 flex flex-wrap gap-2'>
+                  {post.hashtags.map((tag) => {
+                    const isActiveTag = activeTag === tag
+
+                    return (
+                      <Link
+                        key={`${post.id}-${tag}`}
+                        href={getTagHref(tag)}
+                        className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                          isActiveTag
+                            ? 'border-blue-400/40 bg-blue-500/15 text-blue-200'
+                            : 'border-white/10 bg-white/5 text-white/70 hover:border-blue-400/30 hover:text-blue-200'
+                        }`}
+                      >
+                        #{tag}
+                      </Link>
+                    )
+                  })}
                 </div>
               )}
             </article>
