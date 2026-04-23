@@ -221,7 +221,6 @@ export default async function NewsPage({
               {post.audioUrl && (
                 <NewsAudioPlayer
                   src={post.audioUrl}
-                  mediaType={post.mediaType}
                   className={post.text ? 'mt-3' : undefined}
                 />
               )}
