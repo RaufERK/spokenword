@@ -130,6 +130,7 @@ model ChannelPost {
   hashtags          String[] @default([])
   mediaType         String?
   imageUrl          String?
+  audioUrl          String?
   isDeleted         Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

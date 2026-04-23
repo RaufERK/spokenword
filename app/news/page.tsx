@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma'
+import NewsAudioPlayer from '@/components/news/NewsAudioPlayer'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getServerSession } from 'next-auth'
@@ -112,6 +113,7 @@ export default async function NewsPage({
           OR: [
             { text: { not: null } },
             { imageUrl: { not: null } },
+            { audioUrl: { not: null } },
           ],
         },
       ],
@@ -191,9 +193,9 @@ export default async function NewsPage({
           {posts.map((post) => (
             <article
               key={`${post.channelId}-${post.telegramMessageId}`}
-              className='rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5'
+              className='rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4'
             >
-              <div className='mb-3 flex items-center justify-between gap-3'>
+              <div className='mb-2.5 flex items-center justify-between gap-3'>
                 <div className='flex items-center gap-3'>
                   <p className='text-xs text-white/50'>
                     Пост #{post.telegramMessageId}
@@ -211,29 +213,42 @@ export default async function NewsPage({
               </div>
 
               {post.text && (
-                <div className='text-white whitespace-pre-wrap leading-relaxed'>
+                <div className='text-sm leading-6 text-white/90 whitespace-pre-wrap sm:text-[15px]'>
                   {renderTelegramText(post.text, post.textEntities)}
                 </div>
               )}
 
+              {post.audioUrl && (
+                <NewsAudioPlayer
+                  src={post.audioUrl}
+                  mediaType={post.mediaType}
+                  className={post.text ? 'mt-3' : undefined}
+                />
+              )}
+
               {post.imageUrl && (
-                <div className={post.text ? 'mt-4' : ''}>
-                  <div className='mx-auto max-w-md overflow-hidden rounded-xl border border-white/10 bg-black/20'>
+                <div className={post.text || post.audioUrl ? 'mt-3' : undefined}>
+                  <a
+                    href={post.imageUrl}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='inline-flex overflow-hidden rounded-lg border border-white/10 bg-black/20'
+                  >
                     <Image
                       src={post.imageUrl}
                       alt={post.text ? post.text.slice(0, 80) : 'Новостное изображение'}
-                      width={960}
-                      height={640}
-                      sizes='(max-width: 768px) 90vw, 448px'
-                      className='h-auto w-full object-contain'
+                      width={128}
+                      height={96}
+                      sizes='128px'
+                      className='h-20 w-28 object-cover sm:h-24 sm:w-32'
                       unoptimized
                     />
-                  </div>
+                  </a>
                 </div>
               )}
 
               {post.hashtags.length > 0 && (
-                <div className='mt-4 flex flex-wrap gap-2'>
+                <div className='mt-3 flex flex-wrap gap-2'>
                   {post.hashtags.map((tag) => {
                     const isActiveTag = activeTag === tag
 
@@ -241,7 +256,7 @@ export default async function NewsPage({
                       <Link
                         key={`${post.id}-${tag}`}
                         href={buildNewsHref({ tag, view: activeView })}
-                        className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                        className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                           isActiveTag
                             ? 'border-blue-400/40 bg-blue-500/15 text-blue-200'
                             : 'border-white/10 bg-white/5 text-white/70 hover:border-blue-400/30 hover:text-blue-200'

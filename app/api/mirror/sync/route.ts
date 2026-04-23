@@ -47,14 +47,41 @@ const MIRROR_MEDIA_TYPES: MirrorMediaType[] = [
 ]
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const ALLOWED_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
+const ALLOWED_AUDIO_MIME_TYPES = new Set([
+  'audio/aac',
+  'audio/m4a',
+  'audio/mp3',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/oga',
+  'audio/wav',
+  'audio/webm',
+  'audio/x-m4a',
+  'audio/x-wav',
+])
+const ALLOWED_AUDIO_EXTENSIONS = new Set(['.aac', '.m4a', '.mp3', '.ogg', '.oga', '.wav', '.webm'])
 const MIME_TO_EXTENSION: Record<string, string> = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
   'image/gif': '.gif',
+  'audio/aac': '.aac',
+  'audio/m4a': '.m4a',
+  'audio/mp3': '.mp3',
+  'audio/mp4': '.m4a',
+  'audio/mpeg': '.mp3',
+  'audio/ogg': '.ogg',
+  'audio/oga': '.ogg',
+  'audio/wav': '.wav',
+  'audio/webm': '.webm',
+  'audio/x-m4a': '.m4a',
+  'audio/x-wav': '.wav',
 }
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
+const MAX_AUDIO_SIZE_BYTES = 25 * 1024 * 1024
 const NEWS_MEDIA_DIR =
   process.env.NODE_ENV === 'production'
     ? '/home/appuser/apps/spokenword/shared/public/news-media'
@@ -82,6 +109,10 @@ function isMirrorAction(value: unknown): value is MirrorAction {
 
 function isMirrorMediaType(value: unknown): value is MirrorMediaType {
   return typeof value === 'string' && MIRROR_MEDIA_TYPES.includes(value as MirrorMediaType)
+}
+
+function hasMediaType(payload: MirrorPayload, mediaType: MirrorMediaType): boolean {
+  return payload.mediaType === mediaType || payload.mediaFiles.some((mediaFile) => mediaFile.mediaType === mediaType)
 }
 
 function toOptionalString(value: unknown): string | undefined {
@@ -481,12 +512,22 @@ async function parseRequestBody(
   return { payload: null, files: [], error: 'Unsupported content-type', status: 415 }
 }
 
-function getImageExtension(file: File): string {
+function getFileExtension(file: File, fallbackExtension: string): string {
   const nameExtension = path.extname(file.name ?? '').toLowerCase()
-  if (nameExtension === '.jpg' || nameExtension === '.jpeg' || nameExtension === '.png' || nameExtension === '.webp' || nameExtension === '.gif') {
+  if (nameExtension) {
     return nameExtension
   }
-  return MIME_TO_EXTENSION[file.type] ?? '.jpg'
+  return MIME_TO_EXTENSION[file.type] ?? fallbackExtension
+}
+
+function isAllowedImageFile(file: File): boolean {
+  const extension = getFileExtension(file, '.jpg')
+  return ALLOWED_IMAGE_MIME_TYPES.has(file.type) || ALLOWED_IMAGE_EXTENSIONS.has(extension)
+}
+
+function isAllowedAudioFile(file: File): boolean {
+  const extension = getFileExtension(file, '.mp3')
+  return ALLOWED_AUDIO_MIME_TYPES.has(file.type) || ALLOWED_AUDIO_EXTENSIONS.has(extension)
 }
 
 async function saveFirstValidImage(files: File[]): Promise<string | null> {
@@ -495,11 +536,11 @@ async function saveFirstValidImage(files: File[]): Promise<string | null> {
       continue
     }
 
-    if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
+    if (!isAllowedImageFile(file)) {
       continue
     }
 
-    const fileName = `${Date.now()}-${randomUUID()}${getImageExtension(file)}`
+    const fileName = `${Date.now()}-${randomUUID()}${getFileExtension(file, '.jpg')}`
     const filePath = path.join(NEWS_MEDIA_DIR, fileName)
     const fileBuffer = Buffer.from(await file.arrayBuffer())
 
@@ -511,12 +552,34 @@ async function saveFirstValidImage(files: File[]): Promise<string | null> {
   return null
 }
 
-async function deleteLocalImage(imageUrl: string | null): Promise<void> {
-  if (!imageUrl || !imageUrl.startsWith('/news-media/')) {
+async function saveFirstValidAudio(files: File[]): Promise<string | null> {
+  for (const file of files) {
+    if (file.size <= 0 || file.size > MAX_AUDIO_SIZE_BYTES) {
+      continue
+    }
+
+    if (!isAllowedAudioFile(file)) {
+      continue
+    }
+
+    const fileName = `${Date.now()}-${randomUUID()}${getFileExtension(file, '.mp3')}`
+    const filePath = path.join(NEWS_MEDIA_DIR, fileName)
+    const fileBuffer = Buffer.from(await file.arrayBuffer())
+
+    await mkdir(NEWS_MEDIA_DIR, { recursive: true })
+    await writeFile(filePath, fileBuffer)
+    return `/news-media/${fileName}`
+  }
+
+  return null
+}
+
+async function deleteLocalMedia(mediaUrl: string | null): Promise<void> {
+  if (!mediaUrl || !mediaUrl.startsWith('/news-media/')) {
     return
   }
 
-  const fileName = imageUrl.replace('/news-media/', '')
+  const fileName = mediaUrl.replace('/news-media/', '')
   if (!fileName) {
     return
   }
@@ -568,6 +631,11 @@ export async function POST(request: NextRequest) {
   try {
     switch (payload.action) {
       case 'delete': {
+        const existingPost = await prisma.channelPost.findUnique({
+          where: postWhere,
+          select: { imageUrl: true, audioUrl: true },
+        })
+
         await prisma.channelPost.upsert({
           where: postWhere,
           create: {
@@ -578,6 +646,7 @@ export async function POST(request: NextRequest) {
             text: null,
             mediaType: null,
             imageUrl: null,
+            audioUrl: null,
             hashtags: [],
             isDeleted: true,
           },
@@ -585,9 +654,17 @@ export async function POST(request: NextRequest) {
             channelUsername: payload.channelUsername ?? undefined,
             telegramDate,
             hashtags: [],
+            mediaType: null,
+            imageUrl: null,
+            audioUrl: null,
             isDeleted: true,
           },
         })
+
+        await Promise.all([
+          deleteLocalMedia(existingPost?.imageUrl ?? null),
+          deleteLocalMedia(existingPost?.audioUrl ?? null),
+        ])
 
         return NextResponse.json({ ok: true })
       }
@@ -596,14 +673,17 @@ export async function POST(request: NextRequest) {
       case 'update': {
         const existingPost = await prisma.channelPost.findUnique({
           where: postWhere,
-          select: { imageUrl: true },
+          select: { imageUrl: true, audioUrl: true, mediaType: true },
         })
 
-        const hasPhotoMedia =
-          payload.mediaType === 'photo' ||
-          payload.mediaFiles.some((mediaFile) => mediaFile.mediaType === 'photo')
-
+        const hasPhotoMedia = hasMediaType(payload, 'photo') || parsedRequest.files.some((file) => isAllowedImageFile(file))
+        const hasAudioMedia =
+          hasMediaType(payload, 'audio') ||
+          hasMediaType(payload, 'voice') ||
+          parsedRequest.files.some((file) => isAllowedAudioFile(file))
+        const isVoiceMessage = hasMediaType(payload, 'voice')
         const savedImageUrl = hasPhotoMedia ? await saveFirstValidImage(parsedRequest.files) : null
+        const savedAudioUrl = hasAudioMedia ? await saveFirstValidAudio(parsedRequest.files) : null
         const currentText = payload.text ?? payload.caption ?? null
         const currentEntities = payload.text ? payload.entities : payload.captionEntities
         const preparedTextPayload = prepareTextPayload(currentText, currentEntities)
@@ -611,13 +691,21 @@ export async function POST(request: NextRequest) {
           ? preparedTextPayload.text
           : null
         const nextImageUrl = savedImageUrl ?? existingPost?.imageUrl ?? null
-        const nextMediaType = nextImageUrl ? 'photo' : null
+        const nextAudioUrl = savedAudioUrl ?? existingPost?.audioUrl ?? null
+        const nextMediaType = nextAudioUrl
+          ? isVoiceMessage || existingPost?.mediaType === 'voice'
+            ? 'voice'
+            : 'audio'
+          : nextImageUrl
+            ? 'photo'
+            : null
 
-        const hasRenderableContent = Boolean(normalizedText || nextImageUrl)
+        const hasRenderableContent = Boolean(normalizedText || nextImageUrl || nextAudioUrl)
         if (!hasRenderableContent && !existingPost) {
-          if (savedImageUrl) {
-            await deleteLocalImage(savedImageUrl)
-          }
+          await Promise.all([
+            deleteLocalMedia(savedImageUrl),
+            deleteLocalMedia(savedAudioUrl),
+          ])
           return NextResponse.json({ ok: true })
         }
 
@@ -633,6 +721,7 @@ export async function POST(request: NextRequest) {
             hashtags: preparedTextPayload.hashtags,
             mediaType: nextMediaType,
             imageUrl: nextImageUrl,
+            audioUrl: nextAudioUrl,
             isDeleted: false,
           },
           update: {
@@ -643,13 +732,19 @@ export async function POST(request: NextRequest) {
             hashtags: preparedTextPayload.hashtags,
             mediaType: nextMediaType,
             imageUrl: nextImageUrl,
+            audioUrl: nextAudioUrl,
             isDeleted: false,
           },
         })
 
-        if (savedImageUrl && existingPost?.imageUrl && existingPost.imageUrl !== savedImageUrl) {
-          await deleteLocalImage(existingPost.imageUrl)
-        }
+        await Promise.all([
+          savedImageUrl && existingPost?.imageUrl && existingPost.imageUrl !== savedImageUrl
+            ? deleteLocalMedia(existingPost.imageUrl)
+            : Promise.resolve(),
+          savedAudioUrl && existingPost?.audioUrl && existingPost.audioUrl !== savedAudioUrl
+            ? deleteLocalMedia(existingPost.audioUrl)
+            : Promise.resolve(),
+        ])
 
         return NextResponse.json({ ok: true })
       }
