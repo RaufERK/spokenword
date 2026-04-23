@@ -237,10 +237,10 @@ export default async function NewsPage({
                     <Image
                       src={post.imageUrl}
                       alt={post.text ? post.text.slice(0, 80) : 'Новостное изображение'}
-                      width={128}
-                      height={96}
-                      sizes='128px'
-                      className='h-20 w-28 object-cover sm:h-24 sm:w-32'
+                      width={147}
+                      height={110}
+                      sizes='(max-width: 640px) 128px, 147px'
+                      className='h-24 w-32 object-contain bg-black/30 p-1 sm:h-28 sm:w-36'
                       unoptimized
                     />
                   </a>

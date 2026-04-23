@@ -30,6 +30,12 @@ Next.js application with Express.js microservice for large file uploads and Bull
 - Production-oriented: graceful shutdown, predictable startup commands
 - Environment settings via `.env`/`.env.production`
 
+## Repo Boundaries
+- Work only inside this `spokenword` repository unless the user explicitly instructs otherwise.
+- It is allowed to inspect and read the `spoken-bot` repository when needed for context.
+- Do not modify, commit, push, deploy, or otherwise change the `spoken-bot` repository without an explicit user directive.
+- If a task seems to involve both the site and the bot, treat `spokenword` as the only allowed scope until the user clearly expands it.
+
 ---
 
 ## 🏗️ ARCHITECTURE (Current)
