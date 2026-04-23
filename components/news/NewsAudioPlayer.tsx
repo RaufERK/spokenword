@@ -14,19 +14,17 @@ export default function NewsAudioPlayer({
   className,
 }: NewsAudioPlayerProps) {
   return (
-    <details className={className}>
-      <summary className='cursor-pointer list-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 transition hover:bg-white/10'>
-        <span className='inline-flex items-center gap-2'>
-          <span className='text-base leading-none'>♪</span>
+    <div className={className}>
+      <div className='rounded-lg border border-white/10 bg-black/20 p-2'>
+        <div className='mb-2 flex items-center gap-2 text-xs text-white/60'>
+          <span className='text-sm leading-none'>♪</span>
           <span>{getAudioLabel(mediaType)}</span>
-        </span>
-      </summary>
-      <div className='mt-2 rounded-lg border border-white/10 bg-black/20 p-2'>
+        </div>
         <audio controls preload='none' className='h-10 w-full'>
           <source src={src} />
           Ваш браузер не поддерживает аудио.
         </audio>
       </div>
-    </details>
+    </div>
   )
 }
