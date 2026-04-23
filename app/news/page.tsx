@@ -213,7 +213,7 @@ export default async function NewsPage({
               </div>
 
               {post.text && (
-                <div className='text-sm leading-6 text-white/90 whitespace-pre-wrap sm:text-[15px]'>
+                <div className='text-sm leading-relaxed text-white/90 whitespace-pre-wrap'>
                   {renderTelegramText(post.text, post.textEntities)}
                 </div>
               )}

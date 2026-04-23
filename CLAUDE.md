@@ -29,6 +29,7 @@ Next.js application with Express.js microservice for large file uploads and Bull
 - Logic without side-effects on import; workers run via explicit entrypoints
 - Production-oriented: graceful shutdown, predictable startup commands
 - Environment settings via `.env`/`.env.production`
+- Default workflow for user-requested changes in this repository: complete the full flow `implement -> commit -> push -> deploy` unless the user explicitly says to stop earlier or keep the change local only.
 
 ## Repo Boundaries
 - Work only inside this `spokenword` repository unless the user explicitly instructs otherwise.
