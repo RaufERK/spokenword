@@ -218,15 +218,17 @@ export default async function NewsPage({
 
               {post.imageUrl && (
                 <div className={post.text ? 'mt-4' : ''}>
-                  <Image
-                    src={post.imageUrl}
-                    alt={post.text ? post.text.slice(0, 80) : 'Новостное изображение'}
-                    width={1280}
-                    height={720}
-                    sizes='(max-width: 768px) 100vw, 800px'
-                    className='w-full h-auto rounded-xl border border-white/10'
-                    unoptimized
-                  />
+                  <div className='mx-auto max-w-md overflow-hidden rounded-xl border border-white/10 bg-black/20'>
+                    <Image
+                      src={post.imageUrl}
+                      alt={post.text ? post.text.slice(0, 80) : 'Новостное изображение'}
+                      width={960}
+                      height={640}
+                      sizes='(max-width: 768px) 90vw, 448px'
+                      className='h-auto w-full object-contain'
+                      unoptimized
+                    />
+                  </div>
                 </div>
               )}
 
