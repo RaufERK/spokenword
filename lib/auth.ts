@@ -13,6 +13,7 @@ declare module 'next-auth' {
     phoneNumber: string | null
     login: string
     email?: string | null
+    city?: string | null
     accessUntil?: string | null
     password?: string | null
   }
@@ -30,6 +31,7 @@ declare module 'next-auth/jwt' {
     phoneNumber: string | null
     login: string
     email?: string | null
+    city?: string | null
     accessUntil?: string | null
     password?: string | null
   }
@@ -60,6 +62,7 @@ export const authOptions: NextAuthOptions = {
           phoneNumber: user.phoneNumber,
           login: user.login,
           email: user.email,
+          city: user.city,
           accessUntil: user.accessUntil ? user.accessUntil.toISOString() : null,
           password: user.password,
         }
@@ -81,11 +84,28 @@ export const authOptions: NextAuthOptions = {
       } else if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: Number(token.id) },
-          select: { role: true, accessUntil: true },
+          select: {
+            role: true,
+            firstName: true,
+            lastName: true,
+            phoneNumber: true,
+            login: true,
+            email: true,
+            city: true,
+            accessUntil: true,
+            password: true,
+          },
         })
         if (dbUser) {
           token.role = dbUser.role
+          token.firstName = dbUser.firstName
+          token.lastName = dbUser.lastName
+          token.phoneNumber = dbUser.phoneNumber
+          token.login = dbUser.login
+          token.email = dbUser.email
+          token.city = dbUser.city
           token.accessUntil = dbUser.accessUntil ? dbUser.accessUntil.toISOString() : null
+          token.password = dbUser.password
         }
       }
       return token
@@ -99,6 +119,7 @@ export const authOptions: NextAuthOptions = {
         phoneNumber: token.phoneNumber as string | null,
         login: token.login as string,
         email: token.email as string | null,
+        city: token.city as string | null,
         name: `${token.firstName} ${token.lastName}`,
         accessUntil: token.accessUntil as string | null,
         password: token.password as string | null,

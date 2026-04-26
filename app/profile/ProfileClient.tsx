@@ -2,24 +2,42 @@
 
 import { signIn, useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { User, Mail, Phone, Key, Shield } from 'lucide-react'
+import { useEffect, useMemo, useState, type ElementType } from 'react'
+import { User, Mail, Phone, Key, Shield, MapPin, Lock, Save, X } from 'lucide-react'
 import { formatPhone } from '@/helpers/phone'
 
 interface UserProfile {
-  id: number
+  id: number | string
   firstName: string
   lastName: string
-  phoneNumber: string
-  email: string
+  phoneNumber: string | null
+  email?: string | null
+  city?: string | null
   login: string
   role: string
   password?: string
 }
 
+type ProfileForm = {
+  firstName: string
+  lastName: string
+  phoneNumber: string
+  email: string
+  city: string
+  currentPassword: string
+  newPassword: string
+  repeatPassword: string
+}
+
+type ProfileResponse = {
+  user?: UserProfile
+  error?: string
+  fields?: string[]
+}
+
 type FieldDef = {
   label: string
-  icon: React.ElementType
+  icon: ElementType
   value: (p: UserProfile) => string | undefined | null
   show?: (p: UserProfile, hasToken: boolean) => boolean
 }
@@ -29,6 +47,7 @@ const FIELDS: FieldDef[] = [
   { label: 'Фамилия', icon: User, value: (p) => p.lastName },
   { label: 'Телефон', icon: Phone, value: (p) => formatPhone(p.phoneNumber) },
   { label: 'Email', icon: Mail, value: (p) => p.email },
+  { label: 'Город', icon: MapPin, value: (p) => p.city },
   { label: 'Логин', icon: Key, value: (p) => p.login },
   {
     label: 'Пароль',
@@ -48,14 +67,76 @@ function getRoleBadgeClass(role: string) {
   }
 }
 
+function getInitialForm(profile: UserProfile): ProfileForm {
+  return {
+    firstName: profile.firstName ?? '',
+    lastName: profile.lastName ?? '',
+    phoneNumber: profile.phoneNumber ?? '',
+    email: profile.email ?? '',
+    city: profile.city ?? '',
+    currentPassword: '',
+    newPassword: '',
+    repeatPassword: '',
+  }
+}
+
+function getErrorMessage(error: string, fields?: string[]) {
+  if (error === 'firstName') return 'Проверьте имя'
+  if (error === 'lastName') return 'Проверьте фамилию'
+  if (error === 'phoneNumber') return 'Проверьте номер телефона'
+  if (error === 'email') return 'Проверьте email'
+  if (error === 'newPassword') return 'Новый пароль должен быть не короче 6 символов'
+  if (error === 'currentPassword') return 'Текущий пароль указан неверно'
+  if (error === 'duplicate') {
+    if (fields?.includes('phoneNumber')) return 'Такой телефон уже указан у другого пользователя'
+    if (fields?.includes('email')) return 'Такой email уже указан у другого пользователя'
+    return 'Такие данные уже используются'
+  }
+  return 'Не удалось сохранить профиль'
+}
+
+function TextInput({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  autoComplete,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  type?: string
+  autoComplete?: string
+  placeholder?: string
+}) {
+  return (
+    <label className="space-y-1.5">
+      <span className="block text-purple-300/80 text-sm">{label}</span>
+      <input
+        type={type}
+        value={value}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-purple-300/60 focus:bg-white/15 placeholder:text-white/30"
+      />
+    </label>
+  )
+}
+
 export default function ProfileClient() {
   const params = useSearchParams()
   const token = params?.get('token') ?? null
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [authTried, setAuthTried] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [savedMessage, setSavedMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) return
@@ -77,11 +158,119 @@ export default function ProfileClient() {
     }
   }, [user, session, authTried])
 
+  const sessionProfile = session?.user as UserProfile | undefined
+  const profile = useMemo(() => {
+    if (user && sessionProfile && String(user.id) === String(sessionProfile.id)) {
+      return { ...user, ...sessionProfile }
+    }
+    return user || sessionProfile
+  }, [sessionProfile, user])
+
+  const [form, setForm] = useState<ProfileForm>(() => ({
+    firstName: '',
+    lastName: '',
+    phoneNumber: '',
+    email: '',
+    city: '',
+    currentPassword: '',
+    newPassword: '',
+    repeatPassword: '',
+  }))
+
+  useEffect(() => {
+    if (!profile || isEditing) return
+    setForm(getInitialForm(profile))
+  }, [
+    profile?.id,
+    profile?.firstName,
+    profile?.lastName,
+    profile?.phoneNumber,
+    profile?.email,
+    profile?.city,
+    isEditing,
+  ])
+
+  const updateForm = (key: keyof ProfileForm, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+    setFormError(null)
+    setSavedMessage(null)
+  }
+
+  const handleCancel = () => {
+    if (profile) setForm(getInitialForm(profile))
+    setIsEditing(false)
+    setFormError(null)
+    setSavedMessage(null)
+  }
+
+  const handleSave = async () => {
+    if (!profile) return
+
+    if (form.newPassword && form.newPassword !== form.repeatPassword) {
+      setFormError('Новый пароль и повтор не совпадают')
+      return
+    }
+
+    setSaving(true)
+    setFormError(null)
+    setSavedMessage(null)
+
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          phoneNumber: form.phoneNumber,
+          email: form.email,
+          city: form.city,
+          currentPassword: form.currentPassword,
+          newPassword: form.newPassword,
+        }),
+      })
+      const data = (await res.json()) as ProfileResponse
+
+      if (!res.ok || !data.user) {
+        setFormError(getErrorMessage(data.error ?? 'server', data.fields))
+        return
+      }
+
+      setUser((prev) => ({
+        ...(prev ?? profile),
+        ...data.user,
+        password: form.newPassword || prev?.password || profile.password,
+      }))
+
+      if (form.newPassword) {
+        await signIn('credentials', {
+          login: profile.login,
+          password: form.newPassword,
+          redirect: false,
+        })
+      } else {
+        await update()
+      }
+
+      setForm({
+        ...getInitialForm({
+          ...profile,
+          ...data.user,
+          password: form.newPassword || profile.password,
+        }),
+      })
+      setIsEditing(false)
+      setSavedMessage('Профиль сохранён')
+    } catch {
+      setFormError('Не удалось сохранить профиль')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (error) return <div className="p-10 text-red-400 text-center">{error}</div>
   if (token && (loading || !user || status === 'loading'))
     return <div className="p-10 text-white/50 text-center">Загрузка...</div>
-
-  const profile = user || (session?.user as UserProfile | undefined)
 
   if (!profile)
     return (
@@ -126,25 +315,158 @@ export default function ProfileClient() {
           </div>
         </div>
 
-        {/* Fields grid */}
         <div className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {FIELDS.map(({ label, icon: Icon, value, show }) => {
-              if (show && !show(profile, hasToken)) return null
-              const val = value(profile)
-              return (
-                <div key={label} className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-purple-300/80 text-sm">
-                    <Icon className="w-4 h-4" />
-                    <span>{label}:</span>
-                  </label>
-                  <p className="text-green-400 text-lg pl-6 font-medium">
-                    {val || <span className="text-white/30 text-base">—</span>}
-                  </p>
+          {!isEditing ? (
+            <>
+              {savedMessage && (
+                <div className="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-green-200">
+                  {savedMessage}
                 </div>
-              )
-            })}
-          </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {FIELDS.map(({ label, icon: Icon, value, show }) => {
+                  if (show && !show(profile, hasToken)) return null
+                  const val = value(profile)
+                  return (
+                    <div key={label} className="space-y-1.5">
+                      <label className="flex items-center gap-2 text-purple-300/80 text-sm">
+                        <Icon className="w-4 h-4" />
+                        <span>{label}:</span>
+                      </label>
+                      <p className="text-green-400 text-lg pl-6 font-medium">
+                        {val || <span className="text-white/30 text-base">—</span>}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="mt-8 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-purple-500 px-5 py-3 font-medium text-white transition hover:bg-purple-400"
+                >
+                  <User className="w-4 h-4" />
+                  Редактировать профиль
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <TextInput
+                  label="Имя"
+                  value={form.firstName}
+                  autoComplete="given-name"
+                  onChange={(value) => updateForm('firstName', value)}
+                />
+                <TextInput
+                  label="Фамилия"
+                  value={form.lastName}
+                  autoComplete="family-name"
+                  onChange={(value) => updateForm('lastName', value)}
+                />
+                <TextInput
+                  label="Телефон"
+                  value={form.phoneNumber}
+                  autoComplete="tel"
+                  placeholder="+7 999 123-45-67"
+                  onChange={(value) => updateForm('phoneNumber', value)}
+                />
+                <TextInput
+                  label="Email"
+                  value={form.email}
+                  type="email"
+                  autoComplete="email"
+                  onChange={(value) => updateForm('email', value)}
+                />
+                <TextInput
+                  label="Город"
+                  value={form.city}
+                  autoComplete="address-level2"
+                  onChange={(value) => updateForm('city', value)}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="space-y-1.5">
+                    <span className="block text-purple-300/80 text-sm">Логин</span>
+                    <input
+                      value={profile.login}
+                      disabled
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/50 outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="block text-purple-300/80 text-sm">Роль</span>
+                    <input
+                      value={profile.role}
+                      disabled
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/50 outline-none"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className="mb-4 flex items-center gap-2 text-white">
+                  <Lock className="w-4 h-4 text-purple-300" />
+                  <h3 className="font-medium">Смена пароля</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <TextInput
+                    label="Текущий пароль"
+                    type="password"
+                    value={form.currentPassword}
+                    autoComplete="current-password"
+                    onChange={(value) => updateForm('currentPassword', value)}
+                  />
+                  <TextInput
+                    label="Новый пароль"
+                    type="password"
+                    value={form.newPassword}
+                    autoComplete="new-password"
+                    onChange={(value) => updateForm('newPassword', value)}
+                  />
+                  <TextInput
+                    label="Повтор нового пароля"
+                    type="password"
+                    value={form.repeatPassword}
+                    autoComplete="new-password"
+                    onChange={(value) => updateForm('repeatPassword', value)}
+                  />
+                </div>
+              </div>
+
+              {formError && (
+                <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200">
+                  {formError}
+                </div>
+              )}
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-5 py-3 font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+                >
+                  <X className="w-4 h-4" />
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-5 py-3 font-medium text-white transition hover:bg-green-400 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Сохраняем...' : 'Сохранить'}
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
