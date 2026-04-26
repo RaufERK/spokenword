@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
       lastName: user.lastName,
       phoneNumber: user.phoneNumber,
       email: user.email,
+      city: user.city,
       login: user.login,
       role: user.role,
       password: user.password

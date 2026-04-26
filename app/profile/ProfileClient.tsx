@@ -87,6 +87,7 @@ function getErrorMessage(error: string, fields?: string[]) {
   if (error === 'email') return 'Проверьте email'
   if (error === 'newPassword') return 'Новый пароль должен быть не короче 6 символов'
   if (error === 'currentPassword') return 'Текущий пароль указан неверно'
+  if (error === 'profileMismatch') return 'Открыт один профиль, а в браузере активна другая учётная запись. Обновите страницу или войдите заново по ссылке профиля.'
   if (error === 'duplicate') {
     if (fields?.includes('phoneNumber')) return 'Такой телефон уже указан у другого пользователя'
     if (fields?.includes('email')) return 'Такой email уже указан у другого пользователя'
@@ -152,19 +153,33 @@ export default function ProfileClient() {
   }, [token])
 
   useEffect(() => {
-    if (user && !session && !authTried && user.login && user.password) {
+    if (
+      user &&
+      (!session || String(session.user.id) !== String(user.id)) &&
+      !authTried &&
+      user.login &&
+      user.password
+    ) {
       setAuthTried(true)
       signIn('credentials', { login: user.login, password: user.password, redirect: false })
+        .then(() => update())
     }
-  }, [user, session, authTried])
+  }, [user, session, authTried, update])
 
   const sessionProfile = session?.user as UserProfile | undefined
+  const tokenProfile = token ? user : null
+  const sessionMatchesTokenProfile =
+    !!sessionProfile && !!tokenProfile && String(sessionProfile.id) === String(tokenProfile.id)
+  const activeProfile = tokenProfile
+    ? sessionMatchesTokenProfile
+      ? sessionProfile
+      : tokenProfile
+    : sessionProfile
+  const canEditProfile =
+    !!sessionProfile && !!activeProfile && String(sessionProfile.id) === String(activeProfile.id)
   const profile = useMemo(() => {
-    if (user && sessionProfile && String(user.id) === String(sessionProfile.id)) {
-      return { ...user, ...sessionProfile }
-    }
-    return user || sessionProfile
-  }, [sessionProfile, user])
+    return activeProfile
+  }, [activeProfile])
 
   const [form, setForm] = useState<ProfileForm>(() => ({
     firstName: '',
@@ -206,6 +221,11 @@ export default function ProfileClient() {
   const handleSave = async () => {
     if (!profile) return
 
+    if (!canEditProfile) {
+      setFormError(getErrorMessage('profileMismatch'))
+      return
+    }
+
     if (form.newPassword && form.newPassword !== form.repeatPassword) {
       setFormError('Новый пароль и повтор не совпадают')
       return
@@ -220,6 +240,7 @@ export default function ProfileClient() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          profileId: profile.id,
           firstName: form.firstName,
           lastName: form.lastName,
           phoneNumber: form.phoneNumber,
@@ -236,18 +257,28 @@ export default function ProfileClient() {
         return
       }
 
-      setUser((prev) => ({
-        ...(prev ?? profile),
-        ...data.user,
-        password: form.newPassword || prev?.password || profile.password,
-      }))
+      if (tokenProfile) {
+        setUser((prev) => prev && String(prev.id) === String(data.user?.id)
+          ? {
+              ...prev,
+              ...data.user,
+              password: form.newPassword || prev.password,
+            }
+          : prev
+        )
+      }
 
       if (form.newPassword) {
-        await signIn('credentials', {
-          login: profile.login,
+        const signInResult = await signIn('credentials', {
+          login: data.user.login,
           password: form.newPassword,
           redirect: false,
         })
+        if (signInResult?.error) {
+          setFormError('Данные сохранились, но сессия не обновилась. Войдите заново с новым паролем.')
+          return
+        }
+        await update()
       } else {
         await update()
       }
@@ -281,6 +312,7 @@ export default function ProfileClient() {
     )
 
   const hasToken = !!token && !!user
+  const isAuthorizingTokenProfile = hasToken && !sessionMatchesTokenProfile && !authTried
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`
 
@@ -346,12 +378,20 @@ export default function ProfileClient() {
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-purple-500 px-5 py-3 font-medium text-white transition hover:bg-purple-400"
+                  disabled={!canEditProfile}
+                  className="inline-flex items-center gap-2 rounded-xl bg-purple-500 px-5 py-3 font-medium text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <User className="w-4 h-4" />
-                  Редактировать профиль
+                  {isAuthorizingTokenProfile ? 'Авторизуем профиль...' : 'Редактировать профиль'}
                 </button>
               </div>
+
+              {!canEditProfile && !isAuthorizingTokenProfile && (
+                <div className="mt-4 rounded-xl border border-yellow-400/30 bg-yellow-500/10 px-4 py-3 text-yellow-100">
+                  Этот профиль открыт по ссылке, но в браузере активна другая учётная запись.
+                  Обновите страницу или откройте ссылку профиля заново.
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-8">

@@ -79,6 +79,7 @@ export const authOptions: NextAuthOptions = {
         token.phoneNumber = user.phoneNumber
         token.login = user.login
         token.email = user.email
+        token.city = user.city ?? null
         token.accessUntil = user.accessUntil ?? null
         token.password = user.password ?? null
       } else if (token.id) {

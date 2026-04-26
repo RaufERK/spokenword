@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 
 type ProfilePayload = {
+  profileId?: number | string
   firstName?: string
   lastName?: string
   phoneNumber?: string
@@ -51,6 +52,11 @@ export async function PATCH(request: Request) {
 
     const userId = Number(session.user.id)
     const body = (await request.json()) as ProfilePayload
+    const profileId = Number(body.profileId)
+
+    if (!Number.isInteger(profileId) || profileId !== userId) {
+      return NextResponse.json({ error: 'profileMismatch' }, { status: 403 })
+    }
 
     const firstName = cleanText(body.firstName)
     const lastName = cleanText(body.lastName)
