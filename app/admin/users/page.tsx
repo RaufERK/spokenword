@@ -52,5 +52,5 @@ export default async function AdminUsersPage() {
     }
   })
 
-  return <UsersTable users={users} currentRole={session.user.role} />
+  return <UsersTable users={users} currentRole={session.user.role} currentUserId={Number(session.user.id)} />
 }

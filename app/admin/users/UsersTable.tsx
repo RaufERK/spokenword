@@ -1,6 +1,6 @@
 'use client'
 
-import { ROLES, Role } from '@/lib/roles'
+import type { Role } from '@/lib/roles'
 import { useState, useMemo, useEffect } from 'react'
 import UserAccessModal from '@/components/admin/UserAccessModal'
 import PaymentModal from '@/components/admin/PaymentModal'
@@ -70,7 +70,15 @@ const FILTER_TABS: { key: PaymentFilter; label: string }[] = [
   { key: 'admins', label: 'Админы' },
 ]
 
-export default function UsersTable({ users, currentRole }: { users: UserRow[]; currentRole: Role }) {
+export default function UsersTable({
+  users,
+  currentRole,
+  currentUserId,
+}: {
+  users: UserRow[]
+  currentRole: Role
+  currentUserId: number
+}) {
   const [list, setList] = useState(users)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -90,6 +98,12 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
 
   const isSuper = currentRole === 'SUPER'
   const canEdit = ['ADMIN', 'SUPER'].includes(currentRole)
+
+  const canCopyProfileLink = (user: UserRow) => {
+    if (isSuper) return true
+    if (user.role === 'USER') return true
+    return user.id === currentUserId
+  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -155,9 +169,14 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
     setSelectedIds((prev) => prev.filter((id) => list.some((u) => u.id === id)))
   }, [list])
 
-  const handleCopyLink = async (id: number) => {
+  const handleCopyLink = async (user: UserRow) => {
+    if (!canCopyProfileLink(user)) {
+      alert('Ссылки на админские аккаунты доступны только владельцу или супер-админу')
+      return
+    }
+
     try {
-      const res = await fetch(`/api/users/${id}/token`)
+      const res = await fetch(`/api/users/${user.id}/token`)
       const data = await res.json() as ProfileLinkPayload | { error?: string }
       if (!res.ok || !('urls' in data)) return alert('Ошибка при создании ссылки профиля')
       const copiedText = [
@@ -403,6 +422,7 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
               {processed.map((u, i) => {
                 const active = isAccessActive(u.accessUntil)
                 const isEven = i % 2 === 0
+                const canCopyLink = canCopyProfileLink(u)
                 return (
                   <tr
                     key={u.id}
@@ -479,9 +499,14 @@ export default function UsersTable({ users, currentRole }: { users: UserRow[]; c
                     {/* Профиль */}
                     <td className="px-3 py-2 text-center">
                       <button
-                        onClick={() => handleCopyLink(u.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-blue-600/70 hover:bg-blue-500 text-white transition-colors"
-                        title="Скопировать ссылки профиля"
+                        onClick={() => handleCopyLink(u)}
+                        disabled={!canCopyLink}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-white transition-colors ${
+                          canCopyLink
+                            ? 'bg-blue-600/70 hover:bg-blue-500'
+                            : 'bg-white/10 opacity-35 cursor-not-allowed'
+                        }`}
+                        title={canCopyLink ? 'Скопировать ссылки профиля' : 'Недоступно для чужих админских аккаунтов'}
                       >
                         <Link className="w-3 h-3" />
                         RU/EU
