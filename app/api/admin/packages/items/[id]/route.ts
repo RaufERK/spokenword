@@ -1,7 +1,25 @@
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { unlink } from 'fs/promises'
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
+import { join, relative, resolve } from 'path'
+
+const PAID_CONTENT_DIR = join(process.cwd(), 'paid-content')
+
+function getPaidContentFilePath(filePath: string) {
+  const relativePath = filePath
+    .replace(/^\/?paid-content\/?/, '')
+    .replace(/^\/+/, '')
+  const resolvedPath = resolve(PAID_CONTENT_DIR, relativePath)
+  const pathFromBase = relative(PAID_CONTENT_DIR, resolvedPath)
+
+  if (!pathFromBase || pathFromBase.startsWith('..')) {
+    return null
+  }
+
+  return resolvedPath
+}
 
 interface Props {
   params: Promise<{ id: string }>
@@ -36,10 +54,10 @@ export async function DELETE(req: NextRequest, { params }: Props) {
 
     // Удаляем физический файл
     try {
-      const path = await import('path')
-      const fs = await import('fs').then(m => m.promises)
-      const filePath = path.join(process.cwd(), item.filePath.replace(/^\//, ''))
-      await fs.unlink(filePath)
+      const filePath = getPaidContentFilePath(item.filePath)
+      if (filePath) {
+        await unlink(filePath)
+      }
     } catch (fileError) {
       console.warn(`Could not delete file: ${item.filePath}`, fileError)
     }

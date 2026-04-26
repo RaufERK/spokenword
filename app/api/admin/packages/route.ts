@@ -1,7 +1,25 @@
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { rmdir, unlink } from 'fs/promises'
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
+import { join, relative, resolve } from 'path'
+
+const PAID_CONTENT_DIR = join(process.cwd(), 'paid-content')
+
+function getPaidContentFilePath(filePath: string) {
+  const relativePath = filePath
+    .replace(/^\/?paid-content\/?/, '')
+    .replace(/^\/+/, '')
+  const resolvedPath = resolve(PAID_CONTENT_DIR, relativePath)
+  const pathFromBase = relative(PAID_CONTENT_DIR, resolvedPath)
+
+  if (!pathFromBase || pathFromBase.startsWith('..')) {
+    return null
+  }
+
+  return resolvedPath
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -151,13 +169,12 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Удаляем физические файлы
-    const fs = await import('fs').then(m => m.promises)
-    const path = await import('path')
-    
     for (const item of pkg.items) {
       try {
-        const filePath = path.join(process.cwd(), item.filePath.replace(/^\//, ''))
-        await fs.unlink(filePath)
+        const filePath = getPaidContentFilePath(item.filePath)
+        if (filePath) {
+          await unlink(filePath)
+        }
       } catch (fileError) {
         console.warn(`Could not delete file: ${item.filePath}`, fileError)
       }
@@ -165,8 +182,8 @@ export async function DELETE(req: NextRequest) {
 
     // Удаляем папку пакета если пустая
     try {
-      const packageDir = path.join(process.cwd(), 'paid-content', 'packages', `package_${packageId}`)
-      await fs.rmdir(packageDir)
+      const packageDir = join(PAID_CONTENT_DIR, 'packages', `package_${packageId}`)
+      await rmdir(packageDir)
     } catch (dirError) {
       console.warn(`Could not delete package directory`, dirError)
     }

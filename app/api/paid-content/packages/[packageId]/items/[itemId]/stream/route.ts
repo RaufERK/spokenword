@@ -3,7 +3,23 @@ import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { createReadStream, statSync } from 'fs'
-import { join } from 'path'
+import { join, relative, resolve } from 'path'
+
+const PAID_CONTENT_DIR = join(process.cwd(), 'paid-content')
+
+function getPaidContentFilePath(filePath: string) {
+  const relativePath = filePath
+    .replace(/^\/?paid-content\/?/, '')
+    .replace(/^\/+/, '')
+  const resolvedPath = resolve(PAID_CONTENT_DIR, relativePath)
+  const pathFromBase = relative(PAID_CONTENT_DIR, resolvedPath)
+
+  if (!pathFromBase || pathFromBase.startsWith('..')) {
+    return null
+  }
+
+  return resolvedPath
+}
 
 interface Props {
   params: Promise<{ packageId: string; itemId: string }>
@@ -55,7 +71,10 @@ export async function GET(req: NextRequest, { params }: Props) {
     }
 
     // Путь к файлу
-    const filePath = join(process.cwd(), item.filePath.replace(/^\//, ''))
+    const filePath = getPaidContentFilePath(item.filePath)
+    if (!filePath) {
+      return new NextResponse('File not found', { status: 404 })
+    }
     
     try {
       const stat = statSync(filePath)
