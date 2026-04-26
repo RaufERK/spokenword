@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/register/route.ts
+import { normalizeEmail } from '@/helpers/email'
 import { normalizePhone } from '@/helpers/phone'
 import prisma from '@/lib/prisma'
 import crypto from 'crypto'
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'phone' }, { status: 400 })
     }
 
-    const email = typeof data.email === 'string' ? data.email.trim() : ''
+    const email = typeof data.email === 'string' ? normalizeEmail(data.email) : ''
 
     const [existingPhoneUser, existingEmailUser] = await Promise.all([
       prisma.user.findUnique({
@@ -34,8 +35,8 @@ export async function POST(request: Request) {
         select: { id: true },
       }),
       email
-        ? prisma.user.findUnique({
-            where: { email },
+        ? prisma.user.findFirst({
+            where: { email: { equals: email, mode: 'insensitive' } },
             select: { id: true },
           })
         : Promise.resolve(null),

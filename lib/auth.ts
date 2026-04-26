@@ -2,6 +2,8 @@ import prisma from '@/lib/prisma'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 
+import { normalizeEmail } from '@/helpers/email'
+import { normalizePhone } from '@/helpers/phone'
 import type { Role } from '@/lib/roles'
 
 declare module 'next-auth' {
@@ -49,9 +51,26 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(creds) {
         if (!creds?.login || !creds.password) return null
-        const user = await prisma.user.findUnique({
-          where: { login: creds.login },
+
+        const identifier = creds.login.trim()
+        const email = normalizeEmail(identifier)
+        const phoneNumber = normalizePhone(identifier)
+        let user = await prisma.user.findUnique({
+          where: { login: identifier },
         })
+
+        if (!user && email.includes('@')) {
+          user = await prisma.user.findFirst({
+            where: { email: { equals: email, mode: 'insensitive' } },
+          })
+        }
+
+        if (!user && /^\d{11,15}$/.test(phoneNumber)) {
+          user = await prisma.user.findUnique({
+            where: { phoneNumber },
+          })
+        }
+
         if (!user || user.password !== creds.password) return null
 
         return {

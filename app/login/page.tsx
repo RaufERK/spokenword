@@ -22,7 +22,7 @@ export default function LoginPage() {
     const res = await signIn('credentials', { login, password, redirect: false })
 
     if (res?.error) {
-      setError('Неверный логин или пароль')
+      setError('Неверный логин, email, телефон или пароль')
       setLoading(false)
     } else {
       router.push('/')
@@ -47,7 +47,7 @@ export default function LoginPage() {
             {/* Login */}
             <div>
               <label htmlFor="login" className="block text-gray-700 mb-1.5 text-sm font-medium">
-                Логин
+                Логин, email или телефон
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -57,7 +57,7 @@ export default function LoginPage() {
                   id="login"
                   name="login"
                   type="text"
-                  placeholder="Логин"
+                  placeholder="Логин, email или телефон"
                   autoComplete="username"
                   required
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-gray-900 placeholder-gray-400"

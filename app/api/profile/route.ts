@@ -1,3 +1,4 @@
+import { normalizeEmail } from '@/helpers/email'
 import { normalizePhone } from '@/helpers/phone'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
@@ -61,7 +62,7 @@ export async function PATCH(request: Request) {
     const firstName = cleanText(body.firstName)
     const lastName = cleanText(body.lastName)
     const phoneNumber = normalizePhone(cleanText(body.phoneNumber))
-    const email = cleanText(body.email)
+    const email = normalizeEmail(cleanText(body.email))
     const city = cleanText(body.city)
     const currentPassword = cleanText(body.currentPassword)
     const newPassword = cleanText(body.newPassword)
@@ -97,6 +98,23 @@ export async function PATCH(request: Request) {
 
     if (newPassword && currentUser.password !== currentPassword) {
       return NextResponse.json({ error: 'currentPassword' }, { status: 400 })
+    }
+
+    const existingEmailUser = email
+      ? await prisma.user.findFirst({
+          where: {
+            email: { equals: email, mode: 'insensitive' },
+            NOT: { id: userId },
+          },
+          select: { id: true },
+        })
+      : null
+
+    if (existingEmailUser) {
+      return NextResponse.json(
+        { error: 'duplicate', fields: ['email'] },
+        { status: 409 }
+      )
     }
 
     const user = await prisma.user.update({
