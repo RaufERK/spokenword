@@ -4,38 +4,18 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Role } from '@/lib/roles'
-import { isSubscriptionActive } from '@/lib/subscription'
 import { ShieldAlert, LogOut } from 'lucide-react'
 import links from './links'
-import { useEffect, useState } from 'react'
 
 export default function SideNavDesktop() {
   const { data } = useSession()
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const role: Role | undefined = data?.user?.role
-  const accessUntil = data?.user?.accessUntil ?? null
   const isAdmin = role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER'
-  const hasActiveSub = isSubscriptionActive(accessUntil)
-  const [hasClassLinks, setHasClassLinks] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/class/stream-links')
-      .then((r) => r.json())
-      .then((result) => {
-        const d = result?.data
-        setHasClassLinks(!!(d?.youtubeUrl || d?.rutubeUrl))
-      })
-      .catch(() => {})
-  }, [])
 
   const regularLinks = links.filter((l) => {
     if (l.isAdmin) return false
     if (!l.roles || (role && l.roles.includes(role))) {
-      if (l.isPaid) {
-        if (!hasClassLinks) return false
-        if (!isAdmin && role === 'USER' && !hasActiveSub) return false
-        if (!isAdmin && !role) return false
-      }
       return true
     }
     return false

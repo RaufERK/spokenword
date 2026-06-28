@@ -68,7 +68,7 @@ export default function AdminLinksPage() {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Удалить все ссылки стрима?')) return
+    if (!confirm('Удалить все ссылки трансляции?')) return
     setDeleting(true)
     setMessage('')
     try {
@@ -111,8 +111,8 @@ export default function AdminLinksPage() {
   return (
     <div className='max-w-2xl mx-auto space-y-6'>
       <div>
-        <h1 className='text-2xl font-bold text-white'>Стрим</h1>
-        <p className='text-purple-200 text-sm mt-1'>Ссылки для открытых мероприятий (Службы)</p>
+        <h1 className='text-2xl font-bold text-white'>Трансляция</h1>
+        <p className='text-purple-200 text-sm mt-1'>Ссылки для текущего мероприятия</p>
       </div>
 
       {hasLinks && (
@@ -207,7 +207,7 @@ export default function AdminLinksPage() {
 
       <div className='bg-gradient-to-br from-purple-900/40 to-purple-800/30 border border-purple-400/20 rounded-xl p-4'>
         <ul className='text-purple-200 space-y-1 text-xs'>
-          <li>• Ссылки Служб отображаются на главной странице для всех пользователей</li>
+          <li>• Ссылки трансляции отображаются на главной странице для всех пользователей</li>
           <li>• Аудиострим открывается через локальный маршрут `/audio`</li>
         </ul>
       </div>

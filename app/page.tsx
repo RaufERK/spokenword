@@ -1,27 +1,37 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { isSubscriptionActive } from '@/lib/subscription'
 import prisma from '@/lib/prisma'
 import { Youtube, Play, Music } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
-  const session = await getServerSession(authOptions)
-  const role = session?.user?.role
-  const accessUntil = session?.user?.accessUntil ?? null
+  const now = new Date()
+  const startOfToday = new Date(now)
+  startOfToday.setHours(0, 0, 0, 0)
+  const endOfToday = new Date(now)
+  endOfToday.setHours(23, 59, 59, 999)
 
-  const hasClassAccess =
-    role === 'MODERATOR' || role === 'ADMIN' || role === 'SUPER' ||
-    isSubscriptionActive(accessUntil)
-
-  const link = await prisma.streamLink.findFirst({
-    where: { isActive: true },
-    orderBy: { createdAt: 'desc' },
-  })
+  const [link, todayEvent, latestEvent] = await Promise.all([
+    prisma.streamLink.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.event.findFirst({
+      where: {
+        startDate: {
+          gte: startOfToday,
+          lte: endOfToday,
+        },
+      },
+      orderBy: { startDate: 'desc' },
+    }),
+    prisma.event.findFirst({
+      orderBy: { startDate: 'desc' },
+    }),
+  ])
 
   const youtubeUrl: string | null = link?.youtubeUrl ?? null
   const rutubeUrl: string | null = link?.rutubeUrl ?? null
+  const currentEventTitle = todayEvent?.title ?? latestEvent?.title ?? 'текущего мероприятия'
 
   const platforms = [
     {
@@ -107,7 +117,7 @@ export default async function HomePage() {
         {/* Info bar */}
         <div className="mt-8 p-4 bg-blue-900/30 rounded-xl border border-blue-400/20">
           <p className="text-blue-200 text-sm text-center">
-            📅 Текущая трансляция: Открытое мероприятие
+            📅 Текущая трансляция: {currentEventTitle}
           </p>
         </div>
       </div>
@@ -115,7 +125,7 @@ export default async function HomePage() {
       {/* Archive link */}
       <div className="mt-8 text-center">
         <p className="text-purple-200/70 text-sm">
-          Пропустили занятие?{' '}
+          Пропустили мероприятие?{' '}
           <a href="/conf-arch" className="text-green-400 hover:text-green-300 underline transition-colors">
             Смотрите записи в архиве
           </a>

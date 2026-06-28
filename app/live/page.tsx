@@ -67,7 +67,7 @@ export default function LivePage() {
               </svg>
             </div>
             <h3 className='text-xl font-semibold text-blue-400 mb-2'>
-              Стрим запускается...
+              Трансляция запускается...
             </h3>
             <p className='text-gray-400'>
               Накапливаем буфер для стабильного воспроизведения

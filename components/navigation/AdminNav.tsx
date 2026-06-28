@@ -14,8 +14,8 @@ type AdminLink = {
 }
 
 const adminLinks: AdminLink[] = [
-  { href: '/admin', label: 'Стрим', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
-  { href: '/admin/class', label: 'Конференция', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
+  { href: '/admin', label: 'Трансляция', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
+  { href: '/admin/class', label: 'Учебный класс', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
   { href: '/admin/upload', label: 'Загрузка', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
   { href: '/admin/packages', label: 'Платные', roles: ['ADMIN', 'SUPER'] },
   { href: '/admin/users', label: 'Пользователи', roles: ['MODERATOR', 'ADMIN', 'SUPER'] },
@@ -24,7 +24,7 @@ const adminLinks: AdminLink[] = [
 
 export default function AdminNav() {
   const { data } = useSession()
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const role = data?.user?.role as Role | undefined
   const [open, setOpen] = useState(false)
 

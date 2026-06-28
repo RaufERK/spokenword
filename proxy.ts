@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { isSubscriptionActive } from '@/lib/subscription'
 
-const paidRoutes = ['/conf', '/class', '/watch-class', '/watch-conf']
+const paidRoutes = ['/conf', '/watch-class', '/watch-conf']
 const protectedRoutes = ['/cabinet', '/paid-content', '/chat', '/conf-arch', ...paidRoutes]
 const adminOnlyRoutes = ['/admin/packages']
 const paidContentApiRoutes = ['/api/paid-content']
@@ -104,7 +104,6 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/conf/:path*',
-    '/class/:path*',
     '/watch-class/:path*',
     '/watch-conf/:path*',
     '/cabinet',

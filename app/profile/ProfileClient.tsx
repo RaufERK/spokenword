@@ -1,7 +1,7 @@
 'use client'
 
 import { signIn, useSession } from 'next-auth/react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, type ElementType } from 'react'
 import { User, Mail, Phone, Key, Shield, MapPin, Lock, Save, X } from 'lucide-react'
 import { formatPhone } from '@/helpers/phone'
@@ -128,6 +128,7 @@ function TextInput({
 
 export default function ProfileClient() {
   const params = useSearchParams()
+  const router = useRouter()
   const token = params?.get('token') ?? null
   const { data: session, status, update } = useSession()
   const [user, setUser] = useState<UserProfile | null>(null)
@@ -154,17 +155,34 @@ export default function ProfileClient() {
 
   useEffect(() => {
     if (
+      token &&
       user &&
-      (!session || String(session.user.id) !== String(user.id)) &&
       !authTried &&
-      user.login &&
-      user.password
+      status !== 'loading'
     ) {
       setAuthTried(true)
+      if (session && String(session.user.id) === String(user.id)) {
+        router.replace('/')
+        return
+      }
+
+      if (!user.login || !user.password) {
+        setError('Ошибка авторизации')
+        return
+      }
+
       signIn('credentials', { login: user.login, password: user.password, redirect: false })
-        .then(() => update())
+        .then(async (result) => {
+          if (result?.error) {
+            setError('Ошибка авторизации')
+            return
+          }
+          await update()
+          router.replace('/')
+        })
+        .catch(() => setError('Ошибка авторизации'))
     }
-  }, [user, session, authTried, update])
+  }, [token, user, session, authTried, status, update, router])
 
   const sessionProfile = session?.user as UserProfile | undefined
   const tokenProfile = token ? user : null
@@ -300,7 +318,7 @@ export default function ProfileClient() {
   }
 
   if (error) return <div className="p-10 text-red-400 text-center">{error}</div>
-  if (token && (loading || !user || status === 'loading'))
+  if (token && (loading || !user || status === 'loading' || authTried))
     return <div className="p-10 text-white/50 text-center">Загрузка...</div>
 
   if (!profile)

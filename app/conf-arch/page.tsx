@@ -2,7 +2,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/prisma'
-import { isSubscriptionActive } from '@/lib/subscription'
 import ArchiveList from './ArchiveList'
 
 export const dynamic = 'force-dynamic'
@@ -14,10 +13,8 @@ export default async function ArchivePage() {
 
   const role = (session.user as { role?: string })?.role || ''
   const isAdmin = ['MODERATOR', 'ADMIN', 'SUPER'].includes(role)
-  const accessUntil = (session.user as { accessUntil?: string | null })?.accessUntil ?? null
-  const hasClassAccess = isAdmin || isSubscriptionActive(accessUntil)
 
-  const [confFiles, classFiles, classStreamLinks] = await Promise.all([
+  const [confFiles, classFiles] = await Promise.all([
     prisma.conferenceFile.findMany({
       where: isAdmin ? {} : { isPublic: true },
       orderBy: [{ orderIndex: 'asc' }, { uploadedAt: 'desc' }],
@@ -48,53 +45,12 @@ export default async function ArchivePage() {
         orderIndex: true,
       },
     }),
-    hasClassAccess
-      ? prisma.classStreamLink.findFirst({
-          where: { isActive: true },
-          orderBy: { createdAt: 'desc' },
-        })
-      : Promise.resolve(null),
   ])
-
-  const hasLiveStream =
-    hasClassAccess &&
-    (classStreamLinks?.youtubeUrl || classStreamLinks?.rutubeUrl)
 
   return (
     <main className="p-4 max-w-4xl mx-auto">
       <h1 className="text-2xl font-semibold mb-1 text-white">Архив</h1>
-      <p className="text-white/50 text-sm mb-6">Записи конференций и учебных занятий</p>
-
-      {hasLiveStream && (
-        <div className="mb-6 p-4 rounded-2xl bg-green-500/10 border border-green-500/30 backdrop-blur">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-green-400 font-semibold text-sm">Сейчас идёт трансляция</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {classStreamLinks?.youtubeUrl && (
-              <a
-                href={classStreamLinks.youtubeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors"
-              >
-                YouTube
-              </a>
-            )}
-            {classStreamLinks?.rutubeUrl && (
-              <a
-                href={classStreamLinks.rutubeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-blue-600/80 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors"
-              >
-                Rutube
-              </a>
-            )}
-          </div>
-        </div>
-      )}
+      <p className="text-white/50 text-sm mb-6">Записи мероприятий</p>
 
       <ArchiveList
         confFiles={confFiles.map((f) => ({
