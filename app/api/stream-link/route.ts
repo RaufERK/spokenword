@@ -2,8 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/prisma'
 
+const allowedCorsOrigins = ['https://audio.spoken-word.ru']
+
+function getCorsHeaders(req: NextRequest) {
+  const origin = req.headers.get('origin')
+
+  if (!origin || !allowedCorsOrigins.includes(origin)) {
+    return {}
+  }
+
+  return {
+    'Access-Control-Allow-Origin': origin,
+    Vary: 'Origin',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders(req),
+  })
+}
+
 // GET - получить активные ссылки
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const activeLink = await prisma.streamLink.findFirst({
       where: { isActive: true },
@@ -16,12 +40,14 @@ export async function GET() {
         youtubeUrl: activeLink?.youtubeUrl || null,
         rutubeUrl: activeLink?.rutubeUrl || null,
       }
+    }, {
+      headers: getCorsHeaders(req),
     })
   } catch (error) {
     console.error('Error fetching stream link:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to fetch stream link' },
-      { status: 500 }
+      { status: 500, headers: getCorsHeaders(req) }
     )
   }
 }
