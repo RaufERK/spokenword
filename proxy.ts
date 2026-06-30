@@ -8,6 +8,10 @@ const protectedRoutes = ['/cabinet', '/paid-content', '/chat', '/conf-arch', ...
 const adminOnlyRoutes = ['/admin/packages']
 const paidContentApiRoutes = ['/api/paid-content']
 
+function matchesRoute(pathname: string, route: string) {
+  return pathname === route || pathname.startsWith(`${route}/`)
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const nextActionHeader = req.headers.get('next-action')
@@ -31,7 +35,7 @@ export async function proxy(req: NextRequest) {
   }
 
   // 2. Платные маршруты (нужно быть залогиненным + подписка)
-  if (paidRoutes.some((route) => pathname.startsWith(route))) {
+  if (paidRoutes.some((route) => matchesRoute(pathname, route))) {
     if (!token) {
       return NextResponse.redirect(new URL('/login', req.url))
     }
@@ -54,14 +58,14 @@ export async function proxy(req: NextRequest) {
   }
 
   // 3. API платного контента
-  if (paidContentApiRoutes.some((route) => pathname.startsWith(route))) {
+  if (paidContentApiRoutes.some((route) => matchesRoute(pathname, route))) {
     if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
   }
 
   // 4. Прочие защищённые маршруты (только авторизация)
-  if (protectedRoutes.some((route) => pathname.startsWith(route))) {
+  if (protectedRoutes.some((route) => matchesRoute(pathname, route))) {
     if (!token) {
       return NextResponse.redirect(new URL('/login', req.url))
     }

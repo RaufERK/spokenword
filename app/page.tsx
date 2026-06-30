@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma'
 import { Youtube, Play, Music } from 'lucide-react'
+import { Suspense } from 'react'
+import StreamTokenAuth from './StreamTokenAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +64,10 @@ export default async function HomePage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[70vh]">
+      <Suspense fallback={null}>
+        <StreamTokenAuth />
+      </Suspense>
+
       <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 md:p-12 w-full border border-white/10">
 
         {/* Header */}

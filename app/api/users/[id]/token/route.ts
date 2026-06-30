@@ -49,8 +49,8 @@ export async function GET(
   return NextResponse.json({
     token,
     urls: {
-      ru: `${PRIMARY}/profile?token=${token}`,
-      eu: `${MIRROR}/profile?token=${token}`,
+      ru: `${PRIMARY}/?token=${token}`,
+      eu: `${MIRROR}/?token=${token}`,
     },
   })
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { signIn, useSession } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, type ElementType } from 'react'
 import { User, Mail, Phone, Key, Shield, MapPin, Lock, Save, X } from 'lucide-react'
 import { formatPhone } from '@/helpers/phone'
@@ -128,13 +128,13 @@ function TextInput({
 
 export default function ProfileClient() {
   const params = useSearchParams()
-  const router = useRouter()
   const token = params?.get('token') ?? null
   const { data: session, status, update } = useSession()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [authTried, setAuthTried] = useState(false)
+  const [isAuthorizing, setIsAuthorizing] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -162,7 +162,6 @@ export default function ProfileClient() {
     ) {
       setAuthTried(true)
       if (session && String(session.user.id) === String(user.id)) {
-        router.replace('/')
         return
       }
 
@@ -171,6 +170,7 @@ export default function ProfileClient() {
         return
       }
 
+      setIsAuthorizing(true)
       signIn('credentials', { login: user.login, password: user.password, redirect: false })
         .then(async (result) => {
           if (result?.error) {
@@ -178,11 +178,11 @@ export default function ProfileClient() {
             return
           }
           await update()
-          router.replace('/')
         })
         .catch(() => setError('Ошибка авторизации'))
+        .finally(() => setIsAuthorizing(false))
     }
-  }, [token, user, session, authTried, status, update, router])
+  }, [token, user, session, authTried, status, update])
 
   const sessionProfile = session?.user as UserProfile | undefined
   const tokenProfile = token ? user : null
@@ -318,7 +318,7 @@ export default function ProfileClient() {
   }
 
   if (error) return <div className="p-10 text-red-400 text-center">{error}</div>
-  if (token && (loading || !user || status === 'loading' || authTried))
+  if (token && (loading || !user || status === 'loading' || isAuthorizing))
     return <div className="p-10 text-white/50 text-center">Загрузка...</div>
 
   if (!profile)
@@ -330,7 +330,7 @@ export default function ProfileClient() {
     )
 
   const hasToken = !!token && !!user
-  const isAuthorizingTokenProfile = hasToken && !sessionMatchesTokenProfile && !authTried
+  const isAuthorizingTokenProfile = hasToken && !sessionMatchesTokenProfile && (!authTried || isAuthorizing)
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`
 
