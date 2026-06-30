@@ -1,6 +1,6 @@
 const postDeploySteps = [
   'export NODE_ENV=production',
-  'source ~/.nvm/nvm.sh && nvm use --lts',
+  'source ~/.nvm/nvm.sh && nvm use v24.12.0',
   // симлинки создаём в КОРНЕ проекта (текущая cwd = /home/appuser/apps/spokenword/source)
   'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env',
   'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env.production',
