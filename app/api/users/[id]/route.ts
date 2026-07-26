@@ -74,18 +74,23 @@ export async function DELETE(req: NextRequest, { params }: Props) {
       }
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting user:', error)
-    
+
     // Проверяем на ошибки связанных записей
-    if (error.code === 'P2003') {
-      return NextResponse.json({ 
-        message: 'Нельзя удалить пользователя - есть связанные записи' 
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'P2003'
+    ) {
+      return NextResponse.json({
+        message: 'Нельзя удалить пользователя - есть связанные записи',
       }, { status: 400 })
     }
 
-    return NextResponse.json({ 
-      message: 'Ошибка при удалении пользователя' 
+    return NextResponse.json({
+      message: 'Ошибка при удалении пользователя',
     }, { status: 500 })
   }
 }
