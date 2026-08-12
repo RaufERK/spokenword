@@ -119,7 +119,7 @@ export default async function NewsPage({
       ],
     },
     orderBy: [{ telegramDate: 'desc' }, { id: 'desc' }],
-    take: 200,
+    take: 100,
   })
 
   return (
