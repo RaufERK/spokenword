@@ -20,9 +20,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
 
-  const messages = await prisma.chatMessage.findMany({
+  const latest = await prisma.chatMessage.findMany({
     take: limit,
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
     select: {
       id: true,
       text: true,
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ success: true, data: messages })
+  return NextResponse.json({ success: true, data: latest.reverse() })
 }
 
 export async function POST(req: NextRequest) {

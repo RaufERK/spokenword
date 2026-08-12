@@ -54,10 +54,11 @@ export async function GET(
 
   const limit = Math.min(parseInt(new URL(req.url).searchParams.get('limit') || '100'), 200)
 
-  const messages = await prisma.chatMessage.findMany({
+  // Latest N messages (desc), then reverse so UI stays chronological (oldest → newest)
+  const latest = await prisma.chatMessage.findMany({
     where: { roomId },
     take: limit,
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
     select: {
       id: true,
       text: true,
@@ -68,7 +69,7 @@ export async function GET(
     },
   })
 
-  return NextResponse.json({ messages })
+  return NextResponse.json({ messages: latest.reverse() })
 }
 
 // POST /api/chat/rooms/[id] — отправить сообщение
