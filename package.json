@@ -8,6 +8,7 @@
   },
   "type": "module",
   "scripts": {
+    "audit:prod": "npm audit --omit=dev",
     "dev": "next dev --turbopack",
     "dev:upload": "cd upload-service && npm run dev",
     "build": "next build",

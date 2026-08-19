@@ -56,8 +56,12 @@ paid-content/temp/
 /storage/
 /public/
 
-# local design dump
+# local design dumps
 FIgmaV6/
+FIGMA30/
+FigmaNew26/
+FigmaV28/
+tmp/
 
 # large media files (prevent accidental commits)
 *.mp4
@@ -73,10 +77,6 @@ FIgmaV6/
 
 # database exports
 database-export-*.json
-
-# local design dumps
-FigmaNew26/
-FigmaV28/node_modules/
 .env.pg
 
 # server info (contains SSH aliases and IPs)
