@@ -16,7 +16,6 @@ export interface UserRow {
   firstName: string
   lastName: string
   login: string
-  password: string
   phoneNumber: string | null
   city: string | null
   accessUntil: string | null
@@ -408,7 +407,6 @@ export default function UsersTable({
                 <SortableTh field="city" label="Город" current={sortField} dir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Роль</th>
                 <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Телефон</th>
-                <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Пароль</th>
                 <th className="px-3 py-2.5 text-left text-xs text-white/80 whitespace-nowrap">Последнее меропр.</th>
                 <SortableTh field="accessUntil" label="Доступ до" current={sortField} dir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2.5 text-center text-xs text-white/80 whitespace-nowrap">Оплата</th>
@@ -446,9 +444,6 @@ export default function UsersTable({
                       {u.role === 'MODERATOR' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-600/30 text-yellow-300 border border-yellow-500/40">MOD</span>}
                     </td>
                     <td className="px-3 py-2 text-pink-200/80 text-xs font-mono whitespace-nowrap">{formatPhone(u.phoneNumber)}</td>
-                    <td className="px-3 py-2 text-yellow-200/70 text-xs font-mono tracking-wide select-text">
-                      {u.password || <span className="text-white/20 select-none">скрыт</span>}
-                    </td>
 
                     {/* Последнее мероприятие */}
                     <td className="px-3 py-2 text-xs max-w-[140px]">
