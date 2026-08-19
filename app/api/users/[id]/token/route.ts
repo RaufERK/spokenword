@@ -1,6 +1,6 @@
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import type { Role } from '@/lib/roles'
+import { canViewUserCredentials, type Role } from '@/lib/roles'
 import { encryptToken } from '@/lib/token'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
@@ -8,12 +8,6 @@ import { getServerSession } from 'next-auth'
 const PRIMARY = (process.env.PRIMARY_ORIGIN ?? 'https://spoken-word.ru').replace(/\/$/, '')
 const MIRROR  = (process.env.MIRROR_ORIGIN  ?? 'https://spoken-word.info').replace(/\/$/, '')
 const ADMIN_ROLES: Role[] = ['MODERATOR', 'ADMIN', 'SUPER']
-
-function canCreateProfileLink(currentRole: Role, currentUserId: number, targetUser: { id: number; role: Role }) {
-  if (currentRole === 'SUPER') return true
-  if (targetUser.role === 'USER') return true
-  return targetUser.id === currentUserId
-}
 
 export async function GET(
   _req: NextRequest,
@@ -40,7 +34,7 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  if (!canCreateProfileLink(session.user.role, currentUserId, user)) {
+  if (!canViewUserCredentials({ id: currentUserId, role: session.user.role }, user)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

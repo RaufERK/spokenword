@@ -1,6 +1,6 @@
 'use client'
 
-import type { Role } from '@/lib/roles'
+import { canViewUserCredentials, type Role } from '@/lib/roles'
 import { useState, useMemo, useEffect } from 'react'
 import UserAccessModal from '@/components/admin/UserAccessModal'
 import PaymentModal from '@/components/admin/PaymentModal'
@@ -99,11 +99,8 @@ export default function UsersTable({
   const isSuper = currentRole === 'SUPER'
   const canEdit = ['ADMIN', 'SUPER'].includes(currentRole)
 
-  const canCopyProfileLink = (user: UserRow) => {
-    if (isSuper) return true
-    if (user.role === 'USER') return true
-    return user.id === currentUserId
-  }
+  const actor = { id: currentUserId, role: currentRole }
+  const canCopyProfileLink = (user: UserRow) => canViewUserCredentials(actor, user)
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -171,7 +168,7 @@ export default function UsersTable({
 
   const handleCopyLink = async (user: UserRow) => {
     if (!canCopyProfileLink(user)) {
-      alert('Ссылки на админские аккаунты доступны только владельцу или супер-админу')
+      alert('Ссылки профиля доступны только для своего аккаунта и пользователей с более низкой ролью')
       return
     }
 
@@ -449,7 +446,9 @@ export default function UsersTable({
                       {u.role === 'MODERATOR' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-600/30 text-yellow-300 border border-yellow-500/40">MOD</span>}
                     </td>
                     <td className="px-3 py-2 text-pink-200/80 text-xs font-mono whitespace-nowrap">{formatPhone(u.phoneNumber)}</td>
-                    <td className="px-3 py-2 text-yellow-200/70 text-xs font-mono tracking-wide">{u.password || '—'}</td>
+                    <td className="px-3 py-2 text-yellow-200/70 text-xs font-mono tracking-wide select-text">
+                      {u.password || <span className="text-white/20 select-none">скрыт</span>}
+                    </td>
 
                     {/* Последнее мероприятие */}
                     <td className="px-3 py-2 text-xs max-w-[140px]">
@@ -506,7 +505,7 @@ export default function UsersTable({
                             ? 'bg-blue-600/70 hover:bg-blue-500'
                             : 'bg-white/10 opacity-35 cursor-not-allowed'
                         }`}
-                        title={canCopyLink ? 'Скопировать ссылки профиля' : 'Недоступно для чужих админских аккаунтов'}
+                        title={canCopyLink ? 'Скопировать ссылки профиля' : 'Недоступно: выше или равная роль'}
                       >
                         <Link className="w-3 h-3" />
                         RU/EU

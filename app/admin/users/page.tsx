@@ -1,5 +1,6 @@
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { canViewUserCredentials } from '@/lib/roles'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import UsersTable, { UserRow } from './UsersTable'
@@ -34,14 +35,17 @@ export default async function AdminUsersPage() {
     },
   })
 
+  const actor = { id: Number(session.user.id), role: session.user.role }
+
   const users: UserRow[] = raw.map((u) => {
     const lastAccess = u.eventAccess[0] ?? null
+    const canSeePassword = canViewUserCredentials(actor, { id: u.id, role: u.role })
     return {
       id: u.id,
       firstName: u.firstName,
       lastName: u.lastName,
       login: u.login,
-      password: u.password,
+      password: canSeePassword ? u.password : '',
       phoneNumber: u.phoneNumber,
       city: u.city,
       accessUntil: u.accessUntil ? u.accessUntil.toISOString() : null,
