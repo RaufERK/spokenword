@@ -83,7 +83,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'email' }, { status: 400 })
     }
 
-    if (newPassword && newPassword.length < 6) {
+    if (newPassword && !/^\d{6}$/.test(newPassword)) {
       return NextResponse.json({ error: 'newPassword' }, { status: 400 })
     }
 

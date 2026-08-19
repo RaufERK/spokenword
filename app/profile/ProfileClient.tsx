@@ -3,7 +3,7 @@
 import { signIn, useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, type ElementType } from 'react'
-import { User, Mail, Phone, Key, Shield, MapPin, Lock, Save, X } from 'lucide-react'
+import { User, Mail, Phone, Key, Shield, MapPin, Save, X, RefreshCw } from 'lucide-react'
 import { formatPhone } from '@/helpers/phone'
 
 interface UserProfile {
@@ -24,9 +24,6 @@ type ProfileForm = {
   phoneNumber: string
   email: string
   city: string
-  currentPassword: string
-  newPassword: string
-  repeatPassword: string
 }
 
 type ProfileResponse = {
@@ -49,12 +46,7 @@ const FIELDS: FieldDef[] = [
   { label: 'Email', icon: Mail, value: (p) => p.email },
   { label: 'Город', icon: MapPin, value: (p) => p.city },
   { label: 'Логин', icon: Key, value: (p) => p.login },
-  {
-    label: 'Пароль',
-    icon: Shield,
-    value: (p) => p.password,
-    show: (p) => !!p.password,
-  },
+  { label: 'Пароль', icon: Shield, value: (p) => p.password },
   { label: 'Роль', icon: Shield, value: (p) => p.role },
 ]
 
@@ -74,9 +66,6 @@ function getInitialForm(profile: UserProfile): ProfileForm {
     phoneNumber: profile.phoneNumber ?? '',
     email: profile.email ?? '',
     city: profile.city ?? '',
-    currentPassword: '',
-    newPassword: '',
-    repeatPassword: '',
   }
 }
 
@@ -139,6 +128,8 @@ export default function ProfileClient() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
+  const [generatingPassword, setGeneratingPassword] = useState(false)
+  const [latestPassword, setLatestPassword] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) return
@@ -205,9 +196,6 @@ export default function ProfileClient() {
     phoneNumber: '',
     email: '',
     city: '',
-    currentPassword: '',
-    newPassword: '',
-    repeatPassword: '',
   }))
 
   useEffect(() => {
@@ -236,16 +224,52 @@ export default function ProfileClient() {
     setSavedMessage(null)
   }
 
+  const handleGeneratePassword = async () => {
+    if (!profile || !canEditProfile) return
+    if (!confirm('Сгенерировать новый пароль? Старые ссылки профиля перестанут работать.')) return
+
+    setGeneratingPassword(true)
+    setFormError(null)
+    setSavedMessage(null)
+
+    try {
+      const res = await fetch('/api/profile/password', { method: 'POST' })
+      const data = (await res.json()) as { password?: string; login?: string; error?: string }
+      if (!res.ok || !data.password || !data.login) {
+        setFormError('Не удалось сгенерировать пароль')
+        return
+      }
+
+      if (tokenProfile) {
+        setUser((prev) => prev ? { ...prev, password: data.password } : prev)
+      }
+
+      setLatestPassword(data.password)
+
+      const signInResult = await signIn('credentials', {
+        login: data.login,
+        password: data.password,
+        redirect: false,
+      })
+      if (signInResult?.error) {
+        setFormError('Пароль сохранён, но сессия не обновилась. Войдите с новым паролем.')
+        return
+      }
+
+      await update()
+      setSavedMessage('Новый пароль сохранён. Старые ссылки профиля больше не работают.')
+    } catch {
+      setFormError('Не удалось сгенерировать пароль')
+    } finally {
+      setGeneratingPassword(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!profile) return
 
     if (!canEditProfile) {
       setFormError(getErrorMessage('profileMismatch'))
-      return
-    }
-
-    if (form.newPassword && form.newPassword !== form.repeatPassword) {
-      setFormError('Новый пароль и повтор не совпадают')
       return
     }
 
@@ -264,8 +288,6 @@ export default function ProfileClient() {
           phoneNumber: form.phoneNumber,
           email: form.email,
           city: form.city,
-          currentPassword: form.currentPassword,
-          newPassword: form.newPassword,
         }),
       })
       const data = (await res.json()) as ProfileResponse
@@ -277,35 +299,17 @@ export default function ProfileClient() {
 
       if (tokenProfile) {
         setUser((prev) => prev && String(prev.id) === String(data.user?.id)
-          ? {
-              ...prev,
-              ...data.user,
-              password: form.newPassword || prev.password,
-            }
+          ? { ...prev, ...data.user }
           : prev
         )
       }
 
-      if (form.newPassword) {
-        const signInResult = await signIn('credentials', {
-          login: data.user.login,
-          password: form.newPassword,
-          redirect: false,
-        })
-        if (signInResult?.error) {
-          setFormError('Данные сохранились, но сессия не обновилась. Войдите заново с новым паролем.')
-          return
-        }
-        await update()
-      } else {
-        await update()
-      }
+      await update()
 
       setForm({
         ...getInitialForm({
           ...profile,
           ...data.user,
-          password: form.newPassword || profile.password,
         }),
       })
       setIsEditing(false)
@@ -374,10 +378,42 @@ export default function ProfileClient() {
                 </div>
               )}
 
+              {formError && !isEditing && (
+                <div className="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200">
+                  {formError}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {FIELDS.map(({ label, icon: Icon, value, show }) => {
                   if (show && !show(profile, hasToken)) return null
                   const val = value(profile)
+                  if (label === 'Пароль') {
+                    return (
+                      <div key={label} className="space-y-1.5">
+                        <label className="flex items-center gap-2 text-purple-300/80 text-sm">
+                          <Icon className="w-4 h-4" />
+                          <span>{label}:</span>
+                        </label>
+                        <div className="pl-6 flex flex-wrap items-center gap-3">
+                          <p className="text-green-400 text-lg font-medium font-mono tracking-widest">
+                            {latestPassword || val || <span className="text-white/30 text-base">—</span>}
+                          </p>
+                          {canEditProfile && (
+                            <button
+                              type="button"
+                              onClick={handleGeneratePassword}
+                              disabled={generatingPassword}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-pink-600/80 hover:bg-pink-500 px-3 py-1.5 text-sm font-medium text-white transition disabled:opacity-50"
+                            >
+                              <RefreshCw className={`w-3.5 h-3.5 ${generatingPassword ? 'animate-spin' : ''}`} />
+                              {generatingPassword ? 'Генерируем...' : 'Сгенерировать пароль'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  }
                   return (
                     <div key={label} className="space-y-1.5">
                       <label className="flex items-center gap-2 text-purple-300/80 text-sm">
@@ -464,36 +500,6 @@ export default function ProfileClient() {
                       className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/50 outline-none"
                     />
                   </label>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                <div className="mb-4 flex items-center gap-2 text-white">
-                  <Lock className="w-4 h-4 text-purple-300" />
-                  <h3 className="font-medium">Смена пароля</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <TextInput
-                    label="Текущий пароль"
-                    type="password"
-                    value={form.currentPassword}
-                    autoComplete="current-password"
-                    onChange={(value) => updateForm('currentPassword', value)}
-                  />
-                  <TextInput
-                    label="Новый пароль"
-                    type="password"
-                    value={form.newPassword}
-                    autoComplete="new-password"
-                    onChange={(value) => updateForm('newPassword', value)}
-                  />
-                  <TextInput
-                    label="Повтор нового пароля"
-                    type="password"
-                    value={form.repeatPassword}
-                    autoComplete="new-password"
-                    onChange={(value) => updateForm('repeatPassword', value)}
-                  />
                 </div>
               </div>
 

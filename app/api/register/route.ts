@@ -2,8 +2,8 @@
 // app/api/register/route.ts
 import { normalizeEmail } from '@/helpers/email'
 import { normalizePhone } from '@/helpers/phone'
+import { generateNumericPassword } from '@/lib/password'
 import prisma from '@/lib/prisma'
-import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 import { slugify } from 'transliteration'
 
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     }
 
     /* 3. пароль – 6 цифр */
-    const password = crypto.randomInt(100000, 999999).toString()
+    const password = generateNumericPassword()
 
     /* 4. валидация имени и фамилии */
     const nameRegex = /[а-яёА-ЯЁa-zA-Z]/
