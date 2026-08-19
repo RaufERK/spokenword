@@ -6,6 +6,7 @@ import path from 'path'
 import { randomBytes } from 'crypto'
 import prisma from '../../lib/prisma.js'
 import { addVideoToQueue } from '../queue/videoQueue.js'
+import { requireUploader } from '../utils/auth.js'
 import { getVideoCodec, needsCompression } from '../utils/video.js'
 
 const router = express.Router()
@@ -31,24 +32,13 @@ router.post('/', async (req, res) => {
       'x-user-role': req.headers['x-user-role']
     })
 
-    // Get user info from headers (set by Next.js middleware via Nginx)
-    const userIdHeader = req.headers['x-user-id'] as string
-    const userRole = req.headers['x-user-role'] as string
-
-    // For direct upload (Nginx bypass), allow requests without strict auth
-    // Frontend already checks permissions via Next.js middleware
-    const userId = userIdHeader ? parseInt(userIdHeader, 10) : 1
-
-    if (userIdHeader) {
-      console.log(`👤 [PACKAGES] Upload by user: ${userId} (role: ${userRole})`)
-      // Still validate role if headers present
-      if (!['ADMIN', 'SUPER'].includes(userRole)) {
-        console.log(`❌ [PACKAGES] Access denied for role: ${userRole}`)
-        return res.status(403).json({ error: 'Access denied. Only ADMIN or SUPER can upload packages.' })
-      }
-    } else {
-      console.log(`⚠️  [PACKAGES] Upload without auth headers - using default user (Nginx direct proxy)`)
+    const uploader = requireUploader(req, ['ADMIN', 'SUPER'])
+    if ('error' in uploader) {
+      console.log(`❌ [PACKAGES] ${uploader.error}`)
+      return res.status(uploader.status).json({ error: uploader.error })
     }
+    const { userId, role: userRole } = uploader
+    console.log(`👤 [PACKAGES] Upload by user: ${userId} (role: ${userRole})`)
 
     // Validate content type
     const contentType = req.headers['content-type']

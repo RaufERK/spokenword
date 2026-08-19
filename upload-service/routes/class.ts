@@ -6,6 +6,7 @@ import path from 'path'
 import { randomBytes } from 'crypto'
 import prisma from '../../lib/prisma.js'
 import { addVideoToQueue } from '../queue/videoQueue.js'
+import { requireUploader } from '../utils/auth.js'
 import { getVideoCodec, needsCompression } from '../utils/video.js'
 
 const router = express.Router()
@@ -30,15 +31,12 @@ router.post('/', async (req, res) => {
   try {
     console.log('📥 [Upload Service] Class upload request received')
 
-    const userIdHeader = req.headers['x-user-id'] as string
-    const userRole = req.headers['x-user-role'] as string
-    const userId = userIdHeader || '1'
-
-    if (userIdHeader) {
-      console.log(`👤 Class upload by user: ${userId} (role: ${userRole})`)
-    } else {
-      console.log(`⚠️  Class upload without auth (testing mode)`)
+    const uploader = requireUploader(req, ['MODERATOR', 'ADMIN', 'SUPER'])
+    if ('error' in uploader) {
+      return res.status(uploader.status).json({ error: uploader.error })
     }
+    const { userId, role: userRole } = uploader
+    console.log(`👤 Class upload by user: ${userId} (role: ${userRole})`)
 
     const contentType = req.headers['content-type']
     if (!contentType?.includes('multipart/form-data')) {
@@ -118,7 +116,7 @@ router.post('/', async (req, res) => {
 
             const shouldCompress = needsCompression(codec)
             const finalPath = path.join(ARCHIVE_DIR, systemName)
-            const userIdNumber = parseInt(userIdHeader || '1', 10)
+            const userIdNumber = userId
 
             const classFile = await prisma.classFile.create({
               data: {

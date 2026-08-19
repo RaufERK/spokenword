@@ -2,7 +2,7 @@
 
 import { signIn, useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState, type ElementType } from 'react'
+import { useEffect, useState, type ElementType } from 'react'
 import { User, Mail, Phone, Key, Shield, MapPin, Save, X, RefreshCw } from 'lucide-react'
 import { formatPhone } from '@/helpers/phone'
 
@@ -121,7 +121,6 @@ export default function ProfileClient() {
   const { data: session, status, update } = useSession()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
   const [authTried, setAuthTried] = useState(false)
   const [isAuthorizing, setIsAuthorizing] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -132,63 +131,45 @@ export default function ProfileClient() {
   const [latestPassword, setLatestPassword] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!token) return
-    setLoading(true)
-    fetch(`/api/profile-from-token?token=${encodeURIComponent(token)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) setError(data.error)
-        else setUser(data)
+    if (!token || authTried || status === 'loading') return
+
+    setAuthTried(true)
+    setIsAuthorizing(true)
+    signIn('credentials', { magicToken: token, redirect: false })
+      .then(async (result) => {
+        if (result?.error) {
+          setError('Ошибка авторизации')
+          return
+        }
+        await update()
       })
-      .catch(() => setError('Ошибка загрузки'))
-      .finally(() => setLoading(false))
-  }, [token])
+      .catch(() => setError('Ошибка авторизации'))
+      .finally(() => setIsAuthorizing(false))
+  }, [token, authTried, status, update])
 
   useEffect(() => {
-    if (
-      token &&
-      user &&
-      !authTried &&
-      status !== 'loading'
-    ) {
-      setAuthTried(true)
-      if (session && String(session.user.id) === String(user.id)) {
-        return
-      }
+    if (status !== 'authenticated' || !session?.user?.id) return
 
-      if (!user.login || !user.password) {
-        setError('Ошибка авторизации')
-        return
-      }
+    let cancelled = false
+    fetch('/api/profile')
+      .then((res) => res.json() as Promise<ProfileResponse>)
+      .then((data) => {
+        if (cancelled || !data.user) return
+        setUser(data.user)
+      })
+      .catch(() => {
+        // Keep the session profile even if password lookup fails.
+      })
 
-      setIsAuthorizing(true)
-      signIn('credentials', { login: user.login, password: user.password, redirect: false })
-        .then(async (result) => {
-          if (result?.error) {
-            setError('Ошибка авторизации')
-            return
-          }
-          await update()
-        })
-        .catch(() => setError('Ошибка авторизации'))
-        .finally(() => setIsAuthorizing(false))
+    return () => {
+      cancelled = true
     }
-  }, [token, user, session, authTried, status, update])
+  }, [status, session?.user?.id])
 
   const sessionProfile = session?.user as UserProfile | undefined
-  const tokenProfile = token ? user : null
-  const sessionMatchesTokenProfile =
-    !!sessionProfile && !!tokenProfile && String(sessionProfile.id) === String(tokenProfile.id)
-  const activeProfile = tokenProfile
-    ? sessionMatchesTokenProfile
-      ? sessionProfile
-      : tokenProfile
-    : sessionProfile
+  const profile = user ?? sessionProfile
   const canEditProfile =
-    !!sessionProfile && !!activeProfile && String(sessionProfile.id) === String(activeProfile.id)
-  const profile = useMemo(() => {
-    return activeProfile
-  }, [activeProfile])
+    !!sessionProfile && !!profile && String(sessionProfile.id) === String(profile.id)
 
   const [form, setForm] = useState<ProfileForm>(() => ({
     firstName: '',
@@ -240,9 +221,7 @@ export default function ProfileClient() {
         return
       }
 
-      if (tokenProfile) {
-        setUser((prev) => prev ? { ...prev, password: data.password } : prev)
-      }
+      setUser((prev) => prev ? { ...prev, password: data.password } : prev)
 
       setLatestPassword(data.password)
 
@@ -297,12 +276,10 @@ export default function ProfileClient() {
         return
       }
 
-      if (tokenProfile) {
-        setUser((prev) => prev && String(prev.id) === String(data.user?.id)
-          ? { ...prev, ...data.user }
-          : prev
-        )
-      }
+      setUser((prev) => prev && String(prev.id) === String(data.user?.id)
+        ? { ...prev, ...data.user }
+        : prev
+      )
 
       await update()
 
@@ -322,7 +299,7 @@ export default function ProfileClient() {
   }
 
   if (error) return <div className="p-10 text-red-400 text-center">{error}</div>
-  if (token && (loading || !user || status === 'loading' || isAuthorizing))
+  if (token && (status === 'loading' || isAuthorizing))
     return <div className="p-10 text-white/50 text-center">Загрузка...</div>
 
   if (!profile)
@@ -333,8 +310,8 @@ export default function ProfileClient() {
       </div>
     )
 
-  const hasToken = !!token && !!user
-  const isAuthorizingTokenProfile = hasToken && !sessionMatchesTokenProfile && (!authTried || isAuthorizing)
+  const hasToken = !!token
+  const isAuthorizingTokenProfile = hasToken && (!authTried || isAuthorizing)
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`
 

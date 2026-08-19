@@ -31,6 +31,7 @@ function serializeUser(user: {
   city: string | null
   login: string
   role: string
+  password?: string
 }) {
   return {
     id: user.id,
@@ -41,7 +42,41 @@ function serializeUser(user: {
     city: user.city,
     login: user.login,
     role: user.role,
+    ...(user.password ? { password: user.password } : {}),
   }
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const userId = Number(session.user.id)
+  if (!Number.isInteger(userId)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      phoneNumber: true,
+      email: true,
+      city: true,
+      login: true,
+      role: true,
+      password: true,
+    },
+  })
+
+  if (!user) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  return NextResponse.json({ user: serializeUser(user) })
 }
 
 export async function PATCH(request: Request) {

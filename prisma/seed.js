@@ -13,7 +13,6 @@ async function importFromFile(filename) {
   console.log(`   - Файлы конференций: ${data.conferenceFiles?.length || 0}`)
   console.log(`   - Ссылки стримов: ${data.streamLinks?.length || 0}`)
 
-  // Импорт пользователей
   if (data.users?.length) {
     for (const user of data.users) {
       try {
@@ -29,7 +28,6 @@ async function importFromFile(filename) {
     console.log(`✅ Пользователи импортированы`)
   }
 
-  // Импорт файлов конференций
   if (data.conferenceFiles?.length) {
     for (const file of data.conferenceFiles) {
       try {
@@ -45,7 +43,6 @@ async function importFromFile(filename) {
     console.log(`✅ Файлы конференций импортированы`)
   }
 
-  // Импорт ссылок стримов
   if (data.streamLinks?.length) {
     for (const link of data.streamLinks) {
       try {
@@ -72,29 +69,40 @@ async function createDefaultAdmin() {
     return
   }
 
+  const login = process.env.SEED_SUPER_LOGIN?.trim()
+  const password = process.env.SEED_SUPER_PASSWORD
+  const firstName = process.env.SEED_SUPER_FIRST_NAME?.trim() || 'Admin'
+  const lastName = process.env.SEED_SUPER_LAST_NAME?.trim() || 'User'
+
+  if (!login || !password) {
+    console.log(
+      'SUPER не создан. Если нужен первый админ, задайте SEED_SUPER_LOGIN и SEED_SUPER_PASSWORD.'
+    )
+    return
+  }
+
   const result = await prisma.user.create({
     data: {
-      firstName: 'Rauf',
-      lastName: 'Erk',
-      login: 'RaufE',
-      password: '222777',
+      firstName,
+      lastName,
+      login,
+      password,
       role: 'SUPER',
-      phoneNumber: '+79629483300',
     },
   })
-  console.log('✅ Super-admin создан:', result.login)
+  console.log('SUPER создан:', result.login)
 }
 
 async function main() {
-  // Проверяем есть ли файл импорта
   const importFile = process.argv[2]
 
   if (importFile && existsSync(importFile)) {
     await importFromFile(importFile)
-  } else {
-    console.log('🔍 Файл импорта не найден, создаём только админа')
-    await createDefaultAdmin()
+    return
   }
+
+  console.log('Файл импорта не найден')
+  await createDefaultAdmin()
 }
 
 main()

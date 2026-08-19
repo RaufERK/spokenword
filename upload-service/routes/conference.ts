@@ -6,6 +6,7 @@ import path from 'path'
 import { randomBytes } from 'crypto'
 import prisma from '../../lib/prisma.js'
 import { addVideoToQueue } from '../queue/videoQueue.js'
+import { requireUploader } from '../utils/auth.js'
 import { getVideoCodec, needsCompression } from '../utils/video.js'
 
 const router = express.Router()
@@ -32,18 +33,12 @@ router.post('/', async (req, res) => {
   try {
     console.log('📥 [Upload Service] Conference upload request received')
 
-    // Get userId from header (set by Next.js middleware via Nginx)
-    const userIdHeader = req.headers['x-user-id'] as string
-    const userRole = req.headers['x-user-role'] as string
-
-    // For direct testing, allow requests without user ID (will use default)
-    const userId = userIdHeader || '1' // Default to user 1 for testing
-
-    if (userIdHeader) {
-      console.log(`👤 Upload by user: ${userId} (role: ${userRole})`)
-    } else {
-      console.log(`⚠️  Upload without auth (testing mode) - using default user`)
+    const uploader = requireUploader(req, ['MODERATOR', 'ADMIN', 'SUPER'])
+    if ('error' in uploader) {
+      return res.status(uploader.status).json({ error: uploader.error })
     }
+    const { userId, role: userRole } = uploader
+    console.log(`👤 Upload by user: ${userId} (role: ${userRole})`)
 
     // Validate content type
     const contentType = req.headers['content-type']
@@ -133,7 +128,7 @@ router.post('/', async (req, res) => {
 
             const shouldCompress = needsCompression(codec)
             const finalPath = path.join(ARCHIVE_DIR, systemName)
-            const userIdNumber = parseInt(userIdHeader || '1', 10)
+            const userIdNumber = userId
 
             // Create DB entry first
             const confFile = await prisma.conferenceFile.create({

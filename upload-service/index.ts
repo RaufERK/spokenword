@@ -7,7 +7,8 @@ import testRouter from './routes/test.js'
 import jobStatusRouter from './routes/job-status.js'
 
 const app = express()
-const PORT = process.env.UPLOAD_SERVICE_PORT || 3006
+const PORT = Number(process.env.UPLOAD_SERVICE_PORT || 3006)
+const HOST = process.env.UPLOAD_SERVICE_HOST || '127.0.0.1'
 
 // CORS - allow requests only from Next.js app
 app.use(cors({
@@ -24,19 +25,21 @@ app.get('/health', (req, res) => {
 app.use('/upload/conference', conferenceRouter)
 app.use('/upload/packages', packagesRouter)
 app.use('/upload/class', classRouter)
-app.use('/test', testRouter)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/test', testRouter)
+}
 app.use('/job-status', jobStatusRouter)
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('❌ Upload service error:', err)
-  res.status(500).json({ error: 'Internal server error', message: err.message })
+  res.status(500).json({ error: 'Internal server error' })
 })
 
 // Graceful shutdown
-const server = app.listen(PORT, () => {
-  console.log(`✅ Upload service running on port ${PORT}`)
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`)
+const server = app.listen(PORT, HOST, () => {
+  console.log(`✅ Upload service running on ${HOST}:${PORT}`)
+  console.log(`🔗 Health check: http://${HOST}:${PORT}/health`)
 })
 
 process.on('SIGTERM', () => {

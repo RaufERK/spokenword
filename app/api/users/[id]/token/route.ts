@@ -1,7 +1,7 @@
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { canViewUserCredentials, type Role } from '@/lib/roles'
-import { encryptToken } from '@/lib/token'
+import { createLoginToken } from '@/lib/token'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 
@@ -38,7 +38,7 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const token = encryptToken({ login: user.login, password: user.password })
+  const token = createLoginToken(user.id, user.password)
 
   return NextResponse.json({
     token,

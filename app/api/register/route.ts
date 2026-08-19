@@ -4,11 +4,17 @@ import { normalizeEmail } from '@/helpers/email'
 import { normalizePhone } from '@/helpers/phone'
 import { generateNumericPassword } from '@/lib/password'
 import prisma from '@/lib/prisma'
+import { consumeRateLimit, getRequestIp } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { slugify } from 'transliteration'
 
 export async function POST(request: Request) {
   try {
+    const allowed = await consumeRateLimit(`register:${getRequestIp(request)}`, 8, 60 * 60 * 1000)
+    if (!allowed) {
+      return NextResponse.json({ error: 'rateLimit' }, { status: 429 })
+    }
+
     const data = await request.json() // firstName, …
 
     /* 1. логин */
