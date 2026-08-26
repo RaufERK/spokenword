@@ -119,6 +119,8 @@ model ConferenceFile {
   eventId      Int?
 
   event Event? @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
 }
 
 model StreamLink {

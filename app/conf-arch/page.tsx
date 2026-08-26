@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/prisma'
 import ArchiveList from './ArchiveList'
+import { isStaffRole } from '@/lib/roles'
+import { conferenceFilesVisibleTo } from '@/lib/subscription'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,12 +13,14 @@ export default async function ArchivePage() {
 
   if (!session) redirect('/login')
 
-  const role = (session.user as { role?: string })?.role || ''
-  const isAdmin = ['MODERATOR', 'ADMIN', 'SUPER'].includes(role)
+  const role = session.user.role
+  const userId = Number(session.user.id)
+  const isAdmin = isStaffRole(role)
+  const confWhere = await conferenceFilesVisibleTo(role, userId)
 
   const [confFiles, classFiles] = await Promise.all([
     prisma.conferenceFile.findMany({
-      where: isAdmin ? {} : { isPublic: true },
+      where: confWhere,
       orderBy: [{ orderIndex: 'asc' }, { uploadedAt: 'desc' }],
       select: {
         id: true,
@@ -28,6 +32,7 @@ export default async function ArchivePage() {
         isPublic: true,
         duration: true,
         orderIndex: true,
+        event: { select: { title: true } },
       },
     }),
     prisma.classFile.findMany({
@@ -57,11 +62,13 @@ export default async function ArchivePage() {
           ...f,
           size: Number(f.size),
           uploadedAt: f.uploadedAt.toISOString(),
+          eventTitle: f.event?.title ?? null,
         }))}
         classFiles={classFiles.map((f) => ({
           ...f,
           size: Number(f.size),
           uploadedAt: f.uploadedAt.toISOString(),
+          eventTitle: null,
         }))}
         isAdmin={isAdmin}
       />

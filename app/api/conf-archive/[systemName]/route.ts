@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireStaff, requireUser } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
-import { canAccessPaidArchive } from '@/lib/subscription'
+import { canAccessConferenceFile } from '@/lib/subscription'
 import fs from 'fs/promises'
 import { createReadStream, statSync } from 'fs'
 import path from 'path'
@@ -22,17 +22,23 @@ export async function GET(req: NextRequest, { params }: Props) {
     
     const auth = await requireUser()
     if (auth.error) return new NextResponse('Unauthorized', { status: 401 })
-    if (!canAccessPaidArchive(auth.user.role, auth.user.accessUntil)) {
-      return new NextResponse('Forbidden', { status: 403 })
-    }
 
-    // Находим файл в базе
     const file = await prisma.conferenceFile.findUnique({
       where: { systemName }
     })
 
     if (!file) {
       return new NextResponse('File not found', { status: 404 })
+    }
+
+    const allowed = await canAccessConferenceFile({
+      role: auth.user.role,
+      userId: Number(auth.user.id),
+      eventId: file.eventId,
+      isPublic: file.isPublic,
+    })
+    if (!allowed) {
+      return new NextResponse('Forbidden', { status: 403 })
     }
 
     // Увеличиваем счетчик просмотров
@@ -101,19 +107,28 @@ export async function PATCH(req: NextRequest, { params }: Props) {
   const auth = await requireStaff()
   if (auth.error) return auth.error
 
-  const { isPublic } = await req.json()
+  const body = await req.json() as { isPublic?: boolean; eventId?: number }
 
-  if (typeof isPublic !== 'boolean') {
-    return NextResponse.json({ error: 'isPublic должен быть boolean' }, { status: 400 })
+  const data: { isPublic?: boolean; eventId?: number } = {}
+  if (typeof body.isPublic === 'boolean') data.isPublic = body.isPublic
+  if (typeof body.eventId === 'number') {
+    const event = await prisma.event.findUnique({ where: { id: body.eventId } })
+    if (!event) {
+      return NextResponse.json({ error: 'Мероприятие не найдено' }, { status: 404 })
+    }
+    data.eventId = body.eventId
   }
 
-  // Обновляем видимость
+  if (data.isPublic === undefined && data.eventId === undefined) {
+    return NextResponse.json({ error: 'Нужен isPublic или eventId' }, { status: 400 })
+  }
+
   const file = await prisma.conferenceFile.update({
     where: { systemName },
-    data: { isPublic },
+    data,
   })
 
-  return NextResponse.json({ ok: true, isPublic: file.isPublic })
+  return NextResponse.json({ ok: true, isPublic: file.isPublic, eventId: file.eventId })
 }
 
 export async function DELETE(req: NextRequest) {

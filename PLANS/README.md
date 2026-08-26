@@ -5,7 +5,7 @@
 | Файл | Что делать |
 |------|------------|
 | [ACTIVE/AUTH_SECURITY.md](ACTIVE/AUTH_SECURITY.md) | Хеш паролей, истекающие magic-ссылки, requireRole, затем Auth.js 5 отдельным деплоем |
-| [ACTIVE/EVENTS.md](ACTIVE/EVENTS.md) | Привязка видео к мероприятию, доступ по событию, история оплат |
+| [ACTIVE/EVENTS.md](ACTIVE/EVENTS.md) | Доступ к записям по оплаченному мероприятию; хвост — история оплат |
 
 ## Архив
 

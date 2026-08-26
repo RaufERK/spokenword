@@ -1,6 +1,6 @@
-// app/api/conf-archive/[systemName]/view/route.ts
-
 import prisma from '@/lib/prisma'
+import { requireUser } from '@/lib/require-auth'
+import { canAccessConferenceFile } from '@/lib/subscription'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(
@@ -8,13 +8,27 @@ export async function POST(
   context: { params: Promise<{ systemName: string }> }
 ) {
   const { systemName } = await context.params
-  try {
-    await prisma.conferenceFile.update({
-      where: { systemName },
-      data: { views: { increment: 1 } },
-    })
-    return NextResponse.json({ ok: true })
-  } catch {
+  const auth = await requireUser()
+  if (auth.error) return auth.error
+
+  const file = await prisma.conferenceFile.findUnique({ where: { systemName } })
+  if (!file) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
+
+  const allowed = await canAccessConferenceFile({
+    role: auth.user.role,
+    userId: Number(auth.user.id),
+    eventId: file.eventId,
+    isPublic: file.isPublic,
+  })
+  if (!allowed) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  await prisma.conferenceFile.update({
+    where: { id: file.id },
+    data: { views: { increment: 1 } },
+  })
+  return NextResponse.json({ ok: true })
 }

@@ -15,6 +15,7 @@ type ArchiveItem = {
   isPublic: boolean
   duration: number | null
   orderIndex: number
+  eventTitle: string | null
 }
 
 type CombinedItem = ArchiveItem & { type: 'conf' | 'class' }
@@ -68,6 +69,11 @@ function FileItem({
           ) : (
             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-medium flex items-center gap-1">
               <BookOpen className="w-3 h-3" /> Конференция
+            </span>
+          )}
+          {item.eventTitle && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/15 font-medium truncate max-w-[14rem]">
+              {item.eventTitle}
             </span>
           )}
           {isAdmin && (

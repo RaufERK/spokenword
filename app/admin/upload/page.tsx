@@ -17,6 +17,15 @@ type ConfFile = {
   views: number
   isPublic: boolean
   orderIndex: number
+  eventId: number | null
+  event: { id: number; title: string } | null
+}
+
+type EventOption = {
+  id: number
+  title: string
+  type: 'CONFERENCE' | 'CLASS'
+  startDate: string
 }
 
 export default function AdminUploadPage() {
@@ -33,6 +42,8 @@ export default function AdminUploadPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [files, setFiles] = useState<ConfFile[]>([])
+  const [events, setEvents] = useState<EventOption[]>([])
+  const [eventId, setEventId] = useState<number | null>(null)
   const [refreshList, setRefreshList] = useState(0)
   const [reorderSaving, setReorderSaving] = useState(false)
 
@@ -45,6 +56,16 @@ export default function AdminUploadPage() {
   useEffect(() => {
     fetchFilesList()
   }, [refreshList])
+
+  useEffect(() => {
+    fetch('/api/events')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: EventOption[]) => {
+        setEvents(data)
+        setEventId((current) => current ?? data[0]?.id ?? null)
+      })
+      .catch(() => {})
+  }, [])
 
   const fetchFilesList = async () => {
     try {
@@ -110,6 +131,27 @@ export default function AdminUploadPage() {
     }
   }
 
+  const changeFileEvent = async (systemName: string, nextEventId: number) => {
+    const event = events.find((item) => item.id === nextEventId) ?? null
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.systemName === systemName
+          ? { ...f, eventId: nextEventId, event: event ? { id: event.id, title: event.title } : null }
+          : f
+      )
+    )
+    try {
+      const res = await fetch(`/api/conf-archive/${encodeURIComponent(systemName)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: nextEventId }),
+      })
+      if (!res.ok) alert('❌ Ошибка смены мероприятия')
+    } catch {
+      alert('❌ Ошибка смены мероприятия')
+    }
+  }
+
   const pollJobStatus = async (jobId: string) => {
     try {
       const res = await fetch(`/api/job-status/${jobId}`)
@@ -152,14 +194,16 @@ export default function AdminUploadPage() {
     setError(null)
     if (!file) return setError('Выберите файл')
     if (!displayName.trim()) return setError('Введите название')
+    if (!eventId) return setError('Выберите мероприятие')
 
     setStatus('uploading')
     setUploadProgress(0)
     setCompressionProgress(0)
 
     const form = new FormData()
-    form.append('file', file)
     form.append('displayName', displayName)
+    form.append('eventId', String(eventId))
+    form.append('file', file)
 
     const xhr = new XMLHttpRequest()
     xhr.upload.addEventListener('progress', (e) => {
@@ -248,6 +292,28 @@ export default function AdminUploadPage() {
             />
           </div>
           <div>
+            <label className='block text-purple-200 mb-1'>Мероприятие:</label>
+            {events.length === 0 ? (
+              <p className='text-sm text-amber-300 bg-amber-900/30 rounded-lg p-3'>
+                Сначала создайте мероприятие в{' '}
+                <a href='/admin/events' className='underline'>админке мероприятий</a>.
+              </p>
+            ) : (
+              <select
+                value={eventId ?? ''}
+                onChange={(e) => setEventId(Number(e.target.value))}
+                className='w-full rounded-lg p-2 text-white bg-purple-950/50 border border-purple-400/30 focus:outline-none focus:ring-2 focus:ring-blue-400'
+                disabled={isProcessing}
+              >
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.title}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div>
             <label className='block text-purple-200 mb-1'>Файл (только .mp4):</label>
             <input
               type='file'
@@ -306,7 +372,7 @@ export default function AdminUploadPage() {
             <button
               type='submit'
               className='bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed w-full font-semibold transition-all'
-              disabled={isProcessing || !file || !displayName.trim()}
+              disabled={isProcessing || !file || !displayName.trim() || !eventId}
             >
               {isProcessing ? getStatusText() : 'Загрузить'}
             </button>
@@ -366,10 +432,24 @@ export default function AdminUploadPage() {
                                 {f.isPublic ? '✅ Публичное' : '❌ Скрыто'}
                               </button>
                             </div>
-                            <div className='text-xs text-purple-300 flex gap-4'>
+                            <div className='text-xs text-purple-300 flex flex-wrap items-center gap-3'>
                               <span>{(f.size / 1024 / 1024).toFixed(1)} МБ</span>
                               <span>{new Date(f.uploadedAt).toLocaleString('ru-RU')}</span>
                               <span>👁️ {f.views}</span>
+                              {events.length > 0 && (
+                                <select
+                                  value={f.eventId ?? ''}
+                                  onChange={(e) => changeFileEvent(f.systemName, Number(e.target.value))}
+                                  className='rounded-md px-2 py-1 text-xs text-white bg-purple-900/80 border border-purple-400/30'
+                                >
+                                  {!f.eventId && <option value=''>Без мероприятия</option>}
+                                  {events.map((event) => (
+                                    <option key={event.id} value={event.id}>
+                                      {event.title}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
                             </div>
                           </div>
                           <div className='flex items-center gap-2 ml-4'>
