@@ -1,3 +1,4 @@
+import './utils/load-env.js'
 import express from 'express'
 import cors from 'cors'
 import conferenceRouter from './routes/conference.js'

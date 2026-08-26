@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
       'x-user-role': req.headers['x-user-role']
     })
 
-    const uploader = requireUploader(req, ['ADMIN', 'SUPER'])
+    const uploader = await requireUploader(req, ['ADMIN', 'SUPER'])
     if ('error' in uploader) {
       console.log(`❌ [PACKAGES] ${uploader.error}`)
       return res.status(uploader.status).json({ error: uploader.error })

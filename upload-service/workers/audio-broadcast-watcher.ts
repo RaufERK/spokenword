@@ -1,3 +1,4 @@
+import '../utils/load-env.js'
 import { spawn, type ChildProcess } from 'child_process'
 import { readFile } from 'fs/promises'
 import path from 'path'

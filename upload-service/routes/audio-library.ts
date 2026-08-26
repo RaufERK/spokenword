@@ -30,7 +30,7 @@ function extensionOf(filename: string) {
 
 router.post('/', async (req, res) => {
   try {
-    const uploader = requireUploader(req, ['MODERATOR', 'ADMIN', 'SUPER'])
+    const uploader = await requireUploader(req, ['MODERATOR', 'ADMIN', 'SUPER'])
     if ('error' in uploader) {
       return res.status(uploader.status).json({ error: uploader.error })
     }

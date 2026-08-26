@@ -1,3 +1,4 @@
+import '../utils/load-env.js'
 import { Worker, Job } from 'bullmq'
 import { spawn } from 'child_process'
 import { unlink, stat, mkdir } from 'fs/promises'

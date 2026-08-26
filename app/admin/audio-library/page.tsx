@@ -164,10 +164,6 @@ export default function AdminAudioLibraryPage() {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', uploadUrl())
     xhr.withCredentials = true
-    if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && session?.user) {
-      xhr.setRequestHeader('x-user-id', String(session.user.id))
-      xhr.setRequestHeader('x-user-role', String(session.user.role))
-    }
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         setUploadProgress(Math.round((event.loaded / event.total) * 100))

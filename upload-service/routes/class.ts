@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
   try {
     console.log('📥 [Upload Service] Class upload request received')
 
-    const uploader = requireUploader(req, ['MODERATOR', 'ADMIN', 'SUPER'])
+    const uploader = await requireUploader(req, ['MODERATOR', 'ADMIN', 'SUPER'])
     if ('error' in uploader) {
       return res.status(uploader.status).json({ error: uploader.error })
     }
