@@ -1,20 +1,17 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { requireAdmin } from '@/lib/require-auth'
 import { recalculateAccessUntil } from '@/lib/subscription'
-import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function PATCH(request: NextRequest) {
   const parts = new URL(request.url).pathname.split('/')
   const userId = Number(parts.at(-2))
 
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
 
   const body = await request.json() as { action?: 'grant' | 'revoke'; eventId?: number }
-  const adminId = Number(session.user.id)
+  const adminId = Number(auth.user.id)
 
   if (body.action === 'revoke') {
     await prisma.userEventAccess.updateMany({

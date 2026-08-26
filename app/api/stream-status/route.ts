@@ -9,6 +9,9 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const streamKey = searchParams.get('key') || 'main'
+    if (!/^[a-z0-9_-]+$/i.test(streamKey)) {
+      return NextResponse.json({ error: 'Invalid stream key' }, { status: 400 })
+    }
 
     // Проверяем существование HLS плейлиста от SRS
     const hlsPath = path.join('/var/lib/srs/hls/live', streamKey + '.m3u8')

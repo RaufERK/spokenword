@@ -1,6 +1,5 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
+import { requireRole } from '@/lib/require-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface Props {
@@ -9,14 +8,8 @@ interface Props {
 
 export async function DELETE(req: NextRequest, { params }: Props) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    // Проверяем права доступа (только SUPER может удалять пользователей)
-    if (!session?.user || session.user.role !== 'SUPER') {
-      return NextResponse.json({ 
-        message: 'Доступ запрещен. Только SUPER админ может удалять пользователей.' 
-      }, { status: 403 })
-    }
+    const auth = await requireRole('SUPER')
+    if (auth.error) return auth.error
 
     const { id } = await params
     const userId = parseInt(id)
@@ -53,7 +46,7 @@ export async function DELETE(req: NextRequest, { params }: Props) {
     }
 
     // Нельзя удалить самого себя
-    if (userId === parseInt(session.user.id)) {
+    if (userId === parseInt(auth.user.id)) {
       return NextResponse.json({ 
         message: 'Нельзя удалить самого себя' 
       }, { status: 400 })

@@ -1,7 +1,6 @@
 // app/api/users/[id]/admin/route.ts
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
+import { requireRole } from '@/lib/require-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { ROLES, Role } from '@/lib/roles'
 
@@ -9,10 +8,8 @@ export async function PATCH(request: NextRequest) {
   const parts = new URL(request.url).pathname.split('/')
   const id = Number(parts.at(-2))
 
-  const session = await getServerSession(authOptions)
-  if (!session?.user || session.user.role !== 'SUPER') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireRole('SUPER')
+  if (auth.error) return auth.error
 
   const { role } = (await request.json()) as { role: Role }
   if (!ROLES.includes(role)) {

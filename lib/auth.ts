@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import type { Role } from '@/lib/roles'
+import { verifyAndUpgradePassword } from '@/lib/password'
 import { matchesLoginToken, readLoginToken } from '@/lib/token'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
@@ -92,7 +93,7 @@ export const authOptions: NextAuthOptions = {
           try {
             const payload = readLoginToken(magicToken)
             const user = await prisma.user.findUnique({ where: { id: payload.userId } })
-            if (!user || !matchesLoginToken(payload, user.id, user.password)) return null
+            if (!user || !matchesLoginToken(payload, user.id, user.tokenVersion)) return null
             return toSessionUser(user)
           } catch {
             return null
@@ -127,7 +128,9 @@ export const authOptions: NextAuthOptions = {
           })
         }
 
-        if (!user || user.password !== creds.password) return null
+        if (!user || !(await verifyAndUpgradePassword(user.id, creds.password, user.password))) {
+          return null
+        }
 
         return toSessionUser(user)
       },
@@ -150,23 +153,11 @@ export const authOptions: NextAuthOptions = {
           where: { id: Number(token.id) },
           select: {
             role: true,
-            firstName: true,
-            lastName: true,
-            phoneNumber: true,
-            login: true,
-            email: true,
-            city: true,
             accessUntil: true,
           },
         })
         if (dbUser) {
           token.role = dbUser.role
-          token.firstName = dbUser.firstName
-          token.lastName = dbUser.lastName
-          token.phoneNumber = dbUser.phoneNumber
-          token.login = dbUser.login
-          token.email = dbUser.email
-          token.city = dbUser.city
           token.accessUntil = dbUser.accessUntil ? dbUser.accessUntil.toISOString() : null
         }
       }

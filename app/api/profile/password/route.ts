@@ -1,16 +1,13 @@
-import { authOptions } from '@/lib/auth'
-import { generateNumericPassword } from '@/lib/password'
+import { generateNumericPassword, hashPassword } from '@/lib/password'
+import { requireUser } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 
 export async function POST() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireUser()
+  if (auth.error) return auth.error
 
-  const userId = Number(session.user.id)
+  const userId = Number(auth.user.id)
   if (!Number.isInteger(userId)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -18,7 +15,10 @@ export async function POST() {
   const password = generateNumericPassword()
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { password },
+    data: {
+      password: await hashPassword(password),
+      tokenVersion: { increment: 1 },
+    },
     select: { id: true, login: true },
   })
 

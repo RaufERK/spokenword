@@ -1,8 +1,7 @@
 import { unlink } from 'node:fs/promises'
 import path from 'node:path'
-import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
-import { authOptions } from '@/lib/auth'
+import { requireStaff } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
 
 const NEWS_MEDIA_DIR =
@@ -14,12 +13,8 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  const role = session?.user?.role
-
-  if (!role || !['MODERATOR', 'ADMIN', 'SUPER'].includes(role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const { id } = await params
   const postId = Number(id)

@@ -2,7 +2,7 @@
 // app/api/register/route.ts
 import { normalizeEmail } from '@/helpers/email'
 import { normalizePhone } from '@/helpers/phone'
-import { generateNumericPassword } from '@/lib/password'
+import { generateNumericPassword, hashPassword } from '@/lib/password'
 import prisma from '@/lib/prisma'
 import { consumeRateLimit, getRequestIp } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
         phoneNumber: phone,
         email: email || null,
         login,
-        password,
+        password: await hashPassword(password),
         isAbroad: data.isAbroad === true || data.isAbroad === 'true',
       },
     })

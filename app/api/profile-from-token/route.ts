@@ -25,11 +25,11 @@ export async function GET(req: NextRequest) {
         city: true,
         login: true,
         role: true,
-        password: true,
+        tokenVersion: true,
       },
     })
 
-    if (!user || !matchesLoginToken(payload, user.id, user.password)) {
+    if (!user || !matchesLoginToken(payload, user.id, user.tokenVersion)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 

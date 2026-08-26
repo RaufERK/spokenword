@@ -1,8 +1,6 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import { isStaffRole } from '@/lib/roles'
+import { requireStaff } from '@/lib/require-auth'
 import { slugify } from 'transliteration'
-import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 
 function serializeLecture(lecture: {
@@ -25,10 +23,8 @@ function serializeLecture(lecture: {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !isStaffRole(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const [lectures, categories] = await Promise.all([
     prisma.audioLecture.findMany({
@@ -48,10 +44,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !isStaffRole(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const body = await req.json()
   const name = typeof body.name === 'string' ? body.name.trim() : ''

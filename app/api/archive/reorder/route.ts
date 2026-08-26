@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireStaff } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
 
 type ReorderItem = {
@@ -10,12 +9,8 @@ type ReorderItem = {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  const role = (session?.user as { role?: string })?.role || ''
-
-  if (!['MODERATOR', 'ADMIN', 'SUPER'].includes(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const { items }: { items: ReorderItem[] } = await req.json()
 

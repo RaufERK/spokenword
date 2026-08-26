@@ -1,7 +1,6 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { rmdir, unlink } from 'fs/promises'
-import { getServerSession } from 'next-auth'
+import { requireAdmin } from '@/lib/require-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { join, relative, resolve } from 'path'
 
@@ -23,17 +22,13 @@ function getPaidContentFilePath(filePath: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    // Проверяем права доступа
-    if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-      return NextResponse.json({ message: 'Access denied' }, { status: 403 })
-    }
+    const auth = await requireAdmin()
+    if (auth.error) return auth.error
 
     console.log('🔍 Сессия пользователя:', {
-      id: session.user.id,
-      login: session.user.login || session.user.name,
-      role: session.user.role
+      id: auth.user.id,
+      login: auth.user.login || auth.user.name,
+      role: auth.user.role
     })
 
     const { title, description, price } = await req.json()
@@ -52,13 +47,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Проверяем существование пользователя
-    const userId = parseInt(session.user.id)
+    const userId = parseInt(auth.user.id)
     const userExists = await prisma.user.findUnique({
       where: { id: userId }
     })
 
     if (!userExists) {
-      console.error('❌ Пользователь не найден в БД:', userId, session.user.login)
+      console.error('❌ Пользователь не найден в БД:', userId, auth.user.login)
       return NextResponse.json({ 
         message: `Пользователь с ID ${userId} не найден в базе данных` 
       }, { status: 400 })
@@ -92,12 +87,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    
-    // Проверяем права доступа
-    if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-      return NextResponse.json({ message: 'Access denied' }, { status: 403 })
-    }
+    const auth = await requireAdmin()
+    if (auth.error) return auth.error
 
     // Загружаем все пакеты
     const packages = await prisma.contentPackage.findMany({
@@ -141,12 +132,8 @@ export async function GET() {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    // Проверяем права доступа
-    if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-      return NextResponse.json({ message: 'Access denied' }, { status: 403 })
-    }
+    const auth = await requireAdmin()
+    if (auth.error) return auth.error
 
     const { packageId } = await req.json()
 

@@ -1,17 +1,13 @@
-import { authOptions } from '@/lib/auth'
 import { parseSlotStartsAt, slotWindow, windowsOverlap } from '@/lib/audio-broadcast'
 import prisma from '@/lib/prisma'
-import { isStaffRole } from '@/lib/roles'
-import { getServerSession } from 'next-auth'
+import { requireStaff } from '@/lib/require-auth'
 import { NextResponse } from 'next/server'
 
 const ACTIVE_STATUSES = ['SCHEDULED', 'PLAYING'] as const
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !isStaffRole(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const slots = await prisma.audioBroadcastSlot.findMany({
     orderBy: { startsAt: 'desc' },
@@ -27,10 +23,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !isStaffRole(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const body = await req.json()
   const lectureId = Number.parseInt(String(body.lectureId), 10)
@@ -65,7 +59,7 @@ export async function POST(req: Request) {
     data: {
       lectureId,
       startsAt,
-      createdBy: Number.parseInt(session.user.id, 10),
+      createdBy: Number.parseInt(auth.user.id, 10),
     },
     include: {
       lecture: { select: { id: true, title: true, durationSec: true } },

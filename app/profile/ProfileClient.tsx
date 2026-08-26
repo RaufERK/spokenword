@@ -46,7 +46,7 @@ const FIELDS: FieldDef[] = [
   { label: 'Email', icon: Mail, value: (p) => p.email },
   { label: 'Город', icon: MapPin, value: (p) => p.city },
   { label: 'Логин', icon: Key, value: (p) => p.login },
-  { label: 'Пароль', icon: Shield, value: (p) => p.password },
+  { label: 'Пароль', icon: Shield, value: () => undefined },
   { label: 'Роль', icon: Shield, value: (p) => p.role },
 ]
 
@@ -374,7 +374,7 @@ export default function ProfileClient() {
                         </label>
                         <div className="pl-6 flex flex-wrap items-center gap-3">
                           <p className="text-green-400 text-lg font-medium font-mono tracking-widest">
-                            {latestPassword || val || <span className="text-white/30 text-base">—</span>}
+                            {latestPassword || <span className="text-white/30 text-base">••••••</span>}
                           </p>
                           {canEditProfile && (
                             <button

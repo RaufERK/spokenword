@@ -1,13 +1,10 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
+import { requireAdmin, requireStaff } from '@/lib/require-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !['MODERATOR', 'ADMIN', 'SUPER'].includes(session.user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const events = await prisma.event.findMany({
     orderBy: { startDate: 'desc' },
@@ -25,10 +22,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
 
   const body = await req.json() as {
     title?: string

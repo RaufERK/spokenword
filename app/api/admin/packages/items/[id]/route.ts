@@ -1,7 +1,6 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { unlink } from 'fs/promises'
-import { getServerSession } from 'next-auth'
+import { requireAdmin } from '@/lib/require-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { join, relative, resolve } from 'path'
 
@@ -27,12 +26,8 @@ interface Props {
 
 export async function DELETE(req: NextRequest, { params }: Props) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    // Проверяем права доступа
-    if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-      return NextResponse.json({ message: 'Access denied' }, { status: 403 })
-    }
+    const auth = await requireAdmin()
+    if (auth.error) return auth.error
 
     const { id } = await params
     const itemId = parseInt(id)
@@ -82,12 +77,8 @@ export async function DELETE(req: NextRequest, { params }: Props) {
 
 export async function PATCH(req: NextRequest, { params }: Props) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    // Проверяем права доступа
-    if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-      return NextResponse.json({ message: 'Access denied' }, { status: 403 })
-    }
+    const auth = await requireAdmin()
+    if (auth.error) return auth.error
 
     const { id } = await params
     const itemId = parseInt(id)

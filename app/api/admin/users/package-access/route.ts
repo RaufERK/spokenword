@@ -1,17 +1,12 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { getServerSession } from 'next-auth'
+import { requireAdmin } from '@/lib/require-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    // Проверяем права доступа
-    if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-      return NextResponse.json({ message: 'Access denied' }, { status: 403 })
-    }
+    const auth = await requireAdmin()
+    if (auth.error) return auth.error
 
     const { userId, packageId, notes } = await req.json()
 
@@ -63,7 +58,7 @@ export async function POST(req: NextRequest) {
         userId,
         packageId,
         price: pkg.price,
-        grantedBy: parseInt(session.user.id),
+        grantedBy: parseInt(auth.user.id),
         notes: notes || null,
       },
     })
@@ -85,12 +80,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    // Проверяем права доступа
-    if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-      return NextResponse.json({ message: 'Access denied' }, { status: 403 })
-    }
+    const auth = await requireAdmin()
+    if (auth.error) return auth.error
 
     const { userId, packageId } = await req.json()
 

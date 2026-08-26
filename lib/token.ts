@@ -1,8 +1,11 @@
 import crypto from 'crypto'
 
+const MAGIC_TTL_SEC = 7 * 24 * 60 * 60
+
 type LoginTokenPayload = {
   userId: number
-  fp: string
+  exp: number
+  v: number
 }
 
 function getSecret(): string {
@@ -13,23 +16,19 @@ function getSecret(): string {
   return secret
 }
 
-function fingerprint(userId: number, password: string): string {
-  return crypto
-    .createHmac('sha256', getSecret())
-    .update(`${userId}:${password}`)
-    .digest('hex')
-    .slice(0, 16)
+function signPayload(payload: string): string {
+  return crypto.createHmac('sha256', getSecret()).update(payload).digest('base64url')
 }
 
-export function createLoginToken(userId: number, password: string): string {
+export function createLoginToken(userId: number, tokenVersion: number): string {
   const payload = Buffer.from(
     JSON.stringify({
       userId,
-      fp: fingerprint(userId, password),
+      exp: Math.floor(Date.now() / 1000) + MAGIC_TTL_SEC,
+      v: tokenVersion,
     } satisfies LoginTokenPayload)
   ).toString('base64url')
-  const sig = crypto.createHmac('sha256', getSecret()).update(payload).digest('base64url')
-  return `${payload}.${sig}`
+  return `${payload}.${signPayload(payload)}`
 }
 
 export function readLoginToken(token: string): LoginTokenPayload {
@@ -37,7 +36,7 @@ export function readLoginToken(token: string): LoginTokenPayload {
   const [payload, sig] = token.split('.')
   if (!payload || !sig) throw new Error('Bad token format')
 
-  const expected = crypto.createHmac('sha256', getSecret()).update(payload).digest('base64url')
+  const expected = signPayload(payload)
   const sigBuffer = Buffer.from(sig)
   const expectedBuffer = Buffer.from(expected)
   if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
@@ -45,8 +44,11 @@ export function readLoginToken(token: string): LoginTokenPayload {
   }
 
   const data = JSON.parse(Buffer.from(payload, 'base64url').toString()) as LoginTokenPayload
-  if (!Number.isInteger(data.userId) || typeof data.fp !== 'string' || data.fp.length === 0) {
+  if (!Number.isInteger(data.userId) || !Number.isInteger(data.exp) || !Number.isInteger(data.v)) {
     throw new Error('Bad token')
+  }
+  if (data.exp < Math.floor(Date.now() / 1000)) {
+    throw new Error('Expired token')
   }
 
   return data
@@ -55,13 +57,7 @@ export function readLoginToken(token: string): LoginTokenPayload {
 export function matchesLoginToken(
   payload: LoginTokenPayload,
   userId: number,
-  password: string
+  tokenVersion: number
 ): boolean {
-  const expected = fingerprint(userId, password)
-  const actualBuffer = Buffer.from(payload.fp)
-  const expectedBuffer = Buffer.from(expected)
-  return (
-    actualBuffer.length === expectedBuffer.length &&
-    crypto.timingSafeEqual(actualBuffer, expectedBuffer)
-  )
+  return payload.userId === userId && payload.v === tokenVersion
 }

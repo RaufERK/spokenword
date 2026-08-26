@@ -45,6 +45,7 @@ model User {
   city         String?
   login        String    @unique
   password     String
+  tokenVersion Int       @default(0)
   phoneNumber  String?   @unique
   email        String?   @unique
   accessUntil  DateTime?

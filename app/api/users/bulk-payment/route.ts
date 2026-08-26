@@ -1,7 +1,6 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { requireAdmin } from '@/lib/require-auth'
 import { recalculateAccessUntil } from '@/lib/subscription'
-import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 type BulkPaymentBody = {
@@ -11,10 +10,8 @@ type BulkPaymentBody = {
 }
 
 export async function PATCH(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !['ADMIN', 'SUPER'].includes(session.user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
 
   const body = await request.json() as BulkPaymentBody
   const userIds = Array.from(
@@ -25,7 +22,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'userIds обязателен' }, { status: 400 })
   }
 
-  const adminId = Number(session.user.id)
+  const adminId = Number(auth.user.id)
 
   if (body.action === 'revoke') {
     await prisma.userEventAccess.updateMany({

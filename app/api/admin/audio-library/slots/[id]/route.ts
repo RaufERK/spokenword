@@ -1,7 +1,5 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import { isStaffRole } from '@/lib/roles'
-import { getServerSession } from 'next-auth'
+import { requireStaff } from '@/lib/require-auth'
 import { NextResponse } from 'next/server'
 
 interface Props {
@@ -9,10 +7,8 @@ interface Props {
 }
 
 export async function DELETE(_req: Request, { params }: Props) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !isStaffRole(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const { id: idRaw } = await params
   const id = Number.parseInt(idRaw, 10)

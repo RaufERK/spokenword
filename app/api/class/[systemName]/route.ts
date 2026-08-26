@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireStaff, requireUser } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
 import { canAccessPaidArchive } from '@/lib/subscription'
 import fs from 'fs/promises'
@@ -19,11 +18,9 @@ export async function GET(req: NextRequest, { params }: Props) {
   try {
     const { systemName } = await params
 
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 })
-    }
-    if (!canAccessPaidArchive(session.user.role, session.user.accessUntil)) {
+    const auth = await requireUser()
+    if (auth.error) return new NextResponse('Unauthorized', { status: 401 })
+    if (!canAccessPaidArchive(auth.user.role, auth.user.accessUntil)) {
       return new NextResponse('Forbidden', { status: 403 })
     }
 
@@ -88,11 +85,8 @@ export async function DELETE(req: NextRequest) {
   const parts = url.pathname.split('/')
   const systemName = decodeURIComponent(parts[parts.length - 1])
 
-  const session = await getServerSession(authOptions)
-  const role = session?.user?.role
-  if (!role || !['MODERATOR', 'ADMIN', 'SUPER'].includes(role)) {
-    return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
-  }
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
 
   const file = await prisma.classFile.findUnique({ where: { systemName } })
   if (!file) return NextResponse.json({ error: 'Файл не найден' }, { status: 404 })

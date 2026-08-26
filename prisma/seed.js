@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 import { existsSync, readFileSync } from 'fs'
 
 const prisma = new PrismaClient()
@@ -86,7 +87,7 @@ async function createDefaultAdmin() {
       firstName,
       lastName,
       login,
-      password,
+      password: await bcrypt.hash(password, 12),
       role: 'SUPER',
     },
   })

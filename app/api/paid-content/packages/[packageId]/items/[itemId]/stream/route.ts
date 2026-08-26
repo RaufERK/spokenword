@@ -1,6 +1,6 @@
-import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
+import { isStaffRole } from '@/lib/roles'
+import { requireUser } from '@/lib/require-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { createReadStream, statSync } from 'fs'
 import { join, relative, resolve } from 'path'
@@ -27,23 +27,19 @@ interface Props {
 
 export async function GET(req: NextRequest, { params }: Props) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 })
-    }
+    const auth = await requireUser()
+    if (auth.error) return new NextResponse('Unauthorized', { status: 401 })
 
     const { packageId: packageIdStr, itemId: itemIdStr } = await params
     const packageId = parseInt(packageIdStr)
     const itemId = parseInt(itemIdStr)
-    const userId = parseInt(session.user.id)
+    const userId = parseInt(auth.user.id)
 
     if (isNaN(packageId) || isNaN(itemId)) {
       return new NextResponse('Invalid parameters', { status: 400 })
     }
 
-    // Проверяем права доступа
-    const hasModeratorAccess = ['MODERATOR', 'ADMIN', 'SUPER'].includes(session.user.role)
+    const hasModeratorAccess = isStaffRole(auth.user.role)
     
     if (!hasModeratorAccess) {
       // Обычный пользователь - проверяем покупку

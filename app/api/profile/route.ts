@@ -1,8 +1,8 @@
 import { normalizeEmail } from '@/helpers/email'
 import { normalizePhone } from '@/helpers/phone'
-import { authOptions } from '@/lib/auth'
+import { hashPassword, verifyPassword } from '@/lib/password'
+import { requireUser } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 
 type ProfilePayload = {
@@ -31,7 +31,6 @@ function serializeUser(user: {
   city: string | null
   login: string
   role: string
-  password?: string
 }) {
   return {
     id: user.id,
@@ -42,17 +41,14 @@ function serializeUser(user: {
     city: user.city,
     login: user.login,
     role: user.role,
-    ...(user.password ? { password: user.password } : {}),
   }
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireUser()
+  if (auth.error) return auth.error
 
-  const userId = Number(session.user.id)
+  const userId = Number(auth.user.id)
   if (!Number.isInteger(userId)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -68,7 +64,6 @@ export async function GET() {
       city: true,
       login: true,
       role: true,
-      password: true,
     },
   })
 
@@ -81,12 +76,10 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireUser()
+    if (auth.error) return auth.error
 
-    const userId = Number(session.user.id)
+    const userId = Number(auth.user.id)
     const body = (await request.json()) as ProfilePayload
     const profileId = Number(body.profileId)
 
@@ -131,7 +124,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    if (newPassword && currentUser.password !== currentPassword) {
+    if (newPassword && !(await verifyPassword(currentPassword, currentUser.password))) {
       return NextResponse.json({ error: 'currentPassword' }, { status: 400 })
     }
 
@@ -160,7 +153,9 @@ export async function PATCH(request: Request) {
         phoneNumber,
         email: email || null,
         city: city || null,
-        ...(newPassword ? { password: newPassword } : {}),
+        ...(newPassword
+          ? { password: await hashPassword(newPassword), tokenVersion: { increment: 1 } }
+          : {}),
       },
       select: {
         id: true,
