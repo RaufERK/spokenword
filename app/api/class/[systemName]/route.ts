@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { canAccessPaidArchive } from '@/lib/subscription'
 import fs from 'fs/promises'
 import { createReadStream, statSync } from 'fs'
 import path from 'path'
@@ -21,6 +22,9 @@ export async function GET(req: NextRequest, { params }: Props) {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return new NextResponse('Unauthorized', { status: 401 })
+    }
+    if (!canAccessPaidArchive(session.user.role, session.user.accessUntil)) {
+      return new NextResponse('Forbidden', { status: 403 })
     }
 
     const file = await prisma.classFile.findUnique({ where: { systemName } })

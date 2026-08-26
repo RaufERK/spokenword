@@ -1,9 +1,18 @@
 import prisma from '@/lib/prisma'
+import { isStaffRole } from '@/lib/roles'
 
 export function isSubscriptionActive(accessUntil: string | Date | null): boolean {
   if (!accessUntil) return false
   const until = typeof accessUntil === 'string' ? new Date(accessUntil) : accessUntil
   return until.getTime() > Date.now()
+}
+
+export function canAccessPaidArchive(
+  role: string | null | undefined,
+  accessUntil: string | Date | null | undefined
+): boolean {
+  if (isStaffRole(role)) return true
+  return isSubscriptionActive(accessUntil ?? null)
 }
 
 export function computeAccessUntil(paymentDate: Date, eventStartDate: Date, accessDays = 30): Date {
