@@ -20,19 +20,42 @@ type Lecture = {
   categories: Category[]
 }
 
+type Slot = {
+  id: number
+  startsAt: string
+  status: string
+  errorLog: string | null
+  lecture: { id: number; title: string; durationSec: number | null }
+}
+
 function formatMinutes(durationSec: number | null) {
   if (durationSec == null || durationSec <= 0) return '—'
   return `${Math.max(1, Math.round(durationSec / 60))} мин`
+}
+
+function formatMoscow(iso: string) {
+  return new Date(iso).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })
+}
+
+const SLOT_STATUS: Record<string, string> = {
+  SCHEDULED: 'запланирован',
+  PLAYING: 'в эфире',
+  DONE: 'завершён',
+  SKIPPED_LIVE: 'пропущен: живой эфир',
+  FAILED: 'ошибка',
 }
 
 export default function AdminAudioLibraryPage() {
   const { data: session, status } = useSession()
   const [lectures, setLectures] = useState<Lecture[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [slots, setSlots] = useState<Slot[]>([])
   const [title, setTitle] = useState('')
   const [year, setYear] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [newCategory, setNewCategory] = useState('')
+  const [slotLectureId, setSlotLectureId] = useState('')
+  const [slotStartsAt, setSlotStartsAt] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
@@ -42,12 +65,17 @@ export default function AdminAudioLibraryPage() {
   const allowed = role && ['MODERATOR', 'ADMIN', 'SUPER'].includes(role)
 
   const load = async () => {
-    const res = await fetch('/api/admin/audio-library')
-    const result = await res.json()
-    if (result.success) {
-      setLectures(result.data.lectures)
-      setCategories(result.data.categories)
+    const [libraryRes, slotsRes] = await Promise.all([
+      fetch('/api/admin/audio-library'),
+      fetch('/api/admin/audio-library/slots'),
+    ])
+    const library = await libraryRes.json()
+    const slotsResult = await slotsRes.json()
+    if (library.success) {
+      setLectures(library.data.lectures)
+      setCategories(library.data.categories)
     }
+    if (slotsResult.success) setSlots(slotsResult.data)
   }
 
   useEffect(() => {
@@ -159,6 +187,36 @@ export default function AdminAudioLibraryPage() {
     }
   }
 
+  const handleCreateSlot = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const res = await fetch('/api/admin/audio-library/slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lectureId: slotLectureId, startsAt: slotStartsAt }),
+    })
+    const result = await res.json()
+    if (res.ok) {
+      setSlotLectureId('')
+      setSlotStartsAt('')
+      setMessage('Эфир запланирован')
+      await load()
+    } else {
+      setMessage(result.error === 'Slot overlaps another broadcast'
+        ? 'Это время пересекается с другим эфиром'
+        : result.error || 'Не удалось запланировать')
+    }
+  }
+
+  const handleCancelSlot = async (slot: Slot) => {
+    if (!confirm(`Отменить эфир «${slot.lecture.title}»?`)) return
+    const res = await fetch(`/api/admin/audio-library/slots/${slot.id}`, { method: 'DELETE' })
+    if (res.ok) await load()
+    else {
+      const result = await res.json()
+      setMessage(result.error || 'Не удалось отменить')
+    }
+  }
+
   return (
     <div className='max-w-5xl mx-auto space-y-8'>
       <div className='flex items-center gap-3'>
@@ -242,6 +300,60 @@ export default function AdminAudioLibraryPage() {
           ))}
         </div>
       </div>
+
+      <form
+        onSubmit={handleCreateSlot}
+        className='bg-white/10 border border-pink-400/20 rounded-2xl p-6 space-y-4'
+      >
+        <h2 className='text-white font-semibold'>Плановый эфир (Москва)</h2>
+        <div className='grid gap-4 md:grid-cols-2'>
+          <label className='text-sm text-pink-100'>
+            Лекция
+            <select
+              value={slotLectureId}
+              onChange={(e) => setSlotLectureId(e.target.value)}
+              required
+              className='mt-1 w-full rounded-lg px-3 py-2 text-gray-900'
+            >
+              <option value=''>Выберите лекцию</option>
+              {lectures.map((lecture) => (
+                <option key={lecture.id} value={lecture.id}>
+                  {lecture.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className='text-sm text-pink-100'>
+            Дата и время
+            <input
+              type='datetime-local'
+              value={slotStartsAt}
+              onChange={(e) => setSlotStartsAt(e.target.value)}
+              required
+              className='mt-1 w-full rounded-lg px-3 py-2 text-gray-900'
+            />
+          </label>
+        </div>
+        <button type='submit' className='bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg'>
+          Запланировать
+        </button>
+        <div className='space-y-2'>
+          {slots.length === 0 && <p className='text-pink-200 text-sm'>Слотов пока нет.</p>}
+          {slots.map((slot) => (
+            <div key={slot.id} className='flex flex-wrap items-center justify-between gap-2 bg-white/10 rounded-lg px-3 py-2 text-sm text-white'>
+              <span>
+                {formatMoscow(slot.startsAt)} · {slot.lecture.title} · {SLOT_STATUS[slot.status] || slot.status}
+                {slot.errorLog ? ` · ${slot.errorLog}` : ''}
+              </span>
+              {slot.status === 'SCHEDULED' && (
+                <button type='button' onClick={() => handleCancelSlot(slot)} className='text-pink-200 hover:text-white'>
+                  Отменить
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </form>
 
       <div className='space-y-3'>
         {lectures.length === 0 && (
