@@ -1,6 +1,10 @@
+const NODE_VERSION = '24.14.1'
+const NODE_BIN = `/home/appuser/.nvm/versions/node/v${NODE_VERSION}/bin/node`
+const PM2_BIN = `/home/appuser/.nvm/versions/node/v${NODE_VERSION}/bin/pm2`
+
 const postDeploySteps = [
   'export NODE_ENV=production',
-  'source ~/.nvm/nvm.sh && nvm use v24.12.0',
+  `source ~/.nvm/nvm.sh && nvm use ${NODE_VERSION}`,
   // симлинки создаём в КОРНЕ проекта (текущая cwd = /home/appuser/apps/spokenword/source)
   'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env',
   'ln -sfn /home/appuser/apps/spokenword/shared/.env ./.env.production',
@@ -19,8 +23,8 @@ const postDeploySteps = [
   'ln -sfn /home/appuser/apps/spokenword/shared/paid-content ./paid-content',
   // Примечание: права доступа нужно восстанавливать вручную после деплоя
   // Запустите: ssh amster "bash /root/fix-streaming-permissions.sh"
-  'pm2 startOrReload ecosystem.config.cjs --env production',
-  'pm2 save',
+  `${PM2_BIN} startOrReload ecosystem.config.cjs --env production`,
+  `${PM2_BIN} save`,
 ].join(' && ')
 
 module.exports = {
@@ -28,6 +32,7 @@ module.exports = {
     {
       name: 'spokenword',
       script: 'node_modules/next/dist/bin/next',
+      interpreter: NODE_BIN,
       args: 'start -p 3005',
       instances: 1,
       exec_mode: 'fork',
