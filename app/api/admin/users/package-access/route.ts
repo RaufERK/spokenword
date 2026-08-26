@@ -1,5 +1,6 @@
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -114,7 +115,7 @@ export async function DELETE(req: NextRequest) {
       deletedAccess,
     })
   } catch (error) {
-    if (error.code === 'P2025') {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return NextResponse.json(
         {
           message: 'Доступ не найден',

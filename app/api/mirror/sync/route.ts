@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -717,7 +718,7 @@ export async function POST(request: NextRequest) {
             channelUsername: payload.channelUsername ?? null,
             telegramDate,
             text: normalizedText,
-            textEntities: normalizedText ? preparedTextPayload.entities : null,
+            textEntities: preparedTextPayload.entities ?? Prisma.DbNull,
             hashtags: preparedTextPayload.hashtags,
             mediaType: nextMediaType,
             imageUrl: nextImageUrl,
@@ -728,7 +729,7 @@ export async function POST(request: NextRequest) {
             channelUsername: payload.channelUsername ?? undefined,
             telegramDate,
             text: normalizedText,
-            textEntities: normalizedText ? preparedTextPayload.entities : null,
+            textEntities: preparedTextPayload.entities ?? Prisma.DbNull,
             hashtags: preparedTextPayload.hashtags,
             mediaType: nextMediaType,
             imageUrl: nextImageUrl,

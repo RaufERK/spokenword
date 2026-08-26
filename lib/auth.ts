@@ -70,7 +70,6 @@ function toSessionUser(user: {
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
-  trustHost: true,
   providers: [
     CredentialsProvider({
       name: 'Credentials',

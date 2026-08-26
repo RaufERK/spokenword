@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 const allowedCorsOrigins = ['https://audio.spoken-word.ru']
 
-function getCorsHeaders(req: NextRequest) {
+function getCorsHeaders(req: NextRequest): Record<string, string> {
   const origin = req.headers.get('origin')
 
   if (!origin || !allowedCorsOrigins.includes(origin)) {

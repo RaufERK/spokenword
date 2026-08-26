@@ -42,7 +42,10 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "tooling",
+    "upload-service",
+    "scripts"
   ],
   "typeRoots": [
     "./types",
