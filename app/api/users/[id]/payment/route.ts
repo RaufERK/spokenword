@@ -15,11 +15,13 @@ export async function PATCH(request: NextRequest) {
 
   if (body.action === 'revoke') {
     await prisma.userEventAccess.updateMany({
-      where: { userId, status: 'ACTIVE' },
+      where: body.eventId
+        ? { userId, eventId: body.eventId, status: 'ACTIVE' }
+        : { userId, status: 'ACTIVE' },
       data: { status: 'REVOKED', revokedBy: adminId, revokedAt: new Date() },
     })
-    await recalculateAccessUntil(userId)
-    return NextResponse.json({ accessUntil: null })
+    const accessUntil = await recalculateAccessUntil(userId)
+    return NextResponse.json({ accessUntil: accessUntil?.toISOString() ?? null })
   }
 
   // Grant

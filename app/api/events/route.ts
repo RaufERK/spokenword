@@ -14,7 +14,7 @@ export async function GET() {
       type: true,
       startDate: true,
       accessDays: true,
-      _count: { select: { payments: { where: { status: 'ACTIVE' } }, files: true } },
+      _count: { select: { payments: { where: { status: 'ACTIVE' } }, files: true, classFiles: true } },
     },
   })
 

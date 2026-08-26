@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireStaff, requireUser } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
-import { canAccessPaidArchive } from '@/lib/subscription'
+import { canAccessEventFile } from '@/lib/subscription'
 import fs from 'fs/promises'
 import { createReadStream, statSync } from 'fs'
 import path from 'path'
@@ -20,13 +20,20 @@ export async function GET(req: NextRequest, { params }: Props) {
 
     const auth = await requireUser()
     if (auth.error) return new NextResponse('Unauthorized', { status: 401 })
-    if (!canAccessPaidArchive(auth.user.role, auth.user.accessUntil)) {
-      return new NextResponse('Forbidden', { status: 403 })
-    }
 
     const file = await prisma.classFile.findUnique({ where: { systemName } })
     if (!file) {
       return new NextResponse('File not found', { status: 404 })
+    }
+
+    const allowed = await canAccessEventFile({
+      role: auth.user.role,
+      userId: Number(auth.user.id),
+      eventId: file.eventId,
+      isPublic: file.isPublic,
+    })
+    if (!allowed) {
+      return new NextResponse('Forbidden', { status: 403 })
     }
 
     await prisma.classFile.update({
@@ -101,4 +108,34 @@ export async function DELETE(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true })
+}
+
+export async function PATCH(req: NextRequest, { params }: Props) {
+  const { systemName } = await params
+
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
+
+  const body = await req.json() as { isPublic?: boolean; eventId?: number }
+
+  const data: { isPublic?: boolean; eventId?: number } = {}
+  if (typeof body.isPublic === 'boolean') data.isPublic = body.isPublic
+  if (typeof body.eventId === 'number') {
+    const event = await prisma.event.findUnique({ where: { id: body.eventId } })
+    if (!event) {
+      return NextResponse.json({ error: 'Мероприятие не найдено' }, { status: 404 })
+    }
+    data.eventId = body.eventId
+  }
+
+  if (data.isPublic === undefined && data.eventId === undefined) {
+    return NextResponse.json({ error: 'Нужен isPublic или eventId' }, { status: 400 })
+  }
+
+  const file = await prisma.classFile.update({
+    where: { systemName },
+    data,
+  })
+
+  return NextResponse.json({ ok: true, isPublic: file.isPublic, eventId: file.eventId })
 }

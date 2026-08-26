@@ -23,6 +23,7 @@ export default async function AdminEventsPage() {
         select: {
           payments: { where: { status: 'ACTIVE' } },
           files: true,
+          classFiles: true,
         },
       },
     },

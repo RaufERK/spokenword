@@ -1,6 +1,5 @@
 import prisma from '@/lib/prisma'
 import { isStaffRole } from '@/lib/roles'
-import type { Prisma } from '@prisma/client'
 
 export function isSubscriptionActive(accessUntil: string | Date | null): boolean {
   if (!accessUntil) return false
@@ -42,16 +41,16 @@ export async function getActiveEventIds(userId: number): Promise<number[]> {
     .map((access) => access.event.id)
 }
 
-export async function conferenceFilesVisibleTo(
+export async function paidEventFileWhere(
   role: string | null | undefined,
   userId: number,
-): Promise<Prisma.ConferenceFileWhereInput> {
+): Promise<{ isPublic: true; eventId: { in: number[] } } | Record<string, never>> {
   if (isStaffRole(role)) return {}
   const eventIds = await getActiveEventIds(userId)
   return { isPublic: true, eventId: { in: eventIds } }
 }
 
-export async function canAccessConferenceFile({
+export async function canAccessEventFile({
   role,
   userId,
   eventId,
@@ -67,6 +66,9 @@ export async function canAccessConferenceFile({
   const eventIds = await getActiveEventIds(userId)
   return eventIds.includes(eventId)
 }
+
+export const conferenceFilesVisibleTo = paidEventFileWhere
+export const canAccessConferenceFile = canAccessEventFile
 
 export async function recalculateAccessUntil(userId: number): Promise<Date | null> {
   const accesses = await prisma.userEventAccess.findMany({

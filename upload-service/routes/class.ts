@@ -1,7 +1,7 @@
 import express from 'express'
 import busboy from 'busboy'
 import { createWriteStream } from 'fs'
-import { mkdir } from 'fs/promises'
+import { mkdir, unlink } from 'fs/promises'
 import path from 'path'
 import { randomBytes } from 'crypto'
 import prisma from '../../lib/prisma.js'
@@ -21,6 +21,7 @@ const TEMP_DIR = process.env.NODE_ENV === 'production'
 
 interface UploadData {
   displayName: string
+  eventId: number
   fileName: string
   fileSize: number
   systemName: string
@@ -59,6 +60,12 @@ router.post('/', async (req, res) => {
     bb.on('field', (fieldname: string, val: string) => {
       if (fieldname === 'displayName') {
         uploadData.displayName = val
+      }
+      if (fieldname === 'eventId') {
+        const parsed = Number(val)
+        if (Number.isInteger(parsed) && parsed > 0) {
+          uploadData.eventId = parsed
+        }
       }
     })
 
@@ -118,6 +125,17 @@ router.post('/', async (req, res) => {
             const finalPath = path.join(ARCHIVE_DIR, systemName)
             const userIdNumber = userId
 
+            if (!uploadData.eventId) {
+              await unlink(tempFilePath).catch(() => {})
+              return res.status(400).json({ error: 'Выберите мероприятие' })
+            }
+
+            const event = await prisma.event.findUnique({ where: { id: uploadData.eventId } })
+            if (!event) {
+              await unlink(tempFilePath).catch(() => {})
+              return res.status(400).json({ error: 'Мероприятие не найдено' })
+            }
+
             const classFile = await prisma.classFile.create({
               data: {
                 displayName: uploadData.displayName!,
@@ -125,6 +143,7 @@ router.post('/', async (req, res) => {
                 systemName,
                 uploadedBy: userIdNumber,
                 size: bytesWritten,
+                eventId: event.id,
               },
             })
 

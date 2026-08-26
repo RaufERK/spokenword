@@ -80,8 +80,9 @@ model Event {
   accessDays Int       @default(30)
   createdAt  DateTime  @default(now())
 
-  payments UserEventAccess[]
-  files    ConferenceFile[]
+  payments   UserEventAccess[]
+  files      ConferenceFile[]
+  classFiles ClassFile[]
 }
 
 model UserEventAccess {
@@ -198,6 +199,11 @@ model ClassFile {
   duration     Int?
   isPublic     Boolean  @default(false)
   orderIndex   Int      @default(0)
+  eventId      Int?
+
+  event Event? @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
 }
 
 model ClassStreamLink {

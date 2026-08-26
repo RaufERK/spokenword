@@ -1,15 +1,17 @@
 import prisma from '@/lib/prisma'
 import { requireUser } from '@/lib/require-auth'
-import { isStaffRole } from '@/lib/roles'
+import { paidEventFileWhere } from '@/lib/subscription'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   const auth = await requireUser()
   if (auth.error) return auth.error
 
+  const where = await paidEventFileWhere(auth.user.role, Number(auth.user.id))
+
   const files = await prisma.classFile.findMany({
-    where: isStaffRole(auth.user.role) ? {} : { isPublic: true },
-    orderBy: { uploadedAt: 'desc' },
+    where,
+    orderBy: [{ orderIndex: 'asc' }, { uploadedAt: 'desc' }],
     select: {
       id: true,
       displayName: true,
@@ -19,6 +21,9 @@ export async function GET() {
       views: true,
       duration: true,
       isPublic: true,
+      orderIndex: true,
+      eventId: true,
+      event: { select: { id: true, title: true } },
     },
   })
 

@@ -5,9 +5,10 @@ import { useState, useMemo, useEffect } from 'react'
 import UserAccessModal from '@/components/admin/UserAccessModal'
 import PaymentModal from '@/components/admin/PaymentModal'
 import BulkPaymentModal from '@/components/admin/BulkPaymentModal'
+import PaymentHistoryModal from '@/components/admin/PaymentHistoryModal'
 import {
   Search, ChevronUp, ChevronDown, ChevronsUpDown,
-  Trash2, Link, Package, CheckCircle, PlusCircle, Users, X, Ban, UserCog,
+  Trash2, Link, Package, CheckCircle, PlusCircle, Users, X, Ban, UserCog, History,
 } from 'lucide-react'
 import { formatPhone } from '@/helpers/phone'
 
@@ -82,6 +83,7 @@ export default function UsersTable({
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [paymentUser, setPaymentUser] = useState<UserRow | null>(null)
+  const [historyUser, setHistoryUser] = useState<UserRow | null>(null)
   const [isBulkPaymentOpen, setIsBulkPaymentOpen] = useState(false)
   const [isBulkRoleOpen, setIsBulkRoleOpen] = useState(false)
   const [bulkRole, setBulkRole] = useState<Role>('USER')
@@ -472,22 +474,24 @@ export default function UsersTable({
                       )}
                     </td>
 
-                    {/* Кнопка оплаты */}
+                    {/* Кнопки оплаты */}
                     <td className="px-3 py-2 text-center">
-                      {active ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-green-500/15 text-green-400/70 border border-green-500/20">
-                          <CheckCircle className="w-3 h-3" />
-                          активно
-                        </span>
-                      ) : (
+                      <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => setPaymentUser(u)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-yellow-500/80 to-orange-500/80 hover:from-yellow-400 hover:to-orange-400 text-white transition-colors"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-yellow-500/80 to-orange-500/80 hover:from-yellow-400 hover:to-orange-400 text-white transition-colors"
                         >
                           <PlusCircle className="w-3 h-3" />
-                          ОПЛАТА
+                          Оплата
                         </button>
-                      )}
+                        <button
+                          onClick={() => setHistoryUser(u)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-purple-600/70 hover:bg-purple-500 text-white transition-colors"
+                        >
+                          <History className="w-3 h-3" />
+                          История
+                        </button>
+                      </div>
                     </td>
 
                     {/* Профиль */}
@@ -542,6 +546,19 @@ export default function UsersTable({
           onSave={({ userId, accessUntil, eventTitle }) => {
             applyAccessUpdates([{ id: userId, accessUntil, eventTitle }])
             setPaymentUser(null)
+          }}
+        />
+      )}
+
+      {historyUser && (
+        <PaymentHistoryModal
+          isOpen={!!historyUser}
+          userId={historyUser.id}
+          userName={`${historyUser.firstName} ${historyUser.lastName}`}
+          canRevoke={canEdit}
+          onClose={() => setHistoryUser(null)}
+          onAccessUntilChange={(accessUntil) => {
+            applyAccessUpdates([{ id: historyUser.id, accessUntil }])
           }}
         />
       )}

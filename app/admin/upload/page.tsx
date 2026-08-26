@@ -28,6 +28,8 @@ type EventOption = {
   startDate: string
 }
 
+type ArchiveKind = 'CONFERENCE' | 'CLASS'
+
 export default function AdminUploadPage() {
   const { data } = useSession()
   const role = data?.user?.role
@@ -44,6 +46,7 @@ export default function AdminUploadPage() {
   const [files, setFiles] = useState<ConfFile[]>([])
   const [events, setEvents] = useState<EventOption[]>([])
   const [eventId, setEventId] = useState<number | null>(null)
+  const [archiveKind, setArchiveKind] = useState<ArchiveKind>('CONFERENCE')
   const [refreshList, setRefreshList] = useState(0)
   const [reorderSaving, setReorderSaving] = useState(false)
 
@@ -55,21 +58,33 @@ export default function AdminUploadPage() {
 
   useEffect(() => {
     fetchFilesList()
-  }, [refreshList])
+  }, [refreshList, archiveKind])
 
   useEffect(() => {
     fetch('/api/events')
       .then((res) => (res.ok ? res.json() : []))
-      .then((data: EventOption[]) => {
-        setEvents(data)
-        setEventId((current) => current ?? data[0]?.id ?? null)
-      })
+      .then((data: EventOption[]) => setEvents(data))
       .catch(() => {})
   }, [])
 
+  const filteredEvents = events.filter((event) => event.type === archiveKind)
+
+  useEffect(() => {
+    setEventId((current) =>
+      filteredEvents.some((event) => event.id === current)
+        ? current
+        : filteredEvents[0]?.id ?? null
+    )
+  }, [archiveKind, events])
+
+  const fileApi = (systemName: string) =>
+    archiveKind === 'CLASS'
+      ? `/api/class/${encodeURIComponent(systemName)}`
+      : `/api/conf-archive/${encodeURIComponent(systemName)}`
+
   const fetchFilesList = async () => {
     try {
-      const res = await fetch('/api/conf-archive/list')
+      const res = await fetch(archiveKind === 'CLASS' ? '/api/class' : '/api/conf-archive/list')
       if (res.ok) setFiles(await res.json())
     } catch (err) {
       console.error('Error fetching files list:', err)
@@ -79,7 +94,7 @@ export default function AdminUploadPage() {
   const handleDelete = async (systemName: string, displayName: string) => {
     if (!confirm(`Удалить файл "${displayName}"?`)) return
     try {
-      const res = await fetch(`/api/conf-archive/${encodeURIComponent(systemName)}`, { method: 'DELETE' })
+      const res = await fetch(fileApi(systemName), { method: 'DELETE' })
       if (res.ok) {
         setFiles((prev) => prev.filter((f) => f.systemName !== systemName))
         alert('✅ Файл успешно удален')
@@ -104,7 +119,11 @@ export default function AdminUploadPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: withNewIndex.map(({ id, orderIndex }) => ({ id, type: 'conf', orderIndex })),
+          items: withNewIndex.map(({ id, orderIndex }) => ({
+            id,
+            type: archiveKind === 'CLASS' ? 'class' : 'conf',
+            orderIndex,
+          })),
         }),
       })
     } finally {
@@ -114,7 +133,7 @@ export default function AdminUploadPage() {
 
   const toggleVisibility = async (systemName: string, currentIsPublic: boolean) => {
     try {
-      const res = await fetch(`/api/conf-archive/${encodeURIComponent(systemName)}`, {
+      const res = await fetch(fileApi(systemName), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPublic: !currentIsPublic }),
@@ -141,7 +160,7 @@ export default function AdminUploadPage() {
       )
     )
     try {
-      const res = await fetch(`/api/conf-archive/${encodeURIComponent(systemName)}`, {
+      const res = await fetch(fileApi(systemName), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId: nextEventId }),
@@ -234,9 +253,10 @@ export default function AdminUploadPage() {
       setError('Ошибка сети')
     })
 
-    const uploadUrl = window.location.hostname === 'localhost'
-      ? 'http://localhost:3006/upload/conference'
-      : '/api/conf-archive/upload'
+    const isLocal = window.location.hostname === 'localhost'
+    const uploadUrl = archiveKind === 'CLASS'
+      ? (isLocal ? 'http://localhost:3006/upload/class' : '/api/class/upload')
+      : (isLocal ? 'http://localhost:3006/upload/conference' : '/api/conf-archive/upload')
     xhr.open('POST', uploadUrl)
     xhr.send(form)
   }
@@ -282,6 +302,29 @@ export default function AdminUploadPage() {
         </h1>
         <form onSubmit={handleSubmit} className='space-y-4'>
           <div>
+            <label className='block text-purple-200 mb-1'>Тип записи:</label>
+            <div className='flex gap-2'>
+              {([
+                { id: 'CONFERENCE', label: 'Конференция' },
+                { id: 'CLASS', label: 'Класс' },
+              ] as const).map((kind) => (
+                <button
+                  key={kind.id}
+                  type='button'
+                  onClick={() => setArchiveKind(kind.id)}
+                  disabled={isProcessing}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                    archiveKind === kind.id
+                      ? 'bg-blue-600 border-blue-400 text-white'
+                      : 'bg-purple-950/50 border-purple-400/30 text-white/60 hover:text-white'
+                  }`}
+                >
+                  {kind.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label className='block text-purple-200 mb-1'>Название файла для архива:</label>
             <input
               type='text'
@@ -293,9 +336,9 @@ export default function AdminUploadPage() {
           </div>
           <div>
             <label className='block text-purple-200 mb-1'>Мероприятие:</label>
-            {events.length === 0 ? (
+            {filteredEvents.length === 0 ? (
               <p className='text-sm text-amber-300 bg-amber-900/30 rounded-lg p-3'>
-                Сначала создайте мероприятие в{' '}
+                Сначала создайте мероприятие типа «{archiveKind === 'CLASS' ? 'Класс' : 'Конференция'}» в{' '}
                 <a href='/admin/events' className='underline'>админке мероприятий</a>.
               </p>
             ) : (
@@ -305,7 +348,7 @@ export default function AdminUploadPage() {
                 className='w-full rounded-lg p-2 text-white bg-purple-950/50 border border-purple-400/30 focus:outline-none focus:ring-2 focus:ring-blue-400'
                 disabled={isProcessing}
               >
-                {events.map((event) => (
+                {filteredEvents.map((event) => (
                   <option key={event.id} value={event.id}>
                     {event.title}
                   </option>
@@ -454,7 +497,9 @@ export default function AdminUploadPage() {
                           </div>
                           <div className='flex items-center gap-2 ml-4'>
                             <a
-                              href={`/watch-conf/${encodeURIComponent(f.systemName)}`}
+                              href={archiveKind === 'CLASS'
+                                ? `/watch-class/${encodeURIComponent(f.systemName)}`
+                                : `/watch-conf/${encodeURIComponent(f.systemName)}`}
                               target='_blank'
                               rel='noopener noreferrer'
                               className='px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition'

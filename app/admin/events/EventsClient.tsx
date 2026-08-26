@@ -10,7 +10,7 @@ interface EventRow {
   startDate: string
   accessDays: number
   createdAt: string
-  _count: { payments: number; files: number }
+  _count: { payments: number; files: number; classFiles: number }
 }
 
 interface EventForm {
@@ -85,7 +85,7 @@ export default function EventsClient({ initialEvents, canEdit }: Props) {
         })
         if (!res.ok) { alert('Ошибка при создании'); return }
         const created = await res.json()
-        setEvents((prev) => [{ ...created, _count: { payments: 0, files: 0 } }, ...prev])
+        setEvents((prev) => [{ ...created, _count: { payments: 0, files: 0, classFiles: 0 } }, ...prev])
       }
       setIsModalOpen(false)
     } finally {
@@ -160,7 +160,7 @@ export default function EventsClient({ initialEvents, canEdit }: Props) {
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-400">
                     <Film className="w-3.5 h-3.5" />
-                    <span>{event._count.files} видео</span>
+                    <span>{event._count.files + event._count.classFiles} видео</span>
                   </div>
                 </div>
 
