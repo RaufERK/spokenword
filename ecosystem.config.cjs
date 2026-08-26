@@ -1,4 +1,4 @@
-const NODE_VERSION = '24.14.1'
+const NODE_VERSION = '24.19.0'
 const NODE_BIN = `/home/appuser/.nvm/versions/node/v${NODE_VERSION}/bin/node`
 const PM2_BIN = `/home/appuser/.nvm/versions/node/v${NODE_VERSION}/bin/pm2`
 
