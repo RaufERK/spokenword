@@ -76,13 +76,14 @@ export async function proxy(req: NextRequest) {
     '/api/conf-archive/upload',
     '/api/admin/packages/upload',
     '/api/class/upload',
+    '/api/audio-library/upload',
   ]
   if (uploadRoutes.includes(pathname)) {
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (pathname === '/api/conf-archive/upload' || pathname === '/api/class/upload') {
+    if (pathname === '/api/conf-archive/upload' || pathname === '/api/class/upload' || pathname === '/api/audio-library/upload') {
       if (!['MODERATOR', 'ADMIN', 'SUPER'].includes(token.role as string)) {
         return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
       }
@@ -118,5 +119,6 @@ export const config = {
     '/api/conf-archive/upload',
     '/api/admin/packages/upload',
     '/api/class/upload',
+    '/api/audio-library/upload',
   ],
 }
