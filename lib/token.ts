@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 
-const MAGIC_TTL_SEC = 7 * 24 * 60 * 60
+const MAGIC_TTL_SEC = 365 * 24 * 60 * 60
 
 type LoginTokenPayload = {
   userId: number
