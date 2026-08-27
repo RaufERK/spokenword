@@ -306,14 +306,15 @@ model AudioLecture {
 }
 
 model AudioBroadcastSlot {
-  id        Int                   @id @default(autoincrement())
-  lectureId Int
-  startsAt  DateTime
-  status    AudioBroadcastStatus  @default(SCHEDULED)
-  errorLog  String?
-  createdBy Int
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
+  id           Int                  @id @default(autoincrement())
+  lectureId    Int
+  startsAt     DateTime
+  announcement String
+  status       AudioBroadcastStatus @default(SCHEDULED)
+  errorLog     String?
+  createdBy    Int
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   lecture AudioLecture @relation(fields: [lectureId], references: [id])
   creator User         @relation("CreatedAudioBroadcastSlots", fields: [createdBy], references: [id])

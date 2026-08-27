@@ -45,6 +45,27 @@ Public catalog contract (`audo-word/public/library.js` depends on this):
 `src` is a path on the **audio** domain, not spoken-word.ru. Only `isPublished: true`. Playback resume is browser `localStorage` only.
 
 Slot rules already in code: overlap 409, cancel only `SCHEDULED`, delete lecture 409 if `SCHEDULED`/`PLAYING`.
+Slot create stores `announcement` (default: lecture title / filename without extension).
+
+Public now-playing contract for `audo-word` (`GET /api/audio-library/broadcast`, CORS origin `https://audio.spoken-word.ru` only):
+
+```json
+{
+  "success": true,
+  "data": {
+    "current": {
+      "announcement": "Lecture title",
+      "status": "PLAYING",
+      "startsAt": "2026-08-27T17:00:00.000Z",
+      "endsAt": "2026-08-27T18:15:00.000Z",
+      "lectureId": 1
+    },
+    "next": null
+  }
+}
+```
+
+`current` is the `PLAYING` slot, or a `SCHEDULED` slot whose time window includes now. `next` is the soonest future `SCHEDULED` slot. Both may be `null`. Do not change `GET /api/audio-library`.
 
 ## Remaining in this repo
 

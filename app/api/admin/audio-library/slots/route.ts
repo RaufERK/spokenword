@@ -1,4 +1,10 @@
-import { parseSlotStartsAt, slotWindow, windowsOverlap } from '@/lib/audio-broadcast'
+import {
+  defaultSlotAnnouncement,
+  normalizeSlotAnnouncement,
+  parseSlotStartsAt,
+  slotWindow,
+  windowsOverlap,
+} from '@/lib/audio-broadcast'
 import prisma from '@/lib/prisma'
 import { requireStaff } from '@/lib/require-auth'
 import { NextResponse } from 'next/server'
@@ -36,11 +42,16 @@ export async function POST(req: Request) {
 
   const lecture = await prisma.audioLecture.findUnique({
     where: { id: lectureId },
-    select: { id: true, durationSec: true, isPublished: true },
+    select: { id: true, title: true, originalName: true, durationSec: true, isPublished: true },
   })
   if (!lecture) {
     return NextResponse.json({ error: 'Lecture not found' }, { status: 404 })
   }
+
+  const announcement = normalizeSlotAnnouncement(
+    body.announcement,
+    defaultSlotAnnouncement(lecture.title, lecture.originalName)
+  )
 
   const requested = slotWindow(startsAt, lecture.durationSec)
   const existing = await prisma.audioBroadcastSlot.findMany({
@@ -59,6 +70,7 @@ export async function POST(req: Request) {
     data: {
       lectureId,
       startsAt,
+      announcement,
       createdBy: Number.parseInt(auth.user.id, 10),
     },
     include: {

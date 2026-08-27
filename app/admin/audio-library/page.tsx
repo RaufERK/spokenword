@@ -23,6 +23,7 @@ type Lecture = {
 type Slot = {
   id: number
   startsAt: string
+  announcement: string
   status: string
   errorLog: string | null
   lecture: { id: number; title: string; durationSec: number | null }
@@ -63,6 +64,12 @@ function titleFromFile(file: File) {
   return file.name.replace(/\.[^.]+$/, '').trim()
 }
 
+function announcementFromLecture(lecture: Lecture) {
+  const title = lecture.title.trim()
+  if (title) return title
+  return lecture.originalName.replace(/\.[^.]+$/i, '').trim()
+}
+
 function uploadUrl() {
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     return 'http://localhost:3006/upload/audio-library'
@@ -90,6 +97,7 @@ export default function AdminAudioLibraryPage() {
   const [newCategory, setNewCategory] = useState('')
   const [slotLectureId, setSlotLectureId] = useState('')
   const [slotStartsAt, setSlotStartsAt] = useState('')
+  const [slotAnnouncement, setSlotAnnouncement] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
@@ -248,12 +256,17 @@ export default function AdminAudioLibraryPage() {
     const res = await fetch('/api/admin/audio-library/slots', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lectureId: slotLectureId, startsAt: slotStartsAt }),
+      body: JSON.stringify({
+        lectureId: slotLectureId,
+        startsAt: slotStartsAt,
+        announcement: slotAnnouncement,
+      }),
     })
     const result = await res.json()
     if (res.ok) {
       setSlotLectureId('')
       setSlotStartsAt('')
+      setSlotAnnouncement('')
       flash('Эфир запланирован')
       await load()
     } else {
@@ -433,7 +446,12 @@ export default function AdminAudioLibraryPage() {
             Лекция
             <select
               value={slotLectureId}
-              onChange={(e) => setSlotLectureId(e.target.value)}
+              onChange={(e) => {
+                const lectureId = e.target.value
+                setSlotLectureId(lectureId)
+                const lecture = lectures.find((item) => String(item.id) === lectureId)
+                setSlotAnnouncement(lecture ? announcementFromLecture(lecture) : '')
+              }}
               required
               className={FIELD_CLASS}
             >
@@ -462,12 +480,22 @@ export default function AdminAudioLibraryPage() {
             В план
           </button>
         </div>
+        <label className='text-xs text-pink-100 block'>
+          Анонс трансляции
+          <input
+            value={slotAnnouncement}
+            onChange={(e) => setSlotAnnouncement(e.target.value)}
+            maxLength={300}
+            className={FIELD_CLASS}
+            placeholder='Текст на audio.spoken-word.ru'
+          />
+        </label>
         <div className='space-y-1'>
           {slots.length === 0 && <p className='text-pink-200/80 text-xs'>Слотов пока нет.</p>}
           {slots.map((slot) => (
             <div key={slot.id} className='flex flex-wrap items-center justify-between gap-1.5 bg-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white'>
               <span className='min-w-0 break-words'>
-                {formatMoscow(slot.startsAt)} · {slot.lecture.title} · {SLOT_STATUS[slot.status] || slot.status}
+                {formatMoscow(slot.startsAt)} · {slot.announcement || slot.lecture.title} · {SLOT_STATUS[slot.status] || slot.status}
                 {slot.errorLog ? ` · ${slot.errorLog}` : ''}
               </span>
               {slot.status === 'SCHEDULED' && (
