@@ -281,8 +281,8 @@ export default function AdminAudioLibraryPage() {
       <div className='flex items-center gap-2'>
         <Headphones className='w-6 h-6 text-pink-300 shrink-0' />
         <div className='min-w-0'>
-          <h1 className='text-xl font-bold text-white'>Аудиобиблиотека</h1>
-          <p className='text-pink-200/80 text-xs'>Лекции для audio.spoken-word.ru</p>
+          <h1 className='text-xl font-bold text-white'>Библиотека</h1>
+          <p className='text-pink-200/80 text-xs'>Аудиолекции для audio.spoken-word.ru</p>
         </div>
       </div>
 
@@ -540,6 +540,12 @@ export default function AdminAudioLibraryPage() {
                 })}
               </div>
             )}
+            <audio
+              controls
+              preload='none'
+              className='mt-2 w-full h-8 accent-pink-400'
+              src={`/api/admin/audio-library/${lecture.id}/file`}
+            />
           </div>
         ))}
       </div>
