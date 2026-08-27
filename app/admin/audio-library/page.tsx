@@ -493,7 +493,12 @@ export default function AdminAudioLibraryPage() {
           >
             <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2'>
               <div className='min-w-0'>
-                <div className='font-medium text-sm leading-snug'>{lecture.title}</div>
+                <div className='font-medium text-sm leading-snug'>
+                  {lecture.title}
+                  {!lecture.isPublished && (
+                    <span className='ml-2 text-xs font-normal text-amber-300'>скрыта</span>
+                  )}
+                </div>
                 <div className='text-xs text-pink-200 truncate'>
                   {lecture.year ?? 'без года'} · {formatMinutes(lecture.durationSec)} · {lecture.originalName}
                 </div>
