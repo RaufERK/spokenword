@@ -32,9 +32,9 @@ const AUDIO_EXT = new Set(['.mp3', '.m4a', '.ogg', '.wav'])
 const MAX_AUDIO_BYTES = 500 * 1024 * 1024
 
 const FIELD_CLASS =
-  'mt-1 w-full rounded-lg px-3 py-2.5 text-sm text-white bg-purple-950/50 border border-purple-400/30 placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-pink-500'
+  'mt-1 w-full rounded-lg px-2.5 py-1.5 text-sm text-white bg-purple-950/50 border border-purple-400/30 placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-pink-500'
 const CARD_CLASS =
-  'bg-gradient-to-br from-purple-900/60 to-pink-900/40 backdrop-blur-sm border border-pink-400/20 rounded-2xl shadow-2xl p-6 space-y-4'
+  'bg-gradient-to-br from-purple-900/60 to-pink-900/40 backdrop-blur-sm border border-pink-400/20 rounded-xl p-3 sm:p-4 space-y-2.5'
 
 function formatMinutes(durationSec: number | null) {
   if (durationSec == null || durationSec <= 0) return '—'
@@ -277,20 +277,19 @@ export default function AdminAudioLibraryPage() {
   }
 
   return (
-    <div className='max-w-5xl mx-auto space-y-8'>
-      <div className='flex items-center gap-3'>
-        <Headphones className='w-8 h-8 text-pink-300' />
-        <div>
-          <h1 className='text-2xl font-bold text-white'>Аудиобиблиотека</h1>
-          <p className='text-pink-200 text-sm'>Загрузка лекций для audio.spoken-word.ru</p>
+    <div className='max-w-5xl mx-auto space-y-4'>
+      <div className='flex items-center gap-2'>
+        <Headphones className='w-6 h-6 text-pink-300 shrink-0' />
+        <div className='min-w-0'>
+          <h1 className='text-xl font-bold text-white'>Аудиобиблиотека</h1>
+          <p className='text-pink-200/80 text-xs'>Лекции для audio.spoken-word.ru</p>
         </div>
       </div>
 
       <form onSubmit={handleUpload} className={CARD_CLASS}>
-        <h2 className='text-white font-semibold'>Загрузить лекцию</h2>
-
+        <h2 className='text-white font-medium text-sm'>Загрузить</h2>
         <div
-          className={`relative rounded-xl border-2 border-dashed transition-colors ${
+          className={`relative rounded-lg border border-dashed transition-colors ${
             dragging
               ? 'border-pink-400 bg-pink-500/20'
               : file
@@ -324,25 +323,28 @@ export default function AdminAudioLibraryPage() {
             className='absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 text-[100px] disabled:cursor-not-allowed'
             onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
           />
-          <div className='pointer-events-none flex flex-col items-center gap-2 px-4 py-10 text-center'>
+          <div className='pointer-events-none flex items-center gap-2 px-3 py-2 min-h-[40px]'>
             {file ? (
               <>
-                <Music className='h-8 w-8 text-green-300' />
-                <p className='text-white font-medium'>{file.name}</p>
-                <p className='text-sm text-pink-200'>{formatSize(file.size)} · нажмите или перетащите, чтобы заменить</p>
+                <Music className='h-4 w-4 text-green-300 shrink-0' />
+                <p className='text-sm text-white truncate'>
+                  {file.name}
+                  <span className='text-pink-200'> · {formatSize(file.size)}</span>
+                </p>
               </>
             ) : (
               <>
-                <Upload className='h-8 w-8 text-pink-300' />
-                <p className='text-white font-medium'>Выберите аудиофайл или перетащите сюда</p>
-                <p className='text-sm text-pink-200'>mp3, m4a, ogg, wav · до 500 МБ</p>
+                <Upload className='h-4 w-4 text-pink-300 shrink-0' />
+                <p className='text-sm text-pink-100'>
+                  Файл или сюда · <span className='text-pink-200/80'>mp3, m4a, ogg, wav</span>
+                </p>
               </>
             )}
           </div>
         </div>
 
-        <div className='grid gap-4 md:grid-cols-2'>
-          <label className='text-sm text-pink-100'>
+        <div className='grid grid-cols-1 sm:grid-cols-[1fr_5.5rem_auto] gap-2'>
+          <label className='text-xs text-pink-100'>
             Название
             <input
               value={title}
@@ -352,7 +354,7 @@ export default function AdminAudioLibraryPage() {
               disabled={uploading}
             />
           </label>
-          <label className='text-sm text-pink-100'>
+          <label className='text-xs text-pink-100'>
             Год
             <input
               value={year}
@@ -363,65 +365,71 @@ export default function AdminAudioLibraryPage() {
               disabled={uploading}
             />
           </label>
+          <button
+            type='submit'
+            disabled={uploading || !file}
+            className='sm:self-end inline-flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-sm'
+          >
+            <Upload className='w-3.5 h-3.5' />
+            {uploading ? `${uploadProgress}%` : 'Загрузить'}
+          </button>
         </div>
 
         {uploading && (
-          <div className='space-y-2'>
-            <div className='text-pink-100 text-sm'>Загрузка: {uploadProgress}%</div>
-            <div className='h-3 w-full overflow-hidden rounded-full bg-purple-950'>
-              <div
-                className='h-full bg-pink-500 transition-all duration-300'
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
+          <div className='h-1.5 w-full overflow-hidden rounded-full bg-purple-950'>
+            <div
+              className='h-full bg-pink-500 transition-all duration-300'
+              style={{ width: `${uploadProgress}%` }}
+            />
           </div>
         )}
-
-        <button
-          type='submit'
-          disabled={uploading || !file}
-          className='inline-flex items-center gap-2 bg-pink-600 hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg'
-        >
-          <Upload className='w-4 h-4' />
-          {uploading ? `Загрузка ${uploadProgress}%` : 'Загрузить'}
-        </button>
         {message && (
-          <p className={`text-sm ${messageKind === 'error' ? 'text-red-300' : 'text-green-300'}`}>
+          <p className={`text-xs ${messageKind === 'error' ? 'text-red-300' : 'text-green-300'}`}>
             {message}
           </p>
         )}
       </form>
 
       <div className={CARD_CLASS}>
-        <h2 className='text-white font-semibold'>Категории</h2>
-        <div className='flex gap-2'>
-          <input
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            className={`${FIELD_CLASS} mt-0 flex-1`}
-            placeholder='Новая категория'
-          />
-          <button
-            type='button'
-            onClick={handleCreateCategory}
-            className='bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg'
-          >
-            Добавить
-          </button>
+        <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+          <h2 className='text-white font-medium text-sm shrink-0'>Категории</h2>
+          <div className='flex gap-2 flex-1 min-w-0'>
+            <input
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              className={`${FIELD_CLASS} mt-0 flex-1`}
+              placeholder='Новая'
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleCreateCategory()
+                }
+              }}
+            />
+            <button
+              type='button'
+              onClick={handleCreateCategory}
+              className='bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm shrink-0'
+            >
+              +
+            </button>
+          </div>
         </div>
-        <div className='flex flex-wrap gap-2 text-sm text-pink-100'>
-          {categories.length === 0 ? 'Пока нет' : categories.map((category) => (
-            <span key={category.id} className='bg-white/10 px-2 py-1 rounded'>
-              {category.name}
-            </span>
-          ))}
+        <div className='flex flex-wrap gap-1.5 text-xs text-pink-100'>
+          {categories.length === 0
+            ? <span className='text-pink-200/70'>Пока нет</span>
+            : categories.map((category) => (
+              <span key={category.id} className='bg-white/10 px-2 py-0.5 rounded'>
+                {category.name}
+              </span>
+            ))}
         </div>
       </div>
 
       <form onSubmit={handleCreateSlot} className={CARD_CLASS}>
-        <h2 className='text-white font-semibold'>Плановый эфир (Москва)</h2>
-        <div className='grid gap-4 md:grid-cols-2'>
-          <label className='text-sm text-pink-100'>
+        <h2 className='text-white font-medium text-sm'>Плановый эфир (Москва)</h2>
+        <div className='grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2'>
+          <label className='text-xs text-pink-100 min-w-0'>
             Лекция
             <select
               value={slotLectureId}
@@ -429,7 +437,7 @@ export default function AdminAudioLibraryPage() {
               required
               className={FIELD_CLASS}
             >
-              <option value=''>Выберите лекцию</option>
+              <option value=''>Выберите</option>
               {lectures.map((lecture) => (
                 <option key={lecture.id} value={lecture.id}>
                   {lecture.title}
@@ -437,7 +445,7 @@ export default function AdminAudioLibraryPage() {
               ))}
             </select>
           </label>
-          <label className='text-sm text-pink-100'>
+          <label className='text-xs text-pink-100'>
             Дата и время
             <input
               type='datetime-local'
@@ -447,20 +455,23 @@ export default function AdminAudioLibraryPage() {
               className={FIELD_CLASS}
             />
           </label>
+          <button
+            type='submit'
+            className='sm:self-end bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded-lg text-sm'
+          >
+            В план
+          </button>
         </div>
-        <button type='submit' className='bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg'>
-          Запланировать
-        </button>
-        <div className='space-y-2'>
-          {slots.length === 0 && <p className='text-pink-200 text-sm'>Слотов пока нет.</p>}
+        <div className='space-y-1'>
+          {slots.length === 0 && <p className='text-pink-200/80 text-xs'>Слотов пока нет.</p>}
           {slots.map((slot) => (
-            <div key={slot.id} className='flex flex-wrap items-center justify-between gap-2 bg-white/10 rounded-lg px-3 py-2 text-sm text-white'>
-              <span>
+            <div key={slot.id} className='flex flex-wrap items-center justify-between gap-1.5 bg-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white'>
+              <span className='min-w-0 break-words'>
                 {formatMoscow(slot.startsAt)} · {slot.lecture.title} · {SLOT_STATUS[slot.status] || slot.status}
                 {slot.errorLog ? ` · ${slot.errorLog}` : ''}
               </span>
               {slot.status === 'SCHEDULED' && (
-                <button type='button' onClick={() => handleCancelSlot(slot)} className='text-pink-200 hover:text-white'>
+                <button type='button' onClick={() => handleCancelSlot(slot)} className='text-pink-200 hover:text-white shrink-0'>
                   Отменить
                 </button>
               )}
@@ -469,46 +480,55 @@ export default function AdminAudioLibraryPage() {
         </div>
       </form>
 
-      <div className='space-y-3'>
+      <div className='space-y-2'>
         {lectures.length === 0 && (
-          <p className='text-pink-200'>Лекций пока нет.</p>
+          <p className='text-pink-200 text-sm'>Лекций пока нет.</p>
         )}
         {lectures.map((lecture) => (
           <div
             key={lecture.id}
-            className='bg-white/10 border border-pink-400/20 rounded-xl p-4 text-white'
+            className='bg-white/10 border border-pink-400/20 rounded-xl p-3 text-white'
           >
-            <div className='flex flex-wrap items-start justify-between gap-3'>
-              <div>
-                <div className='font-semibold'>{lecture.title}</div>
-                <div className='text-sm text-pink-200'>
+            <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2'>
+              <div className='min-w-0'>
+                <div className='font-medium text-sm leading-snug'>{lecture.title}</div>
+                <div className='text-xs text-pink-200 truncate'>
                   {lecture.year ?? 'без года'} · {formatMinutes(lecture.durationSec)} · {lecture.originalName}
                 </div>
               </div>
-              <div className='flex gap-2'>
+              <div className='flex gap-1.5 shrink-0 items-center'>
+                <span
+                  className={`text-xs px-2 py-1 rounded-lg ${
+                    lecture.isPublished
+                      ? 'bg-emerald-500/20 text-emerald-200'
+                      : 'bg-amber-500/20 text-amber-200'
+                  }`}
+                >
+                  {lecture.isPublished ? 'На сайте' : 'Скрыта'}
+                </span>
                 <button
                   type='button'
                   onClick={() => handleTogglePublished(lecture)}
-                  className='bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg text-sm'
+                  className='bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-lg text-xs'
                 >
-                  {lecture.isPublished ? 'Опубликована' : 'Скрыта'}
+                  {lecture.isPublished ? 'Скрыть' : 'Показать на сайте'}
                 </button>
                 <button
                   type='button'
                   onClick={() => handleDelete(lecture)}
-                  className='bg-red-700/80 hover:bg-red-700 px-3 py-1 rounded-lg text-sm inline-flex items-center gap-1'
+                  className='bg-red-700/80 hover:bg-red-700 px-2.5 py-1 rounded-lg text-xs inline-flex items-center gap-1'
                 >
-                  <Trash2 className='w-4 h-4' />
+                  <Trash2 className='w-3.5 h-3.5' />
                   Удалить
                 </button>
               </div>
             </div>
             {categories.length > 0 && (
-              <div className='mt-3 flex flex-wrap gap-2'>
+              <div className='mt-2 flex flex-wrap gap-x-3 gap-y-1'>
                 {categories.map((category) => {
                   const checked = lecture.categories.some((item) => item.id === category.id)
                   return (
-                    <label key={category.id} className='text-sm text-pink-100 inline-flex items-center gap-1'>
+                    <label key={category.id} className='text-xs text-pink-100 inline-flex items-center gap-1'>
                       <input
                         type='checkbox'
                         checked={checked}

@@ -1,3 +1,4 @@
+import { decodeUploadName } from '@/lib/audio-library'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
         success: true,
         data: lectures.map((lecture) => ({
           id: lecture.id,
-          title: lecture.title,
+          title: decodeUploadName(lecture.title),
           durationMinutes: durationMinutes(lecture.durationSec),
           src: `/media/library/${lecture.systemName}`,
         })),

@@ -5,6 +5,7 @@ import path from 'path'
 import express from 'express'
 import busboy from 'busboy'
 import prisma from '../../lib/prisma.js'
+import { decodeUploadName } from '../../lib/audio-library.js'
 import { requireUploader } from '../utils/auth.js'
 import { getVideoDuration } from '../utils/video.js'
 
@@ -54,12 +55,14 @@ router.post('/', async (req, res) => {
 
     const bb = busboy({
       headers: req.headers,
+      defCharset: 'utf8',
+      defParamCharset: 'utf8',
       limits: { fileSize: MAX_FILE_SIZE, files: 1 },
     })
 
     bb.on('field', (fieldname: string, val: string) => {
       if (fieldname === 'title' || fieldname === 'year' || fieldname === 'description') {
-        fields[fieldname] = val
+        fields[fieldname] = decodeUploadName(val)
       }
     })
 
@@ -77,7 +80,7 @@ router.post('/', async (req, res) => {
 
         fileSeen = true
 
-        const { filename } = info
+        const filename = decodeUploadName(info.filename)
         const ext = extensionOf(filename)
         if (!ALLOWED_EXT.has(ext)) {
           file.resume()

@@ -1,6 +1,6 @@
 import '../utils/load-env.js'
 import { spawn, type ChildProcess } from 'child_process'
-import { readFile } from 'fs/promises'
+import { access, readFile } from 'fs/promises'
 import path from 'path'
 import prisma from '../../lib/prisma.js'
 
@@ -32,9 +32,11 @@ async function readSourcePassword() {
   }
 }
 
-function sourceMatchesMain(source: { listenurl?: string } | null) {
+function sourceMatchesMain(source: { listenurl?: string; mount?: string } | null) {
   if (!source) return false
-  return source.listenurl?.includes('/main') || !source.listenurl
+  const listenurl = source.listenurl || ''
+  const mount = source.mount || ''
+  return listenurl.includes('/main') || mount === '/main' || mount.endsWith('/main')
 }
 
 async function isMainMountLive() {
@@ -152,13 +154,22 @@ async function tick() {
   }
 
   const filePath = path.join(LIBRARY_DIR, slot.lecture.systemName)
+  try {
+    await access(filePath)
+  } catch {
+    await markSlot(slot.id, 'FAILED', `Audio file not found: ${slot.lecture.systemName}`)
+    return
+  }
+
   await markSlot(slot.id, 'PLAYING', null)
   console.log(`Starting audio broadcast slot #${slot.id}: ${slot.lecture.title}`)
   startFfmpeg(filePath, password, slot.id)
 }
 
 async function main() {
+  const password = await readSourcePassword()
   console.log('Audio broadcast watcher started')
+  console.log(password ? 'Icecast source password: ok' : 'Icecast source password: MISSING')
   for (;;) {
     try {
       await tick()

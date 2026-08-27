@@ -1,3 +1,4 @@
+import { decodeUploadName } from '@/lib/audio-library'
 import prisma from '@/lib/prisma'
 import { requireStaff } from '@/lib/require-auth'
 import { slugify } from 'transliteration'
@@ -18,6 +19,8 @@ function serializeLecture(lecture: {
 }) {
   return {
     ...lecture,
+    title: decodeUploadName(lecture.title),
+    originalName: decodeUploadName(lecture.originalName),
     size: Number(lecture.size),
   }
 }
