@@ -1,6 +1,6 @@
 import { createWriteStream } from 'fs'
 import { mkdir, unlink } from 'fs/promises'
-import { randomBytes } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import path from 'path'
 import express from 'express'
 import busboy from 'busboy'
@@ -29,6 +29,19 @@ function extensionOf(filename: string) {
   return path.extname(filename).toLowerCase()
 }
 
+function isUniqueConflict(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  )
+}
+
+function duplicateMessage(title: string) {
+  return `Этот файл уже есть в библиотеке: «${title}»`
+}
+
 router.post('/', async (req, res) => {
   try {
     const uploader = await requireUploader(req, ['MODERATOR', 'ADMIN', 'SUPER'])
@@ -47,10 +60,10 @@ router.post('/', async (req, res) => {
     let responded = false
     let fileSeen = false
 
-    const fail = (status: number, error: string) => {
+    const fail = (status: number, error: string, extra?: { existingId: number }) => {
       if (responded || res.headersSent) return
       responded = true
-      res.status(status).json({ error })
+      res.status(status).json({ error, ...extra })
     }
 
     const bb = busboy({
@@ -93,6 +106,7 @@ router.post('/', async (req, res) => {
         const systemName = `${timestamp}_${random}${ext}`
         const filePath = path.join(LIBRARY_DIR, systemName)
         const writeStream = createWriteStream(filePath)
+        const digest = createHash('sha256')
         let bytesWritten = 0
         let truncated = false
 
@@ -102,6 +116,7 @@ router.post('/', async (req, res) => {
 
         file.on('data', (chunk: Buffer) => {
           bytesWritten += chunk.length
+          digest.update(chunk)
         })
 
         file.pipe(writeStream)
@@ -113,7 +128,19 @@ router.post('/', async (req, res) => {
             return
           }
 
+          const contentHash = digest.digest('hex')
+
           try {
+            const existing = await prisma.audioLecture.findUnique({
+              where: { contentHash },
+              select: { id: true, title: true },
+            })
+            if (existing) {
+              await unlink(filePath).catch(() => undefined)
+              fail(409, duplicateMessage(existing.title), { existingId: existing.id })
+              return
+            }
+
             const durationSec = await getVideoDuration(filePath)
             const yearRaw = fields.year?.trim()
             const year = yearRaw ? Number.parseInt(yearRaw, 10) : null
@@ -127,6 +154,7 @@ router.post('/', async (req, res) => {
                 originalName: filename,
                 fileName: systemName,
                 systemName,
+                contentHash,
                 mimeType: MIME_BY_EXT[ext] || info.mimeType || 'application/octet-stream',
                 size: bytesWritten,
                 durationSec: durationSec || null,
@@ -145,8 +173,18 @@ router.post('/', async (req, res) => {
               },
             })
           } catch (error) {
-            console.error('Audio library upload failed:', error)
             await unlink(filePath).catch(() => undefined)
+            if (isUniqueConflict(error)) {
+              const existing = await prisma.audioLecture.findUnique({
+                where: { contentHash },
+                select: { id: true, title: true },
+              })
+              if (existing) {
+                fail(409, duplicateMessage(existing.title), { existingId: existing.id })
+                return
+              }
+            }
+            console.error('Audio library upload failed:', error)
             fail(500, 'Failed to save lecture')
           }
         })

@@ -288,6 +288,7 @@ model AudioLecture {
   originalName String
   fileName     String
   systemName   String   @unique
+  contentHash  String?  @unique
   mimeType     String
   size         BigInt
   durationSec  Int?

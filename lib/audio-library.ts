@@ -1,5 +1,17 @@
+import { createHash } from 'crypto'
+import { createReadStream } from 'fs'
 import { unlink } from 'fs/promises'
 import path from 'path'
+
+export function sha256File(filePath: string) {
+  return new Promise<string>((resolve, reject) => {
+    const hash = createHash('sha256')
+    const stream = createReadStream(filePath)
+    stream.on('data', (chunk: Buffer | string) => hash.update(chunk))
+    stream.on('error', reject)
+    stream.on('end', () => resolve(hash.digest('hex')))
+  })
+}
 
 export function decodeUploadName(value: string) {
   if (!value || /[\u0400-\u04FF]/.test(value)) return value
