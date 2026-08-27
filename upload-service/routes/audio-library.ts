@@ -131,6 +131,7 @@ router.post('/', async (req, res) => {
                 size: bytesWritten,
                 durationSec: durationSec || null,
                 uploadedBy: uploader.userId,
+                isPublished: true,
               },
             })
 

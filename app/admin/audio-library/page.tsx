@@ -176,7 +176,7 @@ export default function AdminAudioLibraryPage() {
         setYear('')
         setFile(null)
         if (fileInputRef.current) fileInputRef.current.value = ''
-        flash('Файл загружен')
+        flash('Файл загружен и доступен в библиотеке')
         await load()
       } else {
         try {
@@ -487,7 +487,9 @@ export default function AdminAudioLibraryPage() {
         {lectures.map((lecture) => (
           <div
             key={lecture.id}
-            className='bg-white/10 border border-pink-400/20 rounded-xl p-3 text-white'
+            className={`bg-white/10 border rounded-xl p-3 text-white ${
+              lecture.isPublished ? 'border-pink-400/20' : 'border-amber-400/30 opacity-80'
+            }`}
           >
             <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2'>
               <div className='min-w-0'>
@@ -497,21 +499,12 @@ export default function AdminAudioLibraryPage() {
                 </div>
               </div>
               <div className='flex gap-1.5 shrink-0 items-center'>
-                <span
-                  className={`text-xs px-2 py-1 rounded-lg ${
-                    lecture.isPublished
-                      ? 'bg-emerald-500/20 text-emerald-200'
-                      : 'bg-amber-500/20 text-amber-200'
-                  }`}
-                >
-                  {lecture.isPublished ? 'На сайте' : 'Скрыта'}
-                </span>
                 <button
                   type='button'
                   onClick={() => handleTogglePublished(lecture)}
                   className='bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-lg text-xs'
                 >
-                  {lecture.isPublished ? 'Скрыть' : 'Показать на сайте'}
+                  {lecture.isPublished ? 'Скрыть' : 'Показать'}
                 </button>
                 <button
                   type='button'
