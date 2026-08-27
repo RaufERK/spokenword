@@ -1,18 +1,22 @@
-# PLANS
+# Plans
 
-## Активно
+Docs and plans in this repo are for coding models. Write them in English. Keep Active files to unfinished work only.
 
-| Файл | Что делать |
-|------|------------|
-| [ACTIVE/AUTH_SECURITY.md](ACTIVE/AUTH_SECURITY.md) | Хеш паролей, истекающие magic-ссылки, requireRole, затем Auth.js 5 отдельным деплоем |
-| [ACTIVE/EVENTS.md](ACTIVE/EVENTS.md) | Доступ к записям по оплаченному мероприятию — сделано |
+## Active
 
-## Архив
+| File | Remaining |
+|------|-----------|
+| [ACTIVE/AUDIO_LIBRARY.md](ACTIVE/AUDIO_LIBRARY.md) | Inline lecture metadata edit in admin; do not break the public catalog contract |
+| [ACTIVE/AUTH_SECURITY.md](ACTIVE/AUTH_SECURITY.md) | Auth.js 5 as a separate deploy |
 
-| Файл | Почему здесь |
-|------|----------------|
-| [ARCHIVE/MOBILE.md](ARCHIVE/MOBILE.md) | Мобильное приложение отложено надолго |
+## Archive
 
-## Не в этом репозитории
+| File | Why |
+|------|-----|
+| [ARCHIVE/EVENTS.md](ARCHIVE/EVENTS.md) | Event-scoped video access shipped |
+| [ARCHIVE/MOBILE.md](ARCHIVE/MOBILE.md) | Mobile app postponed indefinitely |
 
-- **Mirror-бот** — `/news` на `.ru` уже в проде. `SITE_API_URL` бота переключается в репе бота.
+## Not in this repository
+
+- **spoken-bot** — news mirror on `.ru` is in production. Bot `SITE_API_URL` lives in the bot repo.
+- **audo-word** — public radio player on `audio.spoken-word.ru`. Do not edit that repo from here.

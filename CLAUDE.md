@@ -7,8 +7,8 @@ Next.js application with Express.js microservice for large file uploads and Bull
 - MVP-focused, minimal layers
 - Next.js 16 (App Router) + React 19 + TypeScript strict
 - Tailwind/shadcn/ui for UI
-- Prisma + SQLite, Redis (ioredis), BullMQ
-- FFmpeg/FFprobe for video processing
+- Prisma + PostgreSQL, Redis (ioredis), BullMQ
+- FFmpeg/FFprobe for video and audio
 - Express.js microservice for file uploads
 
 ## Important Directories
@@ -16,12 +16,13 @@ Next.js application with Express.js microservice for large file uploads and Bull
 - `components/` — React UI components
 - `lib/` — Prisma, Redis, auth utilities
 - `upload-service/` — Express.js microservice for file uploads
-  - `routes/` — conference.ts, packages.ts, job-status.ts
-  - `workers/` — compression-worker.ts (BullMQ worker)
+  - `routes/` — conference.ts, class.ts, packages.ts, audio-library.ts, job-status.ts
+  - `workers/` — compression-worker.ts (BullMQ), audio-broadcast-watcher.ts (Icecast)
   - `queue/` — videoQueue.ts (BullMQ queue)
-  - `utils/` — video.ts (FFprobe utilities)
-- `scripts/` — database backup/restore scripts
+  - `utils/` — video.ts (FFprobe), auth.ts (next-auth cookie)
+- `scripts/` — database backup/restore and audio hash backfill
 - `prisma/` — schema, migrations, seed
+- `PLANS/` — model-facing plans (English). Active = unfinished only
 
 ## Codebase Rules
 - Functional components only, no classes or service layers
@@ -33,9 +34,9 @@ Next.js application with Express.js microservice for large file uploads and Bull
 
 ## Repo Boundaries
 - Work only inside this `spokenword` repository unless the user explicitly instructs otherwise.
-- It is allowed to inspect and read the `spoken-bot` repository when needed for context.
-- Do not modify, commit, push, deploy, or otherwise change the `spoken-bot` repository without an explicit user directive.
-- If a task seems to involve both the site and the bot, treat `spokenword` as the only allowed scope until the user clearly expands it.
+- It is allowed to inspect and read `spoken-bot` and `audo-word` when needed for context.
+- Do not modify, commit, push, deploy, or otherwise change `spoken-bot` or `audo-word` without an explicit user directive.
+- If a task seems to involve the site and the bot or the radio player, treat `spokenword` as the only allowed scope until the user clearly expands it.
 
 ---
 
@@ -45,15 +46,13 @@ Next.js application with Express.js microservice for large file uploads and Bull
 
 ```
 Client (Browser)
-    ↓ POST /api/conf-archive/upload or /api/admin/packages/upload
+    ↓ POST /api/conf-archive/upload, /api/class/upload, /api/admin/packages/upload, or /api/audio-library/upload
 Nginx (port 443)
-    ↓ proxy to localhost:3006
+    ↓ proxy to localhost:3006 (bypasses Next.js)
 Express Upload Service (port 3006)
-    ↓ saves temp file, checks codec via FFprobe
-BullMQ Queue (Redis)
-    ↓ job added
-Compression Worker (separate PM2 process)
-    ↓ FFmpeg compression (or copy if H.264/HEVC)
+    ↓ auth via next-auth cookie; save file; FFprobe duration/codec
+    ↓ video: BullMQ compression worker
+    ↓ audio library: write file + SHA-256, Prisma row, published by default
 Final file saved to disk
     ↓
 Database updated (Prisma)
@@ -72,8 +71,10 @@ Database updated (Prisma)
    - Routes:
      - `/health` — health check
      - `/upload/conference` — conference archive uploads
+     - `/upload/class` — class recordings
      - `/upload/packages` — paid content uploads
-     - `/test/upload` — test endpoint (no auth)
+     - `/upload/audio-library` — audio lectures (no BullMQ; SHA-256 dedupe)
+     - `/test/upload` — test endpoint (no auth, non-production)
      - `/job-status/:jobId` — get BullMQ job status (for progress tracking)
    
 3. **spokenword-compression-worker** — `upload-service/workers/compression-worker.ts`
@@ -84,6 +85,11 @@ Database updated (Prisma)
      - H.264/HEVC → copy (already compressed)
      - Other codecs → re-encode to H.264
    - Saves to database after compression
+
+4. **spokenword-audio-broadcast** — `upload-service/workers/audio-broadcast-watcher.ts`
+   - Polls scheduled `AudioBroadcastSlot` every 20s
+   - `ffmpeg -re` → Icecast `127.0.0.1:8000/main` when the mount is empty
+   - If `/main` already has a source → slot `SKIPPED_LIVE`
 
 ### Nginx Configuration
 
@@ -99,6 +105,11 @@ location /api/conf-archive/upload {
 
 location /api/admin/packages/upload {
     proxy_pass http://127.0.0.1:3006/upload/packages;
+    # Streaming, no buffering, 1h timeouts
+}
+
+location /api/audio-library/upload {
+    proxy_pass http://127.0.0.1:3006/upload/audio-library;
     # Streaming, no buffering, 1h timeouts
 }
 
@@ -219,6 +230,32 @@ model ContentPackage {
 }
 ```
 
+### AudioLecture
+
+Audio warehouse for `audio.spoken-word.ru/library`. Default visible. Hide/delete is staff-only.
+
+```prisma
+model AudioLecture {
+  id           Int      @id @default(autoincrement())
+  title        String
+  year         Int?
+  description  String?
+  originalName String
+  fileName     String
+  systemName   String   @unique
+  contentHash  String?  @unique // SHA-256 of file bytes
+  mimeType     String
+  size         BigInt
+  durationSec  Int?
+  isPublished  Boolean  @default(true)
+  uploadedBy   Int
+  uploadedAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+```
+
+Related: `AudioCategory`, `AudioBroadcastSlot` (`SCHEDULED` | `PLAYING` | `DONE` | `SKIPPED_LIVE` | `FAILED`).
+
 ---
 
 ## 📁 File Storage Paths
@@ -241,27 +278,33 @@ model ContentPackage {
 - **Final files:** `paid-content/packages/package_[id]/[timestamp]_[random]_compressed.mp4`
 - **Served via:** API route with authentication
 
+### Audio Library
+
+- **Production:** `/home/appuser/apps/spokenword/shared/public/audio-library`
+- **Local:** `public/audio-library`
+- **Public file URL (audio domain):** `/media/library/[systemName]` via nginx alias
+- **Staff preview:** `/api/admin/audio-library/[id]/file`
+
 ---
 
 ## 🔐 Authentication & Authorization
 
 ### Upload Permissions
 
-**Conference Archive (`/upload`):**
+**Conference Archive (`/upload`) and Audio Library (`/admin/audio-library`):**
 - Roles: `MODERATOR`, `ADMIN`, `SUPER`
-- Checked in Next.js middleware → passed to Nginx → forwarded to upload service
 
 **Paid Content (`/admin/packages/[id]/items`):**
 - Roles: `ADMIN`, `SUPER`
-- Checked in Next.js middleware → passed to Nginx → forwarded to upload service
 
 ### How It Works
 
-1. User sends request to `/api/conf-archive/upload`
-2. Next.js middleware checks JWT token
-3. Middleware adds headers: `x-user-id`, `x-user-role`
-4. Nginx proxies request to upload service (port 3006)
-5. Upload service reads headers for authorization
+Nginx proxies upload paths **directly** to port 3006. Next.js middleware never sees the body, so `x-user-id` / `x-user-role` are not set.
+
+1. Browser `POST` with next-auth session cookie
+2. Nginx → `spokenword-upload` `:3006`
+3. Upload service `decode()`s `__Secure-next-auth.session-token` / `next-auth.session-token` (`NEXTAUTH_SECRET` from parent `.env`)
+4. Role check in `upload-service/utils/auth.ts`
 
 ---
 
@@ -282,6 +325,7 @@ curl -X POST http://localhost:3006/test/upload \
 **Via UI:**
 - Conference: https://www.spoken-word.ru/upload
 - Packages: https://www.spoken-word.ru/admin/packages/[id]/items
+- Audio library: https://www.spoken-word.ru/admin/audio-library
 
 **Via curl (with auth cookie):**
 
@@ -308,6 +352,10 @@ npm run dev:upload
 # Terminal 3: Compression worker (optional)
 cd upload-service
 tsx workers/compression-worker.ts
+
+# Terminal 4: Audio broadcast watcher (optional)
+cd upload-service
+tsx workers/audio-broadcast-watcher.ts
 ```
 
 ### Production Deployment
@@ -321,18 +369,21 @@ This will:
 2. SSH to server
 3. Pull latest code
 4. Install dependencies (`npm ci` + `cd upload-service && npm ci`)
-5. Run Prisma migrations
+5. Run Prisma migrations (and audio hash backfill)
 6. Build Next.js
 7. Reload PM2 processes:
    - `spokenword` (Next.js)
    - `spokenword-upload` (Express)
    - `spokenword-compression-worker` (BullMQ worker)
+   - `spokenword-audio-broadcast` (Icecast slot watcher)
+
+Reloading `spokenword-audio-broadcast` kills in-progress scheduled ffmpeg.
 
 ### Manual PM2 Commands
 
 ```bash
-ssh amster_app
-source ~/.nvm/nvm.sh && nvm use --lts
+ssh app
+export PATH="$HOME/bin:$HOME/.nvm/versions/node/v24.19.0/bin:$PATH"
 
 # View processes
 pm2 list
@@ -341,6 +392,7 @@ pm2 list
 pm2 logs spokenword
 pm2 logs spokenword-upload
 pm2 logs spokenword-compression-worker
+pm2 logs spokenword-audio-broadcast
 
 # Restart specific process
 pm2 restart spokenword-upload
@@ -367,6 +419,10 @@ pm2 save
   - `/home/appuser/logs/compression-worker-out.log`
   - `/home/appuser/logs/compression-worker-error.log`
 
+- **Audio broadcast watcher:**
+  - `/home/appuser/logs/audio-broadcast-out.log`
+  - `/home/appuser/logs/audio-broadcast-error.log`
+
 ### Health Checks
 
 ```bash
@@ -374,8 +430,8 @@ pm2 save
 curl http://localhost:3006/health
 # Response: {"status":"ok","service":"upload-service","port":"3006"}
 
-# Redis connection (via upload service)
-ssh amster_app "redis-cli ping"
+# Redis
+ssh app "redis-cli ping"
 # Response: PONG
 ```
 
@@ -389,7 +445,7 @@ ssh amster_app "redis-cli ping"
 
 **Fix:**
 ```bash
-ssh amster_app
+ssh app
 pm2 list | grep upload
 pm2 restart spokenword-upload
 ```
@@ -422,7 +478,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 **Fix:**
 ```bash
-ssh amster
+ssh sw
 sudo apt update && sudo apt install -y ffmpeg
 ffmpeg -version
 ```
@@ -440,9 +496,12 @@ ffmpeg -version
 - [x] Add compression status UI (show job progress)
 - [x] Remove deprecated workers/ and lib/videoQueue.ts
 - [x] Clean up unused streaming code and scripts
+- [x] Audio library upload, public catalog, scheduled Icecast `/main`
+- [x] SHA-256 duplicate rejection for audio lectures
 - [ ] Add retry mechanism for failed compressions
 - [ ] Add automatic cleanup of temp files (cron job)
 - [ ] Add video thumbnail generation
+- [ ] Admin inline edit of lecture title / year / description
 
 ---
 
@@ -540,15 +599,15 @@ npm run db:restore   # Restore database
 
 ## 📞 Support & Maintenance
 
-**Server:** Ubuntu 22.04, 8 CPU, 10GB RAM, 120GB NVMe  
-**Location:** Qupra DC2 (Amsterdam)  
-**SSH:** `ssh amster_app`  
+**Server:** Ubuntu 24.04, Moscow VPS `155.212.174.133` (`ssh app` / `ssh sw`)  
+**Amsterdam (legacy EU):** `185.200.178.73` — `ssh amster` / `ssh amster_app`. Code deploys with `ecosystem.config.cjs` production, not `ecosystem.config.eu.cjs`.  
 **Nginx config:** `/etc/nginx/sites-available/spoken-word.ru`  
 **PM2 config:** `ecosystem.config.cjs`  
 **Logs:** `/home/appuser/logs/`
 
-**Production URL:** https://www.spoken-word.ru
+**Production URL:** https://www.spoken-word.ru  
+**Radio / on-demand library:** https://audio.spoken-word.ru/
 
 ---
 
-_Last updated: 2026-02-09_
+_Last updated: 2026-08-27_

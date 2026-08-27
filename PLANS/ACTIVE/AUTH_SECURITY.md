@@ -1,47 +1,29 @@
-# Auth security — план из checkup 19 августа
+# Auth security
 
-Источник: security-checkup spokenword, 2026-08-19. P0 уже в проде (пароль убран из JWT/сессии, rate limit, upload без заголовков, FIGMA). Этот файл — оставшийся контур.
+**Updated:** 2026-08-27  
+Source: spokenword security checkup 2026-08-19.
 
-Пароли по-прежнему 6 цифр: так задумано для пожилых. Меняем хранение и ссылки, не UX входа.
+Passwords stay 6 digits (elderly users). Do not mix password hashing work with Auth.js 5 in one deploy. Do not touch Prisma 7 here.
 
-Не мешать в одном деплое: хеши паролей и Auth.js 5. Prisma 7 не трогаем.
+## Shipped
 
-## Статус
+- Password stripped from JWT/session; rate limits; FIGMA token handling
+- Upload-service auth via next-auth cookie (nginx bypasses Next.js, so `x-user-*` headers are not set)
+- bcrypt hashes in DB; login still accepts leftover plaintext and rewrites it to a hash
+- Magic links: HMAC(`userId` + `exp` + `tokenVersion`), 1 year; password change bumps `tokenVersion`
+- Registration JSON still returns the password once (only time the user sees it)
+- `requireUser` / `requireStaff` / `requireAdmin` on API routes
+- `/api/stream-status?key=` allows `/^[a-z0-9_-]+$/i` only
+- JWT callback reloads only `role` and `accessUntil` from DB
 
-- Фаза 1 и 2 — в коде, деплой 2026-08-26.
-- Фаза 3 (Auth.js 5) — следующий отдельный деплой, после того как логин/ссылки поживут на проде.
+## Remaining
 
+**Auth.js 5 — separate deploy** after login / register / magic links have sat on production:
 
-1. **Хеш паролей (bcrypt)**  
-   В БД больше нет открытого пароля. Логин принимает и хеш, и старый plaintext — при успешном входе plaintext переписывается в хеш (безопасный rollback). Регистрация, seed и «сгенерировать пароль» сразу пишут хеш. GET `/api/profile` пароль не отдаёт. Новый пароль показывается один раз после генерации.
+- Package `next-auth@5`, `auth()` instead of `getServerSession`
+- Touch `lib/auth.ts`, `app/api/auth/[...nextauth]`, `proxy.ts`, and the thin wrapper `lib/require-auth.ts`
+- Other routes already go through that helper
 
-2. **Magic-ссылки с истечением**  
-   Токен = HMAC(`userId` + `exp` + `tokenVersion`), без пароля. Срок 1 год. Смена пароля увеличивает `tokenVersion` — старые ссылки умирают. Старые токены с fingerprint пароля перестают работать; админ выдаёт новые из таблицы пользователей.
+## Out of scope
 
-3. **Регистрация**  
-   Пароль в JSON ответа регистрации оставляем: это единственный момент, когда человек его видит и копирует. Дальше plaintext никуда не уходит.
-
-## Фаза 2 — проверки API (этот заход)
-
-4. **`requireUser` / `requireStaff` / `requireAdmin`**  
-   Один хелпер вместо копипасты `getServerSession` + список ролей. API-роуты переводим на него, чтобы к Auth.js 5 сессия читалась в одном месте.
-
-5. **`/api/stream-status?key=`**  
-   Ключ только `/^[a-z0-9_-]+$/i`, иначе 400. Без этого `key` склеивается в путь на диске.
-
-6. **JWT callback**  
-   На каждый запрос из БД только `role` и `accessUntil` (paywall живой). Полный профиль в токен не перечитываем.
-
-## Фаза 3 — Auth.js 5 (отдельный деплой)
-
-После того как фаза 1 пожила на проде: логин, регистрация, magic-ссылки, генерация пароля.
-
-- Пакет `next-auth@5`, хелпер `auth()` вместо `getServerSession`.
-- Меняются `lib/auth.ts`, `app/api/auth/[...nextauth]`, `proxy.ts` и тонкая обёртка `lib/require-auth.ts`. Остальные роуты уже ходят в хелпер.
-- Prisma 7 в этот заход не входит.
-
-## Что не делаем здесь
-
-- Clerk / Auth0 — чужая модель, ломает 6-значные пароли и админские ссылки.
-- Удлинение пароля и отмена 6 цифр.
-- Привязка видео к мероприятию — это `ACTIVE/EVENTS.md`.
+Clerk / Auth0. Longer passwords. Cancelling 6-digit PINs. Prisma 7.

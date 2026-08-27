@@ -1,7 +1,7 @@
-# Мобильное приложение — долгий архив
+# Mobile app — long archive
 
-Отложено. Не активный план этого репозитория.
+Postponed. Not an active plan in this repository.
 
-Идея была: отдельный репозиторий `spokenword-mobile` (Vite + Capacitor), автовыбор `spoken-word.ru` / зеркала. С сайта для этого нужен только `GET /api/health` — его тоже не делаем, пока приложение не вернётся в работу.
+The idea was a separate `spokenword-mobile` repo (Vite + Capacitor) that picks `spoken-word.ru` or a mirror. The site would only need `GET /api/health` for that — do not add it until the app is back in scope.
 
-Не начинать из этого репо.
+Do not start mobile work from this repo.
