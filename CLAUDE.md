@@ -14,13 +14,13 @@ Next.js application with Express.js microservice for large file uploads and Bull
 ## Important Directories
 - `app/` — Next.js pages and API routes
 - `components/` — React UI components
-- `lib/` — Prisma, Redis, auth utilities
+- `lib/` — Prisma, Redis, auth, `audio-library.ts` (paths), `audio-playable.ts` (speech MP3), `audio-broadcast.ts` (slots / public now-playing)
 - `upload-service/` — Express.js microservice for file uploads
   - `routes/` — conference.ts, class.ts, packages.ts, audio-library.ts, job-status.ts
   - `workers/` — compression-worker.ts (BullMQ), audio-broadcast-watcher.ts (Icecast)
   - `queue/` — videoQueue.ts (BullMQ queue)
   - `utils/` — video.ts (FFprobe), auth.ts (next-auth cookie)
-- `scripts/` — database backup/restore and audio hash backfill
+- `scripts/` — database backup/restore; audio hash + playable MP3 backfill (also run on deploy)
 - `prisma/` — schema, migrations, seed
 - `PLANS/` — model-facing plans (English). Active = unfinished only
 
@@ -52,7 +52,7 @@ Nginx (port 443)
 Express Upload Service (port 3006)
     ↓ auth via next-auth cookie; save file; FFprobe duration/codec
     ↓ video: BullMQ compression worker
-    ↓ audio library: write file + SHA-256, Prisma row, published by default
+    ↓ audio library: write original + SHA-256; inline speech MP3; Prisma row; published only with a playable `src`
 Final file saved to disk
     ↓
 Database updated (Prisma)
@@ -73,7 +73,7 @@ Database updated (Prisma)
      - `/upload/conference` — conference archive uploads
      - `/upload/class` — class recordings
      - `/upload/packages` — paid content uploads
-     - `/upload/audio-library` — audio lectures (no BullMQ; SHA-256 dedupe)
+     - `/upload/audio-library` — audio lectures (no BullMQ; SHA-256 on original; then inline 64k mono MP3)
      - `/test/upload` — test endpoint (no auth, non-production)
      - `/job-status/:jobId` — get BullMQ job status (for progress tracking)
    
@@ -88,7 +88,7 @@ Database updated (Prisma)
 
 4. **spokenword-audio-broadcast** — `upload-service/workers/audio-broadcast-watcher.ts`
    - Polls scheduled `AudioBroadcastSlot` every 20s
-   - `ffmpeg -re` → Icecast `127.0.0.1:8000/main` when the mount is empty
+   - `ffmpeg -re` on the **original** `systemName` → Icecast `127.0.0.1:8000/main` when the mount is empty (not the 64k playable)
    - If `/main` already has a source → slot `SKIPPED_LIVE`
 
 ### Nginx Configuration
@@ -236,25 +236,32 @@ Audio warehouse for `audio.spoken-word.ru/library`. Default visible. Hide/delete
 
 ```prisma
 model AudioLecture {
-  id           Int      @id @default(autoincrement())
-  title        String
-  year         Int?
-  description  String?
-  originalName String
-  fileName     String
-  systemName   String   @unique
-  contentHash  String?  @unique // SHA-256 of file bytes
-  mimeType     String
-  size         BigInt
-  durationSec  Int?
-  isPublished  Boolean  @default(true)
-  uploadedBy   Int
-  uploadedAt   DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  title              String
+  year               Int?
+  description        String?
+  originalName       String
+  fileName           String
+  systemName         String   @unique // original on disk; Icecast + staff preview
+  playableSystemName String?  @unique // listener file; catalog `src`
+  contentHash        String?  @unique // SHA-256 of original bytes only
+  mimeType           String           // original
+  size               BigInt           // original
+  playableSize       BigInt?
+  durationSec        Int?
+  isPublished        Boolean  @default(true)
+  uploadedBy         Int
+  uploadedAt         DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 ```
 
-Related: `AudioCategory`, `AudioBroadcastSlot` (`SCHEDULED` | `PLAYING` | `DONE` | `SKIPPED_LIVE` | `FAILED`).
+Related: `AudioCategory`, `AudioBroadcastSlot` (`announcement` text for the radio page; statuses `SCHEDULED` | `PLAYING` | `DONE` | `SKIPPED_LIVE` | `FAILED`).
+
+Public APIs for `audio.spoken-word.ru` (CORS origin that host only):
+
+- `GET /api/audio-library` — catalog. Shape `{ success, data: [{ id, title, durationMinutes, src }] }`. `src` is `/media/library/{playableSystemName}`. Field names frozen; do not point `src` at the fat original.
+- `GET /api/audio-library/broadcast` — `{ current, next }` announcement objects (or `null`). Radio page only; Icecast status stays on the audio host.
 
 ---
 
@@ -282,8 +289,10 @@ Related: `AudioCategory`, `AudioBroadcastSlot` (`SCHEDULED` | `PLAYING` | `DONE`
 
 - **Production:** `/home/appuser/apps/spokenword/shared/public/audio-library`
 - **Local:** `public/audio-library`
-- **Public file URL (audio domain):** `/media/library/[systemName]` via nginx alias
-- **Staff preview:** `/api/admin/audio-library/[id]/file`
+- **Original:** `{timestamp}_{random}.mp3` (`systemName`). Never rewritten. Icecast watcher and staff `GET /api/admin/audio-library/[id]/file` (Range)
+- **Playable:** `{stem}_64k.mp3` when encode shrinks the file; otherwise `playableSystemName` = `systemName`. Delete removes both if they differ
+- **Public file URL (audio domain):** `/media/library/[playableSystemName]` via nginx alias
+- **Encode (inline in upload, not video BullMQ):** `ffmpeg -vn -ac 1 -ar 22050 -c:a libmp3lame -b:a 64k`. Skip if already mono ≤ ~80 kbps or 64k would not be smaller. Encode failure → no published catalog row; delete orphan playable
 
 ---
 
@@ -369,7 +378,7 @@ This will:
 2. SSH to server
 3. Pull latest code
 4. Install dependencies (`npm ci` + `cd upload-service && npm ci`)
-5. Run Prisma migrations (and audio hash backfill)
+5. Run Prisma migrations, audio hash backfill, then playable MP3 backfill (`scripts/backfill-audio-lecture-playable.ts`)
 6. Build Next.js
 7. Reload PM2 processes:
    - `spokenword` (Next.js)
@@ -498,6 +507,8 @@ ffmpeg -version
 - [x] Clean up unused streaming code and scripts
 - [x] Audio library upload, public catalog, scheduled Icecast `/main`
 - [x] SHA-256 duplicate rejection for audio lectures
+- [x] Speech playable MP3 (64k mono) for library listeners; original kept for Icecast
+- [x] Broadcast slot `announcement` + `GET /api/audio-library/broadcast` for the radio page
 - [ ] Add retry mechanism for failed compressions
 - [ ] Add automatic cleanup of temp files (cron job)
 - [ ] Add video thumbnail generation
@@ -540,6 +551,12 @@ ffmpeg -version
 - ✅ Resource isolation
 - ✅ Failure recovery
 
+### Why two audio files (original + 64k)?
+
+**Problem:** Library listeners progressive-downloaded 95–104MB originals; start was slow. Video BullMQ is the wrong tool (slow queue, different codecs).
+
+**Solution:** Keep the original for Icecast `ffmpeg -re` and staff preview. After upload (and in a one-shot backfill), encode a speech playable inline: mono MP3 64 kbps CBR 22050 Hz. Catalog `src` points at that file. SHA-256 still hashes original bytes. Do not hook this into `video-compression`.
+
 ### Why Nginx Proxy Instead of Next.js Middleware?
 
 **Problem:** Next.js middleware runs in Edge Runtime which cannot `fetch('localhost:...')`.
@@ -575,8 +592,8 @@ ffmpeg -version
 
 ### System Dependencies
 
-- `ffmpeg` — Video compression
-- `ffprobe` — Video metadata extraction
+- `ffmpeg` — Video compression; audio-library speech encode; Icecast `ffmpeg -re`
+- `ffprobe` — Duration / codec (video) and audio probe (channels, bitrate)
 - `redis-server` — Job queue backend
 - `nginx` — Reverse proxy
 - `node@>=24` — JavaScript runtime
@@ -610,4 +627,4 @@ npm run db:restore   # Restore database
 
 ---
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-08-28_

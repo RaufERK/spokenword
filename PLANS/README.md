@@ -6,7 +6,7 @@ Docs and plans in this repo are for coding models. Write them in English. Keep A
 
 | File | Remaining |
 |------|-----------|
-| [ACTIVE/AUDIO_LIBRARY.md](ACTIVE/AUDIO_LIBRARY.md) | Inline lecture metadata edit in admin; do not break the public catalog contract |
+| [ACTIVE/AUDIO_LIBRARY.md](ACTIVE/AUDIO_LIBRARY.md) | Inline lecture metadata edit in admin; catalog field names frozen (`src` = playable) |
 | [ACTIVE/AUTH_SECURITY.md](ACTIVE/AUTH_SECURITY.md) | Auth.js 5 as a separate deploy |
 
 ## Archive

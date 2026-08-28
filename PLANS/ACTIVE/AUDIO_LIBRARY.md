@@ -25,6 +25,7 @@ Listeners: `https://audio.spoken-word.ru/` (live) and `/library` (on-demand).
 - Playable encode: `ffmpeg -y -i <original> -vn -ac 1 -ar 22050 -c:a libmp3lame -b:a 64k`. Skip / reuse original if already mono ≤ ~80 kbps, or if 64k would not be meaningfully smaller (never inflate)
 - Watcher PM2 `spokenword-audio-broadcast`: poll 20s, `ffmpeg -re` on the **original** `systemName` → Icecast `127.0.0.1:8000/main`. Live source on `/main` → slot `SKIPPED_LIVE`
 - Password: `ICECAST_SOURCE_PASSWORD` or `ICECAST_SOURCE_PASSWORD_FILE` (prod: `/home/appuser/apps/spokenword/shared/icecast-source-password`). PM2 does not inherit extra unix groups, so `/etc/audio-word/icecast-source-password` is not readable by the watcher
+- Helpers: `lib/audio-playable.ts` (`makeSpeechPlayable`), `scripts/backfill-audio-lecture-playable.ts` (idempotent; runs on deploy after hash backfill)
 - Staff stream: `GET /api/admin/audio-library/:id/file` (Range)
 
 Public catalog contract (`audo-word/public/library.js` depends on this):
@@ -37,7 +38,7 @@ Public catalog contract (`audo-word/public/library.js` depends on this):
       "id": 1,
       "title": "Title",
       "durationMinutes": 45,
-      "src": "/media/library/20260826120000_abc123.mp3"
+      "src": "/media/library/20260826120000_abc123_64k.mp3"
     }
   ]
 }
@@ -71,7 +72,8 @@ Public now-playing contract for `audo-word` (`GET /api/audio-library/broadcast`,
 ## Remaining in this repo
 
 1. **Inline metadata edit** — PATCH already updates title / year / description. Admin cards still have no fields for that (hide/delete/categories only).
-2. **Do not change** `GET /api/audio-library` field names. `src` is `/media/library/{playableSystemName}` (not the original `systemName` unless the original was already speech-sized).
+
+Do not change `GET /api/audio-library` field names. `src` is `/media/library/{playableSystemName}`. Do not edit `audo-word` from this repo.
 
 ## Known limits (not a build task unless asked)
 
