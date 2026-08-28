@@ -291,6 +291,7 @@ Public APIs for `audio.spoken-word.ru` (CORS origin that host only):
 - **Local:** `public/audio-library`
 - **Original upload:** written, hashed, encoded, then **deleted** if a smaller `{stem}_64k.mp3` was produced
 - **Kept file:** `{stem}_64k.mp3` (or the original if it was already speech-sized). Icecast, catalog, and staff `GET /api/admin/audio-library/[id]/file` (Range) all use this
+- **Disk vs catalog:** directory entries must match `AudioLecture.systemName` / `playableSystemName`. Hidden lectures stay on disk but are omitted from `GET /api/audio-library`. Files with no DB row are orphans — delete them; re-upload from admin if needed
 - **Public file URL (audio domain):** `/media/library/[playableSystemName]` via nginx alias
 - **Encode (inline in upload, not video BullMQ):** `ffmpeg -vn -ac 1 -ar 22050 -c:a libmp3lame -b:a 64k`. Skip if already mono ≤ ~80 kbps or 64k would not be smaller. Encode failure → no published row; delete orphan playable. Do not delete the original unless the playable is on disk and smaller
 
