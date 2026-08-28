@@ -34,13 +34,13 @@ export async function OPTIONS(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const lectures = await prisma.audioLecture.findMany({
-      where: { isPublished: true },
+      where: { isPublished: true, playableSystemName: { not: null } },
       orderBy: { uploadedAt: 'desc' },
       select: {
         id: true,
         title: true,
         durationSec: true,
-        systemName: true,
+        playableSystemName: true,
       },
     })
 
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
           id: lecture.id,
           title: decodeUploadName(lecture.title),
           durationMinutes: durationMinutes(lecture.durationSec),
-          src: `/media/library/${lecture.systemName}`,
+          src: `/media/library/${lecture.playableSystemName!}`,
         })),
       },
       { headers: getCorsHeaders(req) }

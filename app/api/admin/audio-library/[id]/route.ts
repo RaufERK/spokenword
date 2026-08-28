@@ -1,4 +1,4 @@
-import { removeAudioLibraryFile } from '@/lib/audio-library'
+import { removeAudioLibraryFiles } from '@/lib/audio-library'
 import prisma from '@/lib/prisma'
 import { requireStaff } from '@/lib/require-auth'
 import { NextResponse } from 'next/server'
@@ -58,7 +58,11 @@ export async function PATCH(req: Request, { params }: Props) {
 
   return NextResponse.json({
     success: true,
-    data: { ...lecture, size: Number(lecture.size) },
+    data: {
+      ...lecture,
+      size: Number(lecture.size),
+      playableSize: lecture.playableSize == null ? null : Number(lecture.playableSize),
+    },
   })
 }
 
@@ -84,7 +88,7 @@ export async function DELETE(_req: Request, { params }: Props) {
 
   const lecture = await prisma.audioLecture.findUnique({
     where: { id },
-    select: { systemName: true },
+    select: { systemName: true, playableSystemName: true },
   })
   if (!lecture) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -92,7 +96,7 @@ export async function DELETE(_req: Request, { params }: Props) {
 
   await prisma.audioBroadcastSlot.deleteMany({ where: { lectureId: id } })
   await prisma.audioLecture.delete({ where: { id } })
-  await removeAudioLibraryFile(lecture.systemName)
+  await removeAudioLibraryFiles(lecture.systemName, lecture.playableSystemName)
 
   return NextResponse.json({ success: true })
 }

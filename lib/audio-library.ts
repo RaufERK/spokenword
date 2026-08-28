@@ -31,6 +31,9 @@ export function audioLibraryDir() {
 }
 
 export function audioLibraryFilePath(systemName: string) {
+  if (!systemName || systemName !== path.basename(systemName) || systemName.includes('..')) {
+    return null
+  }
   const base = audioLibraryDir()
   const resolved = path.resolve(base, systemName)
   if (!resolved.startsWith(path.resolve(base) + path.sep) && resolved !== path.resolve(base)) {
@@ -39,8 +42,23 @@ export function audioLibraryFilePath(systemName: string) {
   return resolved
 }
 
+export function playableSystemNameFromOriginal(systemName: string) {
+  const base = path.basename(systemName)
+  if (!base || base !== systemName || base.includes('..')) return null
+  const stem = base.replace(/\.[^.]+$/i, '')
+  if (!stem) return null
+  return `${stem}_64k.mp3`
+}
+
 export async function removeAudioLibraryFile(systemName: string) {
   const filePath = audioLibraryFilePath(systemName)
   if (!filePath) return
   await unlink(filePath).catch(() => undefined)
+}
+
+export async function removeAudioLibraryFiles(...systemNames: Array<string | null | undefined>) {
+  const unique = [...new Set(systemNames.filter((name): name is string => Boolean(name)))]
+  for (const name of unique) {
+    await removeAudioLibraryFile(name)
+  }
 }

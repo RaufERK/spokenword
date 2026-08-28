@@ -15,7 +15,7 @@
     "rootDir": "..",
     "types": ["node"]
   },
-  "include": ["./**/*.ts", "../lib/prisma.ts", "../lib/redis.ts", "../lib/audio-library.ts"],
+  "include": ["./**/*.ts", "../lib/prisma.ts", "../lib/redis.ts", "../lib/audio-library.ts", "../lib/audio-playable.ts"],
   "exclude": ["node_modules", "dist"]
 }
 

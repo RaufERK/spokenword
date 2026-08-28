@@ -18,6 +18,7 @@ const postDeploySteps = [
   './node_modules/.bin/prisma generate',
   './node_modules/.bin/prisma migrate deploy',
   './node_modules/.bin/tsx scripts/backfill-audio-lecture-hashes.ts',
+  './node_modules/.bin/tsx scripts/backfill-audio-lecture-playable.ts',
   // Удаляем symlinks перед билдом (Turbopack не поддерживает внешние symlinks)
   'rm -rf ./paid-content',
   'npm run build',

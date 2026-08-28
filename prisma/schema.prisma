@@ -281,21 +281,23 @@ model AudioCategory {
 }
 
 model AudioLecture {
-  id           Int      @id @default(autoincrement())
-  title        String
-  year         Int?
-  description  String?
-  originalName String
-  fileName     String
-  systemName   String   @unique
-  contentHash  String?  @unique
-  mimeType     String
-  size         BigInt
-  durationSec  Int?
-  isPublished  Boolean  @default(true)
-  uploadedBy   Int
-  uploadedAt   DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  title              String
+  year               Int?
+  description        String?
+  originalName       String
+  fileName           String
+  systemName         String   @unique
+  playableSystemName String?  @unique
+  contentHash        String?  @unique
+  mimeType           String
+  size               BigInt
+  playableSize       BigInt?
+  durationSec        Int?
+  isPublished        Boolean  @default(true)
+  uploadedBy         Int
+  uploadedAt         DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   uploader       User                 @relation("UploadedAudioLectures", fields: [uploadedBy], references: [id])
   categories     AudioCategory[]

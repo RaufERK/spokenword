@@ -6,6 +6,7 @@ import express from 'express'
 import busboy from 'busboy'
 import prisma from '../../lib/prisma.js'
 import { decodeUploadName } from '../../lib/audio-library.js'
+import { makeSpeechPlayable } from '../../lib/audio-playable.js'
 import { requireUploader } from '../utils/auth.js'
 import { getVideoDuration } from '../utils/video.js'
 
@@ -146,32 +147,52 @@ router.post('/', async (req, res) => {
             const year = yearRaw ? Number.parseInt(yearRaw, 10) : null
             const title = fields.title?.trim() || path.parse(filename).name
 
-            const lecture = await prisma.audioLecture.create({
-              data: {
-                title,
-                year: Number.isInteger(year) ? year : null,
-                description: fields.description?.trim() || null,
-                originalName: filename,
-                fileName: systemName,
-                systemName,
-                contentHash,
-                mimeType: MIME_BY_EXT[ext] || info.mimeType || 'application/octet-stream',
-                size: bytesWritten,
-                durationSec: durationSec || null,
-                uploadedBy: uploader.userId,
-                isPublished: true,
-              },
-            })
+            let playableSystemName = systemName
+            try {
+              const playable = await makeSpeechPlayable({
+                originalPath: filePath,
+                originalSystemName: systemName,
+                originalSize: bytesWritten,
+              })
+              playableSystemName = playable.playableSystemName
+              const lecture = await prisma.audioLecture.create({
+                data: {
+                  title,
+                  year: Number.isInteger(year) ? year : null,
+                  description: fields.description?.trim() || null,
+                  originalName: filename,
+                  fileName: systemName,
+                  systemName,
+                  playableSystemName: playable.playableSystemName,
+                  contentHash,
+                  mimeType: MIME_BY_EXT[ext] || info.mimeType || 'application/octet-stream',
+                  size: bytesWritten,
+                  playableSize: playable.playableSize,
+                  durationSec: durationSec || null,
+                  uploadedBy: uploader.userId,
+                  isPublished: true,
+                },
+              })
 
-            if (responded || res.headersSent) return
-            responded = true
-            res.status(200).json({
-              ok: true,
-              lecture: {
-                ...lecture,
-                size: Number(lecture.size),
-              },
-            })
+              if (responded || res.headersSent) return
+              responded = true
+              res.status(200).json({
+                ok: true,
+                lecture: {
+                  ...lecture,
+                  size: Number(lecture.size),
+                  playableSize:
+                    lecture.playableSize == null ? null : Number(lecture.playableSize),
+                },
+              })
+            } catch (error) {
+              if (playableSystemName !== systemName) {
+                await unlink(path.join(LIBRARY_DIR, path.basename(playableSystemName))).catch(
+                  () => undefined
+                )
+              }
+              throw error
+            }
           } catch (error) {
             await unlink(filePath).catch(() => undefined)
             if (isUniqueConflict(error)) {

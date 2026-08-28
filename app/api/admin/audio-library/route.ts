@@ -11,7 +11,9 @@ function serializeLecture(lecture: {
   description: string | null
   originalName: string
   systemName: string
+  playableSystemName: string | null
   size: bigint
+  playableSize: bigint | null
   durationSec: number | null
   isPublished: boolean
   uploadedAt: Date
@@ -22,6 +24,7 @@ function serializeLecture(lecture: {
     title: decodeUploadName(lecture.title),
     originalName: decodeUploadName(lecture.originalName),
     size: Number(lecture.size),
+    playableSize: lecture.playableSize == null ? null : Number(lecture.playableSize),
   }
 }
 
