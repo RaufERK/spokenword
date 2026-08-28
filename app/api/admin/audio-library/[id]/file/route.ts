@@ -1,4 +1,4 @@
-import { audioLibraryFilePath } from '@/lib/audio-library'
+import { audioLibraryFilePath, lectureDiskName } from '@/lib/audio-library'
 import prisma from '@/lib/prisma'
 import { requireStaff } from '@/lib/require-auth'
 import { createReadStream } from 'fs'
@@ -29,13 +29,14 @@ export async function GET(req: NextRequest, { params }: Props) {
 
   const lecture = await prisma.audioLecture.findUnique({
     where: { id },
-    select: { systemName: true, mimeType: true },
+    select: { systemName: true, playableSystemName: true, mimeType: true },
   })
   if (!lecture) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const filePath = audioLibraryFilePath(lecture.systemName)
+  const diskName = lectureDiskName(lecture)
+  const filePath = audioLibraryFilePath(diskName)
   if (!filePath) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest, { params }: Props) {
   try {
     const fileStat = await stat(filePath)
     const fileSize = fileStat.size
-    const ext = path.extname(lecture.systemName).toLowerCase()
+    const ext = path.extname(diskName).toLowerCase()
     const mimeType = MIME_BY_EXT[ext] || lecture.mimeType || 'application/octet-stream'
     const range = req.headers.get('range')
 

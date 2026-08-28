@@ -52,7 +52,7 @@ Nginx (port 443)
 Express Upload Service (port 3006)
     ↓ auth via next-auth cookie; save file; FFprobe duration/codec
     ↓ video: BullMQ compression worker
-    ↓ audio library: write original + SHA-256; inline speech MP3; Prisma row; published only with a playable `src`
+    ↓ audio library: write original + SHA-256; inline speech MP3; delete original if a smaller playable exists; Prisma row points at the kept file
 Final file saved to disk
     ↓
 Database updated (Prisma)
@@ -73,7 +73,7 @@ Database updated (Prisma)
      - `/upload/conference` — conference archive uploads
      - `/upload/class` — class recordings
      - `/upload/packages` — paid content uploads
-     - `/upload/audio-library` — audio lectures (no BullMQ; SHA-256 on original; then inline 64k mono MP3)
+     - `/upload/audio-library` — audio lectures (no BullMQ; SHA-256 on upload bytes; inline 64k; drop fat original)
      - `/test/upload` — test endpoint (no auth, non-production)
      - `/job-status/:jobId` — get BullMQ job status (for progress tracking)
    
@@ -88,7 +88,7 @@ Database updated (Prisma)
 
 4. **spokenword-audio-broadcast** — `upload-service/workers/audio-broadcast-watcher.ts`
    - Polls scheduled `AudioBroadcastSlot` every 20s
-   - `ffmpeg -re` on the **original** `systemName` → Icecast `127.0.0.1:8000/main` when the mount is empty (not the 64k playable)
+   - `ffmpeg -re` on the **kept** speech file (`playableSystemName` or `systemName`) → Icecast `127.0.0.1:8000/main`. MP3 is copied (`-c:a copy`), not upsampled to 128k stereo
    - If `/main` already has a source → slot `SKIPPED_LIVE`
 
 ### Nginx Configuration
@@ -242,12 +242,12 @@ model AudioLecture {
   description        String?
   originalName       String
   fileName           String
-  systemName         String   @unique // original on disk; Icecast + staff preview
-  playableSystemName String?  @unique // listener file; catalog `src`
-  contentHash        String?  @unique // SHA-256 of original bytes only
-  mimeType           String           // original
-  size               BigInt           // original
-  playableSize       BigInt?
+  systemName         String   @unique // kept file on disk (usually `{stem}_64k.mp3`)
+  playableSystemName String?  @unique // catalog `src`; same as systemName after encode
+  contentHash        String?  @unique // SHA-256 of the uploaded bytes (may no longer be on disk)
+  mimeType           String           // kept file
+  size               BigInt           // kept file
+  playableSize       BigInt?          // kept file
   durationSec        Int?
   isPublished        Boolean  @default(true)
   uploadedBy         Int
@@ -260,7 +260,7 @@ Related: `AudioCategory`, `AudioBroadcastSlot` (`announcement` text for the radi
 
 Public APIs for `audio.spoken-word.ru` (CORS origin that host only):
 
-- `GET /api/audio-library` — catalog. Shape `{ success, data: [{ id, title, durationMinutes, src }] }`. `src` is `/media/library/{playableSystemName}`. Field names frozen; do not point `src` at the fat original.
+- `GET /api/audio-library` — catalog. Shape `{ success, data: [{ id, title, durationMinutes, src }] }`. `src` is `/media/library/{playableSystemName}` (the kept speech file). Field names frozen.
 - `GET /api/audio-library/broadcast` — `{ current, next }` announcement objects (or `null`). Radio page only; Icecast status stays on the audio host.
 
 ---
@@ -289,10 +289,10 @@ Public APIs for `audio.spoken-word.ru` (CORS origin that host only):
 
 - **Production:** `/home/appuser/apps/spokenword/shared/public/audio-library`
 - **Local:** `public/audio-library`
-- **Original:** `{timestamp}_{random}.mp3` (`systemName`). Never rewritten. Icecast watcher and staff `GET /api/admin/audio-library/[id]/file` (Range)
-- **Playable:** `{stem}_64k.mp3` when encode shrinks the file; otherwise `playableSystemName` = `systemName`. Delete removes both if they differ
+- **Original upload:** written, hashed, encoded, then **deleted** if a smaller `{stem}_64k.mp3` was produced
+- **Kept file:** `{stem}_64k.mp3` (or the original if it was already speech-sized). Icecast, catalog, and staff `GET /api/admin/audio-library/[id]/file` (Range) all use this
 - **Public file URL (audio domain):** `/media/library/[playableSystemName]` via nginx alias
-- **Encode (inline in upload, not video BullMQ):** `ffmpeg -vn -ac 1 -ar 22050 -c:a libmp3lame -b:a 64k`. Skip if already mono ≤ ~80 kbps or 64k would not be smaller. Encode failure → no published catalog row; delete orphan playable
+- **Encode (inline in upload, not video BullMQ):** `ffmpeg -vn -ac 1 -ar 22050 -c:a libmp3lame -b:a 64k`. Skip if already mono ≤ ~80 kbps or 64k would not be smaller. Encode failure → no published row; delete orphan playable. Do not delete the original unless the playable is on disk and smaller
 
 ---
 
@@ -507,7 +507,7 @@ ffmpeg -version
 - [x] Clean up unused streaming code and scripts
 - [x] Audio library upload, public catalog, scheduled Icecast `/main`
 - [x] SHA-256 duplicate rejection for audio lectures
-- [x] Speech playable MP3 (64k mono) for library listeners; original kept for Icecast
+- [x] Speech playable MP3 (64k mono) for library and Icecast; fat original deleted after encode
 - [x] Broadcast slot `announcement` + `GET /api/audio-library/broadcast` for the radio page
 - [ ] Add retry mechanism for failed compressions
 - [ ] Add automatic cleanup of temp files (cron job)
@@ -551,11 +551,11 @@ ffmpeg -version
 - ✅ Resource isolation
 - ✅ Failure recovery
 
-### Why two audio files (original + 64k)?
+### Why one kept speech file (delete the fat original)?
 
-**Problem:** Library listeners progressive-downloaded 95–104MB originals; start was slow. Video BullMQ is the wrong tool (slow queue, different codecs).
+**Problem:** Library listeners already got 64k mono; Icecast re-encoded the 100MB original to 128k stereo anyway. Storing both wasted disk and did not improve on-air quality.
 
-**Solution:** Keep the original for Icecast `ffmpeg -re` and staff preview. After upload (and in a one-shot backfill), encode a speech playable inline: mono MP3 64 kbps CBR 22050 Hz. Catalog `src` points at that file. SHA-256 still hashes original bytes. Do not hook this into `video-compression`.
+**Solution:** After a smaller playable exists, delete the original. `systemName` / `size` / catalog / Icecast all point at the kept file. Icecast uses `ffmpeg -re -c:a copy` for MP3 (do not upsample 64k to 128k stereo). `contentHash` still fingerprints the **uploaded** bytes so a re-upload of the same original still 409s. This is a one-way door: a better encode later needs a new upload.
 
 ### Why Nginx Proxy Instead of Next.js Middleware?
 

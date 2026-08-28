@@ -6,7 +6,7 @@ import express from 'express'
 import busboy from 'busboy'
 import prisma from '../../lib/prisma.js'
 import { decodeUploadName } from '../../lib/audio-library.js'
-import { makeSpeechPlayable } from '../../lib/audio-playable.js'
+import { makeSpeechPlayable, dropOriginalAfterPlayable } from '../../lib/audio-playable.js'
 import { requireUploader } from '../utils/auth.js'
 import { getVideoDuration } from '../utils/video.js'
 
@@ -155,23 +155,35 @@ router.post('/', async (req, res) => {
                 originalSize: bytesWritten,
               })
               playableSystemName = playable.playableSystemName
+              const keptName = playable.playableSystemName
+              const keptMime =
+                path.extname(keptName).toLowerCase() === '.mp3'
+                  ? 'audio/mpeg'
+                  : MIME_BY_EXT[ext] || info.mimeType || 'application/octet-stream'
               const lecture = await prisma.audioLecture.create({
                 data: {
                   title,
                   year: Number.isInteger(year) ? year : null,
                   description: fields.description?.trim() || null,
                   originalName: filename,
-                  fileName: systemName,
-                  systemName,
-                  playableSystemName: playable.playableSystemName,
+                  fileName: keptName,
+                  systemName: keptName,
+                  playableSystemName: keptName,
                   contentHash,
-                  mimeType: MIME_BY_EXT[ext] || info.mimeType || 'application/octet-stream',
-                  size: bytesWritten,
+                  mimeType: keptMime,
+                  size: playable.playableSize,
                   playableSize: playable.playableSize,
                   durationSec: durationSec || null,
                   uploadedBy: uploader.userId,
                   isPublished: true,
                 },
+              })
+              await dropOriginalAfterPlayable({
+                originalPath: filePath,
+                originalSystemName: systemName,
+                playableSystemName: keptName,
+              }).catch((error) => {
+                console.error('Audio library: could not delete original after encode', error)
               })
 
               if (responded || res.headersSent) return

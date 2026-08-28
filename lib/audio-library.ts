@@ -42,6 +42,13 @@ export function audioLibraryFilePath(systemName: string) {
   return resolved
 }
 
+export function lectureDiskName(lecture: {
+  systemName: string
+  playableSystemName?: string | null
+}) {
+  return lecture.playableSystemName || lecture.systemName
+}
+
 export function playableSystemNameFromOriginal(systemName: string) {
   const base = path.basename(systemName)
   if (!base || base !== systemName || base.includes('..')) return null

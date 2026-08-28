@@ -68,6 +68,10 @@ async function markSlot(
 
 function startFfmpeg(filePath: string, password: string, slotId: number) {
   const icecastUrl = `icecast://source:${encodeURIComponent(password)}@${ICECAST_HOST}:${ICECAST_PORT}/main`
+  const isMp3 = path.extname(filePath).toLowerCase() === '.mp3'
+  const audioArgs = isMp3
+    ? ['-c:a', 'copy']
+    : ['-vn', '-c:a', 'libmp3lame', '-b:a', '64k', '-ar', '22050', '-ac', '1']
   const child = spawn(
     'ffmpeg',
     [
@@ -78,15 +82,7 @@ function startFfmpeg(filePath: string, password: string, slotId: number) {
       '-re',
       '-i',
       filePath,
-      '-vn',
-      '-c:a',
-      'libmp3lame',
-      '-b:a',
-      '128k',
-      '-ar',
-      '44100',
-      '-ac',
-      '2',
+      ...audioArgs,
       '-content_type',
       'audio/mpeg',
       '-f',
@@ -130,7 +126,7 @@ async function tick() {
   const slot = await prisma.audioBroadcastSlot.findFirst({
     where: { status: 'SCHEDULED', startsAt: { lte: now } },
     orderBy: { startsAt: 'asc' },
-    include: { lecture: { select: { systemName: true, durationSec: true, title: true } } },
+    include: { lecture: { select: { systemName: true, playableSystemName: true, durationSec: true, title: true } } },
   })
   if (!slot) return
 
@@ -153,11 +149,16 @@ async function tick() {
     return
   }
 
-  const filePath = path.join(LIBRARY_DIR, slot.lecture.systemName)
+  const diskName = slot.lecture.playableSystemName || slot.lecture.systemName
+  if (path.basename(diskName) !== diskName) {
+    await markSlot(slot.id, 'FAILED', `Invalid audio filename: ${diskName}`)
+    return
+  }
+  const filePath = path.join(LIBRARY_DIR, diskName)
   try {
     await access(filePath)
   } catch {
-    await markSlot(slot.id, 'FAILED', `Audio file not found: ${slot.lecture.systemName}`)
+    await markSlot(slot.id, 'FAILED', `Audio file not found: ${diskName}`)
     return
   }
 

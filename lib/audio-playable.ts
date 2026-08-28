@@ -187,3 +187,24 @@ export async function makeSpeechPlayable(options: {
     throw error
   }
 }
+
+export async function dropOriginalAfterPlayable(options: {
+  originalPath: string
+  originalSystemName: string
+  playableSystemName: string
+}) {
+  const { originalPath, originalSystemName, playableSystemName } = options
+  if (playableSystemName === originalSystemName) return
+  const playablePath = playablePathBesideOriginal(originalPath, playableSystemName)
+  if (!playablePath) {
+    throw new Error('Invalid playable path')
+  }
+  const playableStat = await stat(playablePath)
+  if (playableStat.size <= 0) {
+    throw new Error('Playable file is missing; original was not deleted')
+  }
+  await unlink(originalPath).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return
+    throw error
+  })
+}
