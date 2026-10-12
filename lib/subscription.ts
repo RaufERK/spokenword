@@ -1,6 +1,10 @@
 import prisma from '@/lib/prisma'
 import { isStaffRole } from '@/lib/roles'
 
+type PaidArchiveWhere =
+  | { deletedAt: null }
+  | { deletedAt: null; isPublic: true; eventId: { in: number[] } }
+
 export function isSubscriptionActive(accessUntil: string | Date | null): boolean {
   if (!accessUntil) return false
   const until = typeof accessUntil === 'string' ? new Date(accessUntil) : accessUntil
@@ -44,10 +48,11 @@ export async function getActiveEventIds(userId: number): Promise<number[]> {
 export async function paidEventFileWhere(
   role: string | null | undefined,
   userId: number,
-): Promise<{ isPublic: true; eventId: { in: number[] } } | Record<string, never>> {
-  if (isStaffRole(role)) return {}
+): Promise<PaidArchiveWhere | undefined> {
+  if (role === 'SUPER') return undefined
+  if (isStaffRole(role)) return { deletedAt: null }
   const eventIds = await getActiveEventIds(userId)
-  return { isPublic: true, eventId: { in: eventIds } }
+  return { deletedAt: null, isPublic: true, eventId: { in: eventIds } }
 }
 
 export async function canAccessEventFile({
@@ -55,12 +60,15 @@ export async function canAccessEventFile({
   userId,
   eventId,
   isPublic,
+  deletedAt,
 }: {
   role: string | null | undefined
   userId: number
   eventId: number | null
   isPublic: boolean
+  deletedAt: Date | null
 }): Promise<boolean> {
+  if (deletedAt && role !== 'SUPER') return false
   if (isStaffRole(role)) return true
   if (!isPublic || eventId == null) return false
   const eventIds = await getActiveEventIds(userId)

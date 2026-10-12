@@ -55,6 +55,7 @@ paid-content/temp/
 # server-side directories created during deploy (contain media/runtime data, not tracked)
 /storage/
 /public/
+/private/
 
 # local design dumps
 FIgmaV6/

@@ -21,13 +21,14 @@ export default async function WatchClassFilePage({
     where: { systemName },
     include: { event: { select: { title: true } } },
   })
-  if (!file) return notFound()
+  if (!file || (file.deletedAt && session.user.role !== 'SUPER')) return notFound()
 
   const allowed = await canAccessEventFile({
     role: session.user.role,
     userId: Number(session.user.id),
     eventId: file.eventId,
     isPublic: file.isPublic,
+    deletedAt: file.deletedAt,
   })
 
   if (!allowed) {

@@ -22,6 +22,7 @@ export async function GET() {
       isPublic: true,
       orderIndex: true,
       eventId: true,
+      deletedAt: true,
       event: { select: { id: true, title: true } },
     },
   })

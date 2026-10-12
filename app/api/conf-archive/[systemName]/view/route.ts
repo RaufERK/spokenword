@@ -12,7 +12,7 @@ export async function POST(
   if (auth.error) return auth.error
 
   const file = await prisma.conferenceFile.findUnique({ where: { systemName } })
-  if (!file) {
+  if (!file || (file.deletedAt && auth.user.role !== 'SUPER')) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
@@ -21,6 +21,7 @@ export async function POST(
     userId: Number(auth.user.id),
     eventId: file.eventId,
     isPublic: file.isPublic,
+    deletedAt: file.deletedAt,
   })
   if (!allowed) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { PlayCircle, Trash2, Calendar, Eye, BookOpen, GraduationCap, GripVertical } from 'lucide-react'
+import { PlayCircle, Trash2, Calendar, Eye, BookOpen, GraduationCap, GripVertical, Download, RotateCcw } from 'lucide-react'
 
 type ArchiveItem = {
   id: number
@@ -15,6 +15,7 @@ type ArchiveItem = {
   isPublic: boolean
   duration: number | null
   orderIndex: number
+  deletedAt: string | null
   eventTitle: string | null
 }
 
@@ -28,29 +29,46 @@ function formatDuration(sec: number | null) {
   return `${m} мин`
 }
 
+async function readError(res: Response, fallback: string) {
+  const data = await res.json().catch(() => null) as { error?: string } | null
+  return data?.error ?? fallback
+}
+
 function FileItem({
   item,
   isAdmin,
+  isSuper,
   onDelete,
+  onHide,
+  onRestore,
   onWatch,
   dragHandleProps,
 }: {
   item: CombinedItem
   isAdmin: boolean
+  isSuper: boolean
   onDelete: (systemName: string, type: 'conf' | 'class') => void
+  onHide: (systemName: string, type: 'conf' | 'class') => void
+  onRestore: (systemName: string, type: 'conf' | 'class') => void
   onWatch: (item: CombinedItem) => void
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement> | null
 }) {
-  const watchUrl = item.type === 'conf'
-    ? `/watch-conf/${encodeURIComponent(item.systemName)}`
-    : `/watch-class/${encodeURIComponent(item.systemName)}`
-
-  const deleteUrl = item.type === 'conf'
+  const hidden = item.deletedAt != null
+  const fileUrl = item.type === 'conf'
     ? `/api/conf-archive/${encodeURIComponent(item.systemName)}`
     : `/api/class/${encodeURIComponent(item.systemName)}`
+  const watchUrl = hidden
+    ? fileUrl
+    : item.type === 'conf'
+      ? `/watch-conf/${encodeURIComponent(item.systemName)}`
+      : `/watch-class/${encodeURIComponent(item.systemName)}`
 
   return (
-    <div className="flex items-center justify-between bg-white/5 backdrop-blur-sm border border-white/10 hover:border-blue-400/30 p-4 rounded-xl transition-all">
+    <div className={`flex items-center justify-between bg-white/5 backdrop-blur-sm border p-4 rounded-xl transition-all ${
+      hidden
+        ? 'border-amber-400/40 opacity-80'
+        : 'border-white/10 hover:border-blue-400/30'
+    }`}>
       {isAdmin && (
         <div
           {...dragHandleProps}
@@ -85,6 +103,11 @@ function FileItem({
               {item.isPublic ? 'Публично' : 'Скрыто'}
             </span>
           )}
+          {hidden && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-900/40 text-amber-300 border border-amber-500/30">
+              Удалено
+            </span>
+          )}
         </div>
         <p className="font-semibold text-white truncate">{item.displayName}</p>
         <div className="flex flex-wrap gap-3 mt-1 text-xs text-white/40">
@@ -101,25 +124,80 @@ function FileItem({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 ml-4 shrink-0">
-        <Link
-          href={watchUrl}
-          onClick={() => onWatch(item)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm transition-colors"
-          prefetch={false}
-          target="_blank"
-        >
-          <PlayCircle className="w-4 h-4" />
-          <span className="hidden sm:inline">Смотреть</span>
-        </Link>
-        {isAdmin && (
+      <div className="flex flex-wrap items-center justify-end gap-2 ml-4 shrink-0">
+        {hidden ? (
+          <a
+            href={watchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm transition-colors"
+          >
+            <PlayCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Смотреть</span>
+          </a>
+        ) : (
+          <Link
+            href={watchUrl}
+            onClick={() => onWatch(item)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm transition-colors"
+            prefetch={false}
+            target="_blank"
+          >
+            <PlayCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Смотреть</span>
+          </Link>
+        )}
+        {isSuper && hidden && (
+          <>
+            <a
+              href={`${fileUrl}?download=1`}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Скачать</span>
+            </a>
+            <button
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-600/80 hover:bg-amber-600 text-white rounded-xl text-sm transition-colors"
+              onClick={async () => {
+                if (!confirm(`Вернуть «${item.displayName}» в архив?`)) return
+                const res = await fetch(`${fileUrl}/restore`, { method: 'POST' })
+                if (res.ok) onRestore(item.systemName, item.type)
+                else alert(await readError(res, 'Не удалось вернуть запись'))
+              }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span className="hidden sm:inline">Вернуть</span>
+            </button>
+            <button
+              className="p-2 bg-red-700 hover:bg-red-600 text-white rounded-xl transition-colors"
+              title="Удалить навсегда"
+              onClick={async () => {
+                if (!confirm(`Удалить «${item.displayName}» навсегда? Файл будет стёрт с диска.`)) return
+                const res = await fetch(`${fileUrl}?permanent=1`, { method: 'DELETE' })
+                if (res.ok) onDelete(item.systemName, item.type)
+                else alert(await readError(res, 'Не удалось удалить файл'))
+              }}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+        {isAdmin && !hidden && (
           <button
             className="p-2 bg-red-600/60 hover:bg-red-600 text-white rounded-xl transition-colors"
+            title="Удалить"
             onClick={async () => {
-              if (!confirm(`Удалить "${item.displayName}"?`)) return
-              const res = await fetch(deleteUrl, { method: 'DELETE' })
-              if (res.ok) onDelete(item.systemName, item.type)
-              else alert('Ошибка удаления')
+              const question = isSuper
+                ? `Скрыть «${item.displayName}»? Для остальных запись пропадёт, файл останется у вас.`
+                : `Удалить «${item.displayName}»?`
+              if (!confirm(question)) return
+              const res = await fetch(fileUrl, { method: 'DELETE' })
+              if (!res.ok) {
+                alert(await readError(res, 'Ошибка удаления'))
+                return
+              }
+              if (isSuper) onHide(item.systemName, item.type)
+              else onDelete(item.systemName, item.type)
             }}
           >
             <Trash2 className="w-4 h-4" />
@@ -134,10 +212,12 @@ export default function ArchiveList({
   confFiles: initialConf,
   classFiles: initialClass,
   isAdmin,
+  isSuper,
 }: {
   confFiles: ArchiveItem[]
   classFiles: ArchiveItem[]
   isAdmin: boolean
+  isSuper: boolean
 }) {
   const buildCombined = useCallback((conf: ArchiveItem[], cls: ArchiveItem[]): CombinedItem[] => {
     const all: CombinedItem[] = [
@@ -151,8 +231,6 @@ export default function ArchiveList({
     return all
   }, [])
 
-  const [confFiles, setConfFiles] = useState(initialConf)
-  const [classFiles, setClassFiles] = useState(initialClass)
   const [items, setItems] = useState<CombinedItem[]>(() => buildCombined(initialConf, initialClass))
   const [saving, setSaving] = useState(false)
 
@@ -200,10 +278,14 @@ export default function ArchiveList({
     }
   }
 
+  const updateDeletedAt = (systemName: string, type: 'conf' | 'class', deletedAt: string | null) => {
+    setItems((prev) => prev.map((item) => (
+      item.systemName === systemName && item.type === type ? { ...item, deletedAt } : item
+    )))
+  }
+
   const handleDelete = (systemName: string, type: 'conf' | 'class') => {
     setItems((prev) => prev.filter((i) => !(i.systemName === systemName && i.type === type)))
-    if (type === 'conf') setConfFiles((p) => p.filter((x) => x.systemName !== systemName))
-    else setClassFiles((p) => p.filter((x) => x.systemName !== systemName))
   }
 
   if (items.length === 0) {
@@ -215,7 +297,15 @@ export default function ArchiveList({
       <ul className="space-y-3">
         {items.map((f) => (
           <li key={`${f.type}-${f.id}`}>
-            <FileItem item={f} isAdmin={false} onDelete={handleDelete} onWatch={handleWatch} />
+            <FileItem
+              item={f}
+              isAdmin={false}
+              isSuper={false}
+              onDelete={handleDelete}
+              onHide={handleDelete}
+              onRestore={() => {}}
+              onWatch={handleWatch}
+            />
           </li>
         ))}
       </ul>
@@ -246,7 +336,10 @@ export default function ArchiveList({
                       <FileItem
                         item={f}
                         isAdmin={isAdmin}
+                        isSuper={isSuper}
                         onDelete={handleDelete}
+                        onHide={(systemName, type) => updateDeletedAt(systemName, type, new Date().toISOString())}
+                        onRestore={(systemName, type) => updateDeletedAt(systemName, type, null)}
                         onWatch={handleWatch}
                         dragHandleProps={provided.dragHandleProps}
                       />

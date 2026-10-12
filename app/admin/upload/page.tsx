@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useState, useRef, useEffect } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { GripVertical } from 'lucide-react'
+import { Download, GripVertical, RotateCcw } from 'lucide-react'
 
 type UploadStatus = 'idle' | 'uploading' | 'processing' | 'compressing' | 'done' | 'error'
 type JobState = 'waiting' | 'active' | 'completed' | 'failed' | 'unknown'
@@ -18,6 +18,7 @@ type ConfFile = {
   isPublic: boolean
   orderIndex: number
   eventId: number | null
+  deletedAt: string | null
   event: { id: number; title: string } | null
 }
 
@@ -91,18 +92,59 @@ export default function AdminUploadPage() {
     }
   }
 
+  const isSuper = role === 'SUPER'
+
   const handleDelete = async (systemName: string, displayName: string) => {
-    if (!confirm(`Удалить файл "${displayName}"?`)) return
+    const question = isSuper
+      ? `Скрыть «${displayName}»? Для остальных запись пропадёт, файл останется у вас.`
+      : `Удалить файл «${displayName}»?`
+    if (!confirm(question)) return
     try {
       const res = await fetch(fileApi(systemName), { method: 'DELETE' })
-      if (res.ok) {
+      if (!res.ok) {
+        alert('❌ Ошибка удаления файла')
+        return
+      }
+      if (isSuper) {
+        setFiles((prev) => prev.map((f) => (
+          f.systemName === systemName ? { ...f, deletedAt: new Date().toISOString() } : f
+        )))
+      } else {
         setFiles((prev) => prev.filter((f) => f.systemName !== systemName))
         alert('✅ Файл успешно удален')
-      } else {
-        alert('❌ Ошибка удаления файла')
       }
     } catch {
       alert('❌ Ошибка удаления файла')
+    }
+  }
+
+  const handleRestore = async (systemName: string, displayName: string) => {
+    if (!confirm(`Вернуть «${displayName}» в архив?`)) return
+    try {
+      const res = await fetch(`${fileApi(systemName)}/restore`, { method: 'POST' })
+      if (!res.ok) {
+        alert('❌ Не удалось вернуть файл')
+        return
+      }
+      setFiles((prev) => prev.map((f) => (
+        f.systemName === systemName ? { ...f, deletedAt: null } : f
+      )))
+    } catch {
+      alert('❌ Не удалось вернуть файл')
+    }
+  }
+
+  const handlePurge = async (systemName: string, displayName: string) => {
+    if (!confirm(`Удалить «${displayName}» навсегда? Файл будет стёрт с диска.`)) return
+    try {
+      const res = await fetch(`${fileApi(systemName)}?permanent=1`, { method: 'DELETE' })
+      if (!res.ok) {
+        alert('❌ Не удалось удалить файл')
+        return
+      }
+      setFiles((prev) => prev.filter((f) => f.systemName !== systemName))
+    } catch {
+      alert('❌ Не удалось удалить файл')
     }
   }
 
@@ -453,7 +495,9 @@ export default function AdminUploadPage() {
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`flex items-center justify-between bg-purple-950/50 border border-purple-700/50 hover:border-purple-400/40 p-4 rounded-xl transition ${snapshot.isDragging ? 'opacity-80 scale-[1.01]' : ''}`}
+                          className={`flex items-center justify-between bg-purple-950/50 border p-4 rounded-xl transition ${
+                            f.deletedAt ? 'border-amber-400/50' : 'border-purple-700/50 hover:border-purple-400/40'
+                          } ${snapshot.isDragging ? 'opacity-80 scale-[1.01]' : ''}`}
                         >
                           <div
                             {...provided.dragHandleProps}
@@ -474,6 +518,11 @@ export default function AdminUploadPage() {
                               >
                                 {f.isPublic ? '✅ Публичное' : '❌ Скрыто'}
                               </button>
+                              {f.deletedAt && (
+                                <span className='px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-900/50 text-amber-300 border border-amber-500/40'>
+                                  Удалено
+                                </span>
+                              )}
                             </div>
                             <div className='text-xs text-purple-300 flex flex-wrap items-center gap-3'>
                               <span>{(f.size / 1024 / 1024).toFixed(1)} МБ</span>
@@ -497,21 +546,49 @@ export default function AdminUploadPage() {
                           </div>
                           <div className='flex items-center gap-2 ml-4'>
                             <a
-                              href={archiveKind === 'CLASS'
-                                ? `/watch-class/${encodeURIComponent(f.systemName)}`
-                                : `/watch-conf/${encodeURIComponent(f.systemName)}`}
+                              href={f.deletedAt
+                                ? fileApi(f.systemName)
+                                : archiveKind === 'CLASS'
+                                  ? `/watch-class/${encodeURIComponent(f.systemName)}`
+                                  : `/watch-conf/${encodeURIComponent(f.systemName)}`}
                               target='_blank'
                               rel='noopener noreferrer'
                               className='px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition'
                             >
                               Смотреть
                             </a>
-                            <button
-                              onClick={() => handleDelete(f.systemName, f.displayName)}
-                              className='px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm transition'
-                            >
-                              Удалить
-                            </button>
+                            {isSuper && f.deletedAt && (
+                              <>
+                                <a
+                                  href={`${fileApi(f.systemName)}?download=1`}
+                                  className='px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition inline-flex items-center gap-1'
+                                >
+                                  <Download className='w-4 h-4' />
+                                  Скачать
+                                </a>
+                                <button
+                                  onClick={() => handleRestore(f.systemName, f.displayName)}
+                                  className='px-3 py-1.5 bg-amber-600/80 hover:bg-amber-600 text-white rounded-lg text-sm transition inline-flex items-center gap-1'
+                                >
+                                  <RotateCcw className='w-4 h-4' />
+                                  Вернуть
+                                </button>
+                                <button
+                                  onClick={() => handlePurge(f.systemName, f.displayName)}
+                                  className='px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded-lg text-sm transition'
+                                >
+                                  Удалить навсегда
+                                </button>
+                              </>
+                            )}
+                            {!f.deletedAt && (
+                              <button
+                                onClick={() => handleDelete(f.systemName, f.displayName)}
+                                className='px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm transition'
+                              >
+                                Удалить
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}

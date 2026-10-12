@@ -16,6 +16,7 @@ export default async function ArchivePage() {
   const role = session.user.role
   const userId = Number(session.user.id)
   const isAdmin = isStaffRole(role)
+  const isSuper = role === 'SUPER'
   const eventWhere = await paidEventFileWhere(role, userId)
 
   const [confFiles, classFiles] = await Promise.all([
@@ -32,6 +33,7 @@ export default async function ArchivePage() {
         isPublic: true,
         duration: true,
         orderIndex: true,
+        deletedAt: true,
         event: { select: { title: true } },
       },
     }),
@@ -48,6 +50,7 @@ export default async function ArchivePage() {
         isPublic: true,
         duration: true,
         orderIndex: true,
+        deletedAt: true,
         event: { select: { title: true } },
       },
     }),
@@ -63,15 +66,18 @@ export default async function ArchivePage() {
           ...f,
           size: Number(f.size),
           uploadedAt: f.uploadedAt.toISOString(),
+          deletedAt: f.deletedAt?.toISOString() ?? null,
           eventTitle: f.event?.title ?? null,
         }))}
         classFiles={classFiles.map((f) => ({
           ...f,
           size: Number(f.size),
           uploadedAt: f.uploadedAt.toISOString(),
+          deletedAt: f.deletedAt?.toISOString() ?? null,
           eventTitle: f.event?.title ?? null,
         }))}
         isAdmin={isAdmin}
+        isSuper={isSuper}
       />
 
     </main>

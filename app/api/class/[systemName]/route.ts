@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireStaff, requireUser } from '@/lib/require-auth'
+import { requireRole, requireStaff, requireUser } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
 import { canAccessEventFile } from '@/lib/subscription'
-import fs from 'fs/promises'
+import { archiveFilePath, contentDispositionAttachment } from '@/lib/archive-files'
+import { purgeArchiveRecord, softHideArchiveFile } from '@/lib/archive-retention'
 import { createReadStream, statSync } from 'fs'
-import path from 'path'
-
-const CLASS_ARCHIVE_DIR = process.env.NODE_ENV === 'production'
-  ? '/home/appuser/apps/spokenword/shared/public/class-archive'
-  : path.resolve(process.cwd(), 'public/class-archive')
 
 interface Props {
   params: Promise<{ systemName: string }>
@@ -26,22 +22,35 @@ export async function GET(req: NextRequest, { params }: Props) {
       return new NextResponse('File not found', { status: 404 })
     }
 
+    const download = req.nextUrl.searchParams.get('download') === '1'
+    const hidden = file.deletedAt != null
+    if (hidden && auth.user.role !== 'SUPER') {
+      return new NextResponse('File not found', { status: 404 })
+    }
+
     const allowed = await canAccessEventFile({
       role: auth.user.role,
       userId: Number(auth.user.id),
       eventId: file.eventId,
       isPublic: file.isPublic,
+      deletedAt: file.deletedAt,
     })
     if (!allowed) {
       return new NextResponse('Forbidden', { status: 403 })
     }
 
-    await prisma.classFile.update({
-      where: { id: file.id },
-      data: { views: { increment: 1 } },
-    })
+    if (!hidden && !download) {
+      await prisma.classFile.update({
+        where: { id: file.id },
+        data: { views: { increment: 1 } },
+      })
+    }
 
-    const filePath = path.join(CLASS_ARCHIVE_DIR, systemName)
+    const filePath = archiveFilePath('class', systemName, hidden)
+    const cacheControl = hidden || download ? 'private, no-store' : 'public, max-age=31536000'
+    const disposition = download
+      ? contentDispositionAttachment(file.originalName || file.displayName)
+      : null
 
     try {
       const stat = statSync(filePath)
@@ -63,7 +72,8 @@ export async function GET(req: NextRequest, { params }: Props) {
             'Accept-Ranges': 'bytes',
             'Content-Length': chunkSize.toString(),
             'Content-Type': 'video/mp4',
-            'Cache-Control': 'public, max-age=31536000',
+            'Cache-Control': cacheControl,
+            ...(disposition ? { 'Content-Disposition': disposition } : {}),
           },
         })
       }
@@ -75,7 +85,8 @@ export async function GET(req: NextRequest, { params }: Props) {
           'Content-Length': fileSize.toString(),
           'Content-Type': 'video/mp4',
           'Accept-Ranges': 'bytes',
-          'Cache-Control': 'public, max-age=31536000',
+          'Cache-Control': cacheControl,
+          ...(disposition ? { 'Content-Disposition': disposition } : {}),
         },
       })
     } catch {
@@ -87,27 +98,21 @@ export async function GET(req: NextRequest, { params }: Props) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
-  const url = new URL(req.url)
-  const parts = url.pathname.split('/')
-  const systemName = decodeURIComponent(parts[parts.length - 1])
+export async function DELETE(req: NextRequest, { params }: Props) {
+  const { systemName } = await params
+  const permanent = req.nextUrl.searchParams.get('permanent') === '1'
+
+  if (permanent) {
+    const auth = await requireRole('SUPER')
+    if (auth.error) return auth.error
+    const result = await purgeArchiveRecord('class', systemName)
+    return NextResponse.json(result.body, { status: result.status })
+  }
 
   const auth = await requireStaff()
   if (auth.error) return auth.error
-
-  const file = await prisma.classFile.findUnique({ where: { systemName } })
-  if (!file) return NextResponse.json({ error: 'Файл не найден' }, { status: 404 })
-
-  await prisma.classFile.delete({ where: { id: file.id } })
-
-  const filePath = path.join(CLASS_ARCHIVE_DIR, systemName)
-  try {
-    await fs.unlink(filePath)
-  } catch (e) {
-    console.error(e)
-  }
-
-  return NextResponse.json({ ok: true })
+  const result = await softHideArchiveFile('class', systemName)
+  return NextResponse.json(result.body, { status: result.status })
 }
 
 export async function PATCH(req: NextRequest, { params }: Props) {
@@ -115,6 +120,11 @@ export async function PATCH(req: NextRequest, { params }: Props) {
 
   const auth = await requireStaff()
   if (auth.error) return auth.error
+
+  const existing = await prisma.classFile.findUnique({ where: { systemName } })
+  if (!existing || (existing.deletedAt && auth.user.role !== 'SUPER')) {
+    return NextResponse.json({ error: 'Файл не найден' }, { status: 404 })
+  }
 
   const body = await req.json() as { isPublic?: boolean; eventId?: number }
 

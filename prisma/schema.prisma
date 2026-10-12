@@ -118,10 +118,12 @@ model ConferenceFile {
   isPublic     Boolean  @default(false)
   orderIndex   Int      @default(0)
   eventId      Int?
+  deletedAt    DateTime?
 
   event Event? @relation(fields: [eventId], references: [id])
 
   @@index([eventId])
+  @@index([deletedAt])
 }
 
 model StreamLink {
@@ -200,10 +202,12 @@ model ClassFile {
   isPublic     Boolean  @default(false)
   orderIndex   Int      @default(0)
   eventId      Int?
+  deletedAt    DateTime?
 
   event Event? @relation(fields: [eventId], references: [id])
 
   @@index([eventId])
+  @@index([deletedAt])
 }
 
 model ClassStreamLink {

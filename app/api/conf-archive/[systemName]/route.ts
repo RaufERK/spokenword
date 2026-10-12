@@ -1,16 +1,11 @@
 // app/api/conf-archive/[systemName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { requireStaff, requireUser } from '@/lib/require-auth'
+import { requireRole, requireStaff, requireUser } from '@/lib/require-auth'
 import prisma from '@/lib/prisma'
 import { canAccessConferenceFile } from '@/lib/subscription'
-import fs from 'fs/promises'
+import { archiveFilePath, contentDispositionAttachment } from '@/lib/archive-files'
+import { purgeArchiveRecord, softHideArchiveFile } from '@/lib/archive-retention'
 import { createReadStream, statSync } from 'fs'
-import path from 'path'
-
-// В production используем абсолютный путь к shared папке (избегаем symlinks из-за Turbopack)
-const CONF_ARCHIVE_DIR = process.env.NODE_ENV === 'production'
-  ? '/home/appuser/apps/spokenword/shared/public/conf-archive'
-  : path.resolve(process.cwd(), 'public/conf-archive')
 
 interface Props {
   params: Promise<{ systemName: string }>
@@ -31,24 +26,35 @@ export async function GET(req: NextRequest, { params }: Props) {
       return new NextResponse('File not found', { status: 404 })
     }
 
+    const download = req.nextUrl.searchParams.get('download') === '1'
+    const hidden = file.deletedAt != null
+    if (hidden && auth.user.role !== 'SUPER') {
+      return new NextResponse('File not found', { status: 404 })
+    }
+
     const allowed = await canAccessConferenceFile({
       role: auth.user.role,
       userId: Number(auth.user.id),
       eventId: file.eventId,
       isPublic: file.isPublic,
+      deletedAt: file.deletedAt,
     })
     if (!allowed) {
       return new NextResponse('Forbidden', { status: 403 })
     }
 
-    // Увеличиваем счетчик просмотров
-    await prisma.conferenceFile.update({
-      where: { id: file.id },
-      data: { views: { increment: 1 } }
-    })
+    if (!hidden && !download) {
+      await prisma.conferenceFile.update({
+        where: { id: file.id },
+        data: { views: { increment: 1 } }
+      })
+    }
 
-    // Путь к файлу (systemName уже содержит .mp4)
-    const filePath = path.join(CONF_ARCHIVE_DIR, systemName)
+    const filePath = archiveFilePath('conf', systemName, hidden)
+    const cacheControl = hidden || download ? 'private, no-store' : 'public, max-age=31536000'
+    const disposition = download
+      ? contentDispositionAttachment(file.originalName || file.displayName)
+      : null
 
     try {
       const stat = statSync(filePath)
@@ -71,11 +77,11 @@ export async function GET(req: NextRequest, { params }: Props) {
             'Accept-Ranges': 'bytes',
             'Content-Length': chunkSize.toString(),
             'Content-Type': 'video/mp4',
-            'Cache-Control': 'public, max-age=31536000'
+            'Cache-Control': cacheControl,
+            ...(disposition ? { 'Content-Disposition': disposition } : {}),
           }
         })
       } else {
-        // Полный файл
         const stream = createReadStream(filePath)
 
         return new NextResponse(stream as unknown as ReadableStream, {
@@ -84,7 +90,8 @@ export async function GET(req: NextRequest, { params }: Props) {
             'Content-Length': fileSize.toString(),
             'Content-Type': 'video/mp4',
             'Accept-Ranges': 'bytes',
-            'Cache-Control': 'public, max-age=31536000'
+            'Cache-Control': cacheControl,
+            ...(disposition ? { 'Content-Disposition': disposition } : {}),
           }
         })
       }
@@ -106,6 +113,11 @@ export async function PATCH(req: NextRequest, { params }: Props) {
   // Авторизация
   const auth = await requireStaff()
   if (auth.error) return auth.error
+
+  const existing = await prisma.conferenceFile.findUnique({ where: { systemName } })
+  if (!existing || (existing.deletedAt && auth.user.role !== 'SUPER')) {
+    return NextResponse.json({ error: 'Файл не найден' }, { status: 404 })
+  }
 
   const body = await req.json() as { isPublic?: boolean; eventId?: number }
 
@@ -131,33 +143,19 @@ export async function PATCH(req: NextRequest, { params }: Props) {
   return NextResponse.json({ ok: true, isPublic: file.isPublic, eventId: file.eventId })
 }
 
-export async function DELETE(req: NextRequest) {
-  // Получаем systemName из url (а не из params!)
-  const url = new URL(req.url)
-  const parts = url.pathname.split('/')
-  const systemName = decodeURIComponent(parts[parts.length - 1])
+export async function DELETE(req: NextRequest, { params }: Props) {
+  const { systemName } = await params
+  const permanent = req.nextUrl.searchParams.get('permanent') === '1'
 
-  // Авторизация
-  const auth = await requireStaff()
-  if (auth.error) return auth.error
-
-  // Находим файл в базе
-  const file = await prisma.conferenceFile.findUnique({
-    where: { systemName },
-  })
-  if (!file)
-    return NextResponse.json({ error: 'Файл не найден' }, { status: 404 })
-
-  // Удаляем из базы
-  await prisma.conferenceFile.delete({ where: { id: file.id } })
-
-  // Удаляем с диска
-  const filePath = path.join(CONF_ARCHIVE_DIR, systemName)
-  try {
-    await fs.unlink(filePath)
-  } catch (e) {
-    console.error(e)
+  if (permanent) {
+    const auth = await requireRole('SUPER')
+    if (auth.error) return auth.error
+    const result = await purgeArchiveRecord('conf', systemName)
+    return NextResponse.json(result.body, { status: result.status })
   }
 
-  return NextResponse.json({ ok: true })
+  const auth = await requireStaff()
+  if (auth.error) return auth.error
+  const result = await softHideArchiveFile('conf', systemName)
+  return NextResponse.json(result.body, { status: result.status })
 }
