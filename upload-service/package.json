@@ -12,7 +12,7 @@
     "bullmq": "^5.76.2",
     "busboy": "^1.6.0",
     "cors": "^2.8.5",
-    "express": "^4.22.2",
+    "express": "^4.22.3",
     "ioredis": "^5.10.1"
   },
   "devDependencies": {
